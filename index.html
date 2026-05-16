@@ -124,7 +124,33 @@
       padding: 0.85rem;
     }
 
-    .log-panel { padding: 0.65rem; }
+    .party-card.on-mission-card {
+      border-color: rgba(248, 113, 113, 0.75);
+      background:
+        linear-gradient(180deg, rgba(248, 113, 113, 0.08), rgba(28, 36, 46, 0.96)),
+        var(--surface-2);
+      animation: dangerPulse 1.9s ease-in-out infinite;
+    }
+
+    @keyframes dangerPulse {
+      0%, 100% {
+        box-shadow:
+          0 0 0 rgba(248, 113, 113, 0),
+          inset 0 0 0 rgba(248, 113, 113, 0);
+      }
+      50% {
+        box-shadow:
+          0 0 24px rgba(248, 113, 113, 0.34),
+          inset 0 0 18px rgba(248, 113, 113, 0.12);
+      }
+    }
+
+    .log-panel {
+      padding: 0.75rem;
+      background:
+        linear-gradient(180deg, rgba(251, 191, 36, 0.055), rgba(28, 36, 46, 0.96)),
+        var(--surface-2);
+    }
 
     .party-card h3, .sub-panel h3, .log-panel h3 {
       margin: 0 0 0.5rem;
@@ -316,22 +342,33 @@
 
     .adventure-log {
       margin: 0;
-      padding: 0;
+      padding: 0.15rem 0.25rem;
       list-style: none;
+      border: 1px solid rgba(251, 191, 36, 0.14);
+      border-radius: 6px;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.018) 50%, transparent 50%),
+        rgba(10, 14, 20, 0.32);
+      background-size: 100% 2.2rem;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", "Times New Roman", serif;
+      letter-spacing: 0.055em;
+      line-height: 1.75;
     }
 
-    .adventure-log li { border-bottom: 1px solid var(--border); }
+    .adventure-log li { border-bottom: 1px solid rgba(251, 191, 36, 0.12); }
     .adventure-log li:last-child { border-bottom: none; }
 
     .log-entry {
       width: 100%;
-      padding: 0.45rem 0.15rem;
+      padding: 0.52rem 0.2rem;
       border: none;
       background: transparent;
       font-family: inherit;
-      font-size: 0.77rem;
+      font-size: 0.78rem;
+      letter-spacing: inherit;
+      line-height: inherit;
       text-align: left;
-      color: var(--text);
+      color: #d8d0bd;
     }
 
     .log-entry.flavor { color: var(--muted); }
@@ -359,11 +396,13 @@
 
     .battle-detail {
       display: none;
-      margin: 0 0 0.4rem 0.3rem;
-      padding-left: 0.55rem;
-      border-left: 2px solid var(--accent-dim);
-      font-size: 0.73rem;
-      color: var(--muted);
+      margin: 0 0 0.5rem 0.3rem;
+      padding-left: 0.65rem;
+      border-left: 2px solid rgba(251, 191, 36, 0.36);
+      font-size: 0.74rem;
+      letter-spacing: 0.045em;
+      line-height: 1.75;
+      color: #a99f8d;
     }
 
     .battle-detail.open { display: block; }
@@ -423,7 +462,7 @@
       <h1>派遣勇者</h1>
       <button type="button" class="ghost" id="reset-btn">リセット</button>
     </div>
-    <p class="subtitle">派遣 → オフライン進行 → ログはリアルタイムで表示</p>
+    <p class="subtitle">北方街道は魔物出現につき封鎖中。<br>ギルドは各地への派遣依頼を受理しています。</p>
 
     <div class="neon-card">
       <div class="toolbar">
@@ -1131,13 +1170,13 @@
         const on = !!party.mission;
         const area = on ? getArea(party.mission.areaId) : getArea(party.selectedArea);
         const card = document.createElement("div");
-        card.className = "party-card";
+        card.className = "party-card" + (on ? " on-mission-card" : "");
 
         card.innerHTML = `
           <h3>${party.name}</h3>
           <div class="row"><span>${party.hero.name}</span><span class="muted">Lv.${party.hero.level}</span></div>
           <div class="row">
-            <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で冒険中` : "拠点で待機"}</span>
+            <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で冒険中` : "派遣待機中"}</span>
             <span class="muted">XP ${party.hero.xp}/${party.hero.xpToNext}</span>
           </div>
           ${on ? `<div class="eta">${formatClock(party.mission.endsAt)} に帰還予定</div>` : ""}
