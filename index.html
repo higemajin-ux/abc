@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>派遣勇者</title>
+  <style>
+    :root {
+      --bg-deep: #0a0e14;
+      --bg: #0f1419;
+      --surface: #161c24;
+      --surface-2: #1c242e;
+      --border: #2a3441;
+      --border-bright: #3d4f63;
+      --text: #e8edf4;
+      --muted: #7d8a9a;
+      --accent: #38bdf8;
+      --accent-dim: #0ea5e9;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --success: #34d399;
+      --danger: #f87171;
+      --gold: #fbbf24;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.08), transparent),
+        linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 40%, #0d1117 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 2rem;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.15rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .title-row h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+      letter-spacing: 0.02em;
+    }
+
+    .neon-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .neon-card > h2 {
+      margin: 0 0 0.65rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .toolbar h2 {
+      margin: 0;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .save-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .parties, .dual-panels, .log-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+    }
+
+    @media (max-width: 600px) {
+      .parties, .dual-panels, .log-columns { grid-template-columns: 1fr; }
+    }
+
+    .party-card, .sub-panel, .log-panel {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+
+    .log-panel { padding: 0.65rem; }
+
+    .party-card h3, .sub-panel h3, .log-panel h3 {
+      margin: 0 0 0.5rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.86rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .muted { color: var(--muted); }
+    .status-idle { color: var(--success); font-weight: 600; }
+    .status-mission { color: var(--accent); font-weight: 600; }
+
+    .eta {
+      margin: 0.45rem 0;
+      font-size: 0.88rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+
+    .field-label {
+      display: block;
+      margin: 0.45rem 0 0.25rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .area-select {
+      width: 100%;
+      padding: 0.5rem 0.55rem;
+      font-size: 0.86rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .area-select:focus {
+      outline: none;
+      border-color: var(--accent-dim);
+    }
+
+    .area-select:disabled { opacity: 0.45; }
+    .dispatch-wrap { margin-top: 0.55rem; }
+
+    button.primary {
+      position: relative;
+      width: 100%;
+      padding: 0.65rem;
+      overflow: hidden;
+      border: 1px solid var(--accent-dim);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      color: #0a0e14;
+      background: linear-gradient(180deg, #7dd3fc 0%, var(--accent) 50%, var(--accent-dim) 100%);
+      box-shadow: 0 2px 12px var(--accent-glow);
+    }
+
+    button.primary:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    button.primary.on-mission {
+      color: var(--accent);
+      background: var(--bg);
+      border-color: var(--border-bright);
+      box-shadow: none;
+      cursor: default;
+    }
+
+    button.primary:disabled.on-mission { opacity: 1; }
+
+    .btn-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 0;
+      width: 0%;
+      border-radius: 5px;
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.25), rgba(56, 189, 248, 0.55));
+      transition: width 0.15s linear;
+    }
+
+    .btn-label { position: relative; z-index: 1; }
+
+    button.ghost {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      font-size: 0.78rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    button.ghost:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: rgba(248, 113, 113, 0.06);
+    }
+
+    .report { margin: 0; min-height: 3em; font-size: 0.84rem; }
+    .report strong { color: var(--accent); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem;
+      font-size: 0.82rem;
+    }
+
+    .stat-cell {
+      padding: 0.45rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+    }
+
+    .stat-cell .label {
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .dispatch-log {
+      max-height: 300px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .dispatch-group {
+      margin-bottom: 0.45rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .dispatch-group.latest {
+      border-color: var(--border-bright);
+    }
+
+    .dispatch-head {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      border: none;
+      background: var(--surface-2);
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 600;
+      text-align: left;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .dispatch-head:hover { background: #222a35; }
+
+    .dispatch-group.latest .dispatch-head {
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.12), transparent);
+      color: var(--accent);
+    }
+
+    .dispatch-group.collapsed .dispatch-head { cursor: pointer; }
+    .dispatch-head .sub {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 0.7rem;
+    }
+
+    .dispatch-body { padding: 0 0.4rem 0.3rem; }
+    .dispatch-group.collapsed .dispatch-body { display: none; }
+
+    .adventure-log {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .adventure-log li { border-bottom: 1px solid var(--border); }
+    .adventure-log li:last-child { border-bottom: none; }
+
+    .log-entry {
+      width: 100%;
+      padding: 0.45rem 0.15rem;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 0.77rem;
+      text-align: left;
+      color: var(--text);
+    }
+
+    .log-entry.flavor { color: var(--muted); }
+    .log-entry.battle { font-weight: 500; color: #cbd5e1; }
+    .log-entry.clickable { cursor: pointer; }
+    .log-entry.clickable:hover { background: rgba(56, 189, 248, 0.06); }
+
+    .log-entry .time {
+      display: block;
+      margin-bottom: 0.08rem;
+      font-size: 0.64rem;
+      font-variant-numeric: tabular-nums;
+      color: #5c6b7e;
+    }
+
+    .log-entry .rare-tag {
+      font-size: 0.6rem;
+      margin-left: 0.25rem;
+      padding: 0.06rem 0.35rem;
+      border-radius: 3px;
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      background: rgba(251, 191, 36, 0.1);
+      color: var(--gold);
+    }
+
+    .battle-detail {
+      display: none;
+      margin: 0 0 0.4rem 0.3rem;
+      padding-left: 0.55rem;
+      border-left: 2px solid var(--accent-dim);
+      font-size: 0.73rem;
+      color: var(--muted);
+    }
+
+    .battle-detail.open { display: block; }
+    .battle-detail p { margin: 0.1rem 0; }
+    .battle-detail .enemy { color: var(--danger); }
+    .battle-detail .kill { color: var(--success); }
+    .battle-detail .xp { color: var(--accent); }
+    .battle-detail .gold { color: var(--gold); }
+
+    .log-empty {
+      padding: 0.35rem 0.2rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .stage-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .stage-chip {
+      padding: 0.35rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+    }
+
+    .stage-chip.unlocked {
+      border-color: var(--border-bright);
+      color: var(--text);
+    }
+
+    .stage-chip.cleared {
+      border-color: rgba(52, 211, 153, 0.4);
+      color: var(--success);
+    }
+
+    .stage-chip.locked::after {
+      content: " 🔒";
+      font-size: 0.65rem;
+    }
+
+    .current-dispatch-label {
+      margin: 0 0 0.4rem;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title-row">
+      <h1>派遣勇者</h1>
+      <button type="button" class="ghost" id="reset-btn">リセット</button>
+    </div>
+    <p class="subtitle">派遣 → オフライン進行 → ログはリアルタイムで表示</p>
+
+    <div class="neon-card">
+      <div class="toolbar">
+        <h2>パーティ</h2>
+        <span class="save-hint" id="save-hint">自動保存</span>
+      </div>
+      <div class="parties" id="parties-root"></div>
+    </div>
+
+    <div class="neon-card">
+      <h2>直近の帰還</h2>
+      <div class="dual-panels" id="reports-root"></div>
+    </div>
+
+    <div class="neon-card">
+      <h2>冒険ログ</h2>
+      <div class="log-columns">
+        <div class="log-panel">
+          <h3>第1パーティ</h3>
+          <div class="dispatch-log" id="log-pt1"></div>
+        </div>
+        <div class="log-panel">
+          <h3>第2パーティ</h3>
+          <div class="dispatch-log" id="log-pt2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="neon-card">
+      <h2>過去の派遣</h2>
+      <div class="log-columns">
+        <div class="log-panel">
+          <h3>第1パーティ</h3>
+          <div class="dispatch-log" id="past-pt1"></div>
+        </div>
+        <div class="log-panel">
+          <h3>第2パーティ</h3>
+          <div class="dispatch-log" id="past-pt2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="neon-card">
+      <h2>ステージ解放</h2>
+      <div id="stages-root" class="stage-list"></div>
+    </div>
+
+    <div class="neon-card">
+      <h2>累計</h2>
+      <div class="dual-panels" id="stats-root"></div>
+    </div>
+  </div>
+
+  <script>
+    const SAVE_KEY = "dispatch-hero-save-v7";
+    const MAX_DISPATCH_HISTORY = 5;
+
+    const AREA_ORDER = [
+      "plain",
+      "forest",
+      "swamp",
+      "ruins",
+      "canyon",
+      "glacier",
+      "volcano",
+      "abyss",
+    ];
+
+    const AREAS = {
+      plain: { id: "plain", name: "平原", baseAtk: 4, durationMs: 10000, goldMult: 1, unlockAfter: null },
+      forest: { id: "forest", name: "森", baseAtk: 7, durationMs: 12000, goldMult: 1.35, unlockAfter: "plain" },
+      swamp: { id: "swamp", name: "沼", baseAtk: 11, durationMs: 15000, goldMult: 1.7, unlockAfter: "forest" },
+      ruins: { id: "ruins", name: "遺跡", baseAtk: 14, durationMs: 18000, goldMult: 2, unlockAfter: "swamp" },
+      canyon: { id: "canyon", name: "峡谷", baseAtk: 17, durationMs: 20000, goldMult: 2.3, unlockAfter: "ruins" },
+      glacier: { id: "glacier", name: "氷原", baseAtk: 20, durationMs: 22000, goldMult: 2.6, unlockAfter: "canyon" },
+      volcano: { id: "volcano", name: "火山", baseAtk: 24, durationMs: 25000, goldMult: 3, unlockAfter: "glacier" },
+      abyss: { id: "abyss", name: "深淵", baseAtk: 28, durationMs: 30000, goldMult: 3.5, unlockAfter: "volcano" },
+    };
+
+    const MONSTERS = {
+      plain: [
+        { name: "スライム", weight: 38, atkMod: 0 },
+        { name: "野ウサギ", weight: 28, atkMod: -1 },
+        { name: "クモンスター", weight: 22, atkMod: 1 },
+        { name: "ホーンウサギ", weight: 8, atkMod: 2, rare: true },
+        { name: "キングスライム", weight: 4, atkMod: 4, rare: true },
+      ],
+      forest: [
+        { name: "ゴブリン", weight: 36, atkMod: 0 },
+        { name: "森の狼", weight: 26, atkMod: 1 },
+        { name: "コボルト", weight: 20, atkMod: 1 },
+        { name: "トレントの苗", weight: 10, atkMod: 2, rare: true },
+        { name: "オーガの斥候", weight: 5, atkMod: 5, rare: true },
+      ],
+      swamp: [
+        { name: "沼棲スライム", weight: 34, atkMod: 0 },
+        { name: "毒ガエル", weight: 26, atkMod: 1 },
+        { name: "泥人形", weight: 22, atkMod: 2 },
+        { name: "ヒルドラの幼生", weight: 9, atkMod: 3, rare: true },
+        { name: "古代守護者", weight: 3, atkMod: 6, rare: true },
+      ],
+      ruins: [
+        { name: "骸骨兵", weight: 35, atkMod: 0 },
+        { name: "呪われた鎧", weight: 25, atkMod: 1 },
+        { name: "墓守", weight: 22, atkMod: 2 },
+        { name: "古代ゴーレム", weight: 9, atkMod: 4, rare: true },
+        { name: "リッチの影", weight: 4, atkMod: 6, rare: true },
+      ],
+      canyon: [
+        { name: "ハーピー", weight: 34, atkMod: 0 },
+        { name: "岩蛇", weight: 26, atkMod: 1 },
+        { name: "盗賊団", weight: 22, atkMod: 2 },
+        { name: "サンドワーム", weight: 10, atkMod: 4, rare: true },
+        { name: "峡谷の竜", weight: 3, atkMod: 7, rare: true },
+      ],
+      glacier: [
+        { name: "氷狼", weight: 36, atkMod: 0 },
+        { name: "フロストバット", weight: 26, atkMod: 1 },
+        { name: "雪怪", weight: 20, atkMod: 2 },
+        { name: "氷の精霊", weight: 9, atkMod: 4, rare: true },
+        { name: "白銀の猛獣", weight: 4, atkMod: 7, rare: true },
+      ],
+      volcano: [
+        { name: "火蜥蜴", weight: 35, atkMod: 0 },
+        { name: "溶岩ゴーレム", weight: 26, atkMod: 2 },
+        { name: "炎魔", weight: 20, atkMod: 2 },
+        { name: "紅蓮の翼", weight: 9, atkMod: 5, rare: true },
+        { name: "業火の王", weight: 3, atkMod: 8, rare: true },
+      ],
+      abyss: [
+        { name: "深淵の触手", weight: 34, atkMod: 1 },
+        { name: "虚無の影", weight: 26, atkMod: 2 },
+        { name: "堕天使の欠片", weight: 20, atkMod: 3 },
+        { name: "時空の亡霊", weight: 9, atkMod: 6, rare: true },
+        { name: "終焉の使者", weight: 3, atkMod: 9, rare: true },
+      ],
+    };
+
+    const FLAVOR = {
+      depart: ["{hero}が{area}へ向かった", "{hero}は{area}への道に出た"],
+      walk: ["道端の花が揺れている", "遠くで鐘の音がした", "良い天気だ"],
+      rest: ["木陰で少し休憩した", "水を飲んで一息ついた"],
+      sense: ["…何かの気配がする", "草むらが揺れた"],
+      mood: ["鳥が飛び立った", "風が止んだ", "足元に小石が転がる"],
+      after: ["荷物を整えた", "帰路についた"],
+    };
+
+    const defaultStats = () => ({
+      gold: 0,
+      kills: 0,
+      missionsStarted: 0,
+      missionsCleared: 0,
+    });
+
+    const defaultParty = (id, heroName) => ({
+      id,
+      name: id === "pt1" ? "第1パーティ" : "第2パーティ",
+      hero: { name: heroName, level: 1, xp: 0, xpToNext: 10 },
+      selectedArea: "plain",
+      mission: null,
+      stats: defaultStats(),
+      lastReport: null,
+      dispatches: [],
+      expandedDispatchIds: [],
+    });
+
+    let state = {
+      parties: [defaultParty("pt1", "アレン"), defaultParty("pt2", "リナ")],
+      areaClears: {},
+    };
+    let tickId = null;
+    let nextId = 1;
+
+    const $ = (id) => document.getElementById(id);
+    const uid = (p) => `${p}-${nextId++}`;
+    const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+    const pick = (arr) => arr[randInt(0, arr.length - 1)];
+    const fill = (tpl, v) => tpl.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
+
+    function formatClock(ts) {
+      const d = new Date(ts);
+      return [d.getHours(), d.getMinutes(), d.getSeconds()]
+        .map((n) => String(n).padStart(2, "0"))
+        .join(":");
+    }
+
+    function getArea(id) {
+      return AREAS[id] || AREAS.plain;
+    }
+
+    function getParty(id) {
+      return state.parties.find((p) => p.id === id);
+    }
+
+    function isAreaUnlocked(areaId) {
+      const area = AREAS[areaId];
+      if (!area?.unlockAfter) return true;
+      return (state.areaClears[area.unlockAfter] || 0) >= 1;
+    }
+
+    function recordAreaClear(areaId) {
+      if (!state.areaClears) state.areaClears = {};
+      const prev = state.areaClears[areaId] || 0;
+      state.areaClears[areaId] = prev + 1;
+      return prev === 0;
+    }
+
+    function getUnlockHint(areaId) {
+      const area = AREAS[areaId];
+      if (!area?.unlockAfter) return "";
+      const prev = AREAS[area.unlockAfter];
+      return `${prev.name}を1回クリアで解放`;
+    }
+
+    function ensureValidSelectedArea(party) {
+      if (isAreaUnlocked(party.selectedArea)) return;
+      for (let i = AREA_ORDER.length - 1; i >= 0; i--) {
+        if (isAreaUnlocked(AREA_ORDER[i])) {
+          party.selectedArea = AREA_ORDER[i];
+          return;
+        }
+      }
+      party.selectedArea = "plain";
+    }
+
+    function pickMonster(areaId) {
+      const list = MONSTERS[areaId] || MONSTERS.plain;
+      let r = Math.random() * list.reduce((s, m) => s + m.weight, 0);
+      for (const m of list) {
+        r -= m.weight;
+        if (r <= 0) return m;
+      }
+      return list[0];
+    }
+
+    function splitRewards(count, totalGold, totalXp) {
+      const goldParts = Array(count).fill(0);
+      const xpParts = Array(count).fill(0);
+      let gLeft = totalGold;
+      let xLeft = totalXp;
+      for (let i = 0; i < count; i++) {
+        const last = i === count - 1;
+        const g = last ? gLeft : randInt(1, Math.max(1, Math.floor(gLeft / (count - i))));
+        const x = last ? xLeft : randInt(1, Math.max(1, Math.floor(xLeft / (count - i))));
+        goldParts[i] = g;
+        xpParts[i] = x;
+        gLeft -= g;
+        xLeft -= x;
+      }
+      return { goldParts, xpParts };
+    }
+
+    function generateBattle(area, heroLevel) {
+      const killCount = randInt(2, 5);
+      const encounters = [];
+      const events = [];
+
+      for (let i = 0; i < killCount; i++) {
+        const monster = pickMonster(area.id);
+        encounters.push({
+          index: i + 1,
+          total: killCount,
+          monster,
+          events: [],
+        });
+      }
+
+      const rareCount = encounters.filter((e) => e.monster.rare).length;
+      const totalGold = Math.floor(
+        (killCount * randInt(4, 9) + randInt(8, 20) + rareCount * 12) * area.goldMult
+      );
+      const totalXp =
+        randInt(5, 12) + Math.floor(area.baseAtk / 2) + rareCount * 3;
+      const { goldParts, xpParts } = splitRewards(killCount, totalGold, totalXp);
+
+      for (let i = 0; i < killCount; i++) {
+        const enc = encounters[i];
+        const monster = enc.monster;
+        const enemyAtk =
+          area.baseAtk + monster.atkMod + Math.floor(i * 1.1) + randInt(0, 2);
+        const heroDmg = randInt(10, 22) + heroLevel * 2 + (monster.rare ? 2 : 0);
+        const encGold = goldParts[i];
+        const encXp = xpParts[i];
+
+        const round = [
+          { kind: "hit", text: `${monster.name}に ${heroDmg} ダメージ！` },
+          { kind: "enemy", text: `${monster.name}の攻撃！ ${enemyAtk} のダメージ` },
+          { kind: "kill", text: `${monster.name}を倒した（${enc.index}/${killCount}）` },
+          { kind: "xp", text: `経験値${encXp}を得た` },
+          { kind: "gold", text: `${encGold}ゴールド手に入れた` },
+        ];
+        enc.events = round;
+        enc.encGold = encGold;
+        enc.encXp = encXp;
+        events.push(...round);
+      }
+
+      return {
+        kills: killCount,
+        gold: totalGold,
+        xp: totalXp,
+        events,
+        encounters,
+      };
+    }
+
+    function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
+      const vars = { hero: party.hero.name, area: area.name };
+      const duration = endsAt - startedAt;
+      const slots = [];
+
+      const addFlavor = (pool) => {
+        slots.push({
+          type: "flavor",
+          ratio: Math.random(),
+          title: fill(pick(pool), vars),
+        });
+      };
+
+      addFlavor(FLAVOR.depart);
+      addFlavor(FLAVOR.walk);
+      if (Math.random() < 0.65) addFlavor(FLAVOR.rest);
+      if (Math.random() < 0.55) addFlavor(FLAVOR.mood);
+      if (Math.random() < 0.7) addFlavor(FLAVOR.sense);
+
+      for (const enc of rewards.encounters) {
+        slots.push({
+          type: "battle",
+          ratio: 0.3 + Math.random() * 0.55,
+          title: `${enc.monster.name}と遭遇した。`,
+          battleDetail: enc.events,
+          monsterRare: !!enc.monster.rare,
+        });
+        if (Math.random() < 0.5) addFlavor(FLAVOR.mood);
+        if (Math.random() < 0.4) addFlavor(FLAVOR.rest);
+        if (Math.random() < 0.45) addFlavor(FLAVOR.sense);
+      }
+
+      if (Math.random() < 0.55) addFlavor(FLAVOR.after);
+
+      slots.sort((a, b) => a.ratio - b.ratio);
+
+      const journal = slots.map((slot) => ({
+        id: uid("entry"),
+        type: slot.type,
+        timestamp: Math.floor(startedAt + duration * slot.ratio),
+        title: slot.title,
+        battleDetail: slot.battleDetail || null,
+        monsterRare: slot.monsterRare || false,
+        shown: false,
+      }));
+
+      journal.push({
+        id: uid("entry"),
+        type: "return",
+        timestamp: endsAt,
+        title: `${vars.hero}が${area.name}から帰還した（全戦闘記録▼）`,
+        battleDetail: rewards.events,
+        summary: `討伐${rewards.kills} / ${rewards.gold} G / ${rewards.xp} XP`,
+        shown: false,
+      });
+
+      return journal;
+    }
+
+    function getActiveDispatch(party) {
+      return party.dispatches.find((d) => d.status === "active") || null;
+    }
+
+    function trimDispatches(party) {
+      if (party.dispatches.length <= MAX_DISPATCH_HISTORY) return;
+      const removed = party.dispatches.splice(MAX_DISPATCH_HISTORY);
+      const removedIds = new Set(removed.map((d) => d.id));
+      party.expandedDispatchIds = (party.expandedDispatchIds || []).filter(
+        (id) => !removedIds.has(id)
+      );
+    }
+
+    function revealDueEntries(party) {
+      const dispatch = getActiveDispatch(party);
+      if (!dispatch || !party.mission) return false;
+
+      const now = Date.now();
+      let changed = false;
+
+      for (const entry of party.mission.journal) {
+        if (entry.shown || entry.timestamp > now) continue;
+        entry.shown = true;
+        dispatch.entries.push({ ...entry });
+        changed = true;
+      }
+
+      return changed;
+    }
+
+    function applyRewards(party, area, rewards) {
+      const s = party.stats;
+      s.gold += rewards.gold;
+      s.kills += rewards.kills;
+      s.missionsCleared += 1;
+
+      const { hero } = party;
+      hero.xp += rewards.xp;
+      const levelUps = [];
+      while (hero.xp >= hero.xpToNext) {
+        hero.xp -= hero.xpToNext;
+        hero.level += 1;
+        hero.xpToNext = Math.floor(hero.xpToNext * 1.4);
+        levelUps.push(hero.level);
+      }
+
+      const names = [...new Set(rewards.encounters.map((e) => e.monster.name))];
+      party.lastReport = {
+        areaName: area.name,
+        monsters: names.join("、"),
+        ...rewards,
+        levelUps,
+      };
+    }
+
+    function missionProgress(party) {
+      if (!party.mission) return 0;
+      const { startedAt, endsAt } = party.mission;
+      const total = endsAt - startedAt;
+      return total <= 0
+        ? 100
+        : Math.min(100, Math.max(0, ((Date.now() - startedAt) / total) * 100));
+    }
+
+    function startMission(partyId) {
+      const party = getParty(partyId);
+      if (!party || party.mission) return;
+
+      ensureValidSelectedArea(party);
+      if (!isAreaUnlocked(party.selectedArea)) return;
+
+      const area = getArea(party.selectedArea);
+      const rewards = generateBattle(area, party.hero.level);
+      const now = Date.now();
+      const endsAt = now + area.durationMs;
+      const dispatchId = uid("dispatch");
+
+      const dispatch = {
+        id: dispatchId,
+        areaId: area.id,
+        areaName: area.name,
+        startedAt: now,
+        endsAt,
+        status: "active",
+        entries: [],
+      };
+
+      party.dispatches.unshift(dispatch);
+      trimDispatches(party);
+
+      party.mission = {
+        dispatchId,
+        areaId: area.id,
+        startedAt: now,
+        endsAt,
+        rewards,
+        journal: buildScheduledJournal(party, area, rewards, now, endsAt),
+      };
+
+      party.stats.missionsStarted += 1;
+      revealDueEntries(party);
+
+      saveGame();
+      renderParties();
+      renderReports();
+      renderCurrentDispatchLog(party);
+      renderPastDispatchLog(party);
+      ensureTick();
+    }
+
+    function completeMission(party) {
+      if (!party.mission) return;
+
+      const area = getArea(party.mission.areaId);
+      const dispatch = party.dispatches.find((d) => d.id === party.mission.dispatchId);
+      revealDueEntries(party);
+
+      if (dispatch) {
+        dispatch.status = "complete";
+        dispatch.endsAt = party.mission.endsAt;
+        dispatch.summary = party.mission.journal.find((e) => e.type === "return")?.summary;
+      }
+
+      recordAreaClear(area.id);
+      applyRewards(party, area, party.mission.rewards);
+      party.mission = null;
+
+      saveGame();
+      renderParties();
+      renderReports();
+      renderStats();
+      renderStages();
+      renderCurrentDispatchLog(party);
+      renderPastDispatchLog(party);
+    }
+
+    function processMissions() {
+      let logDirty = false;
+
+      for (const party of state.parties) {
+        if (!party.mission) continue;
+
+        if (revealDueEntries(party)) logDirty = true;
+
+        if (Date.now() >= party.mission.endsAt) {
+          completeMission(party);
+        } else {
+          logDirty = true;
+        }
+      }
+
+      updateProgressBars();
+
+      if (logDirty) {
+        state.parties.forEach((p) => {
+          renderCurrentDispatchLog(p);
+          renderPastDispatchLog(p);
+        });
+      }
+
+      if (!state.parties.some((p) => p.mission)) stopTick();
+    }
+
+    function updateProgressBars() {
+      document.querySelectorAll("[data-progress]").forEach((wrap) => {
+        const party = getParty(wrap.dataset.progress);
+        const bar = wrap.querySelector(".btn-progress");
+        if (party?.mission && bar) bar.style.width = `${missionProgress(party)}%`;
+      });
+    }
+
+    function currentDispatchLabel(dispatch) {
+      if (dispatch.status === "active") return `いまの派遣（${dispatch.areaName}）`;
+      return `直近の派遣（${dispatch.areaName}）`;
+    }
+
+    function pastDispatchLabel(pastIndex, dispatch) {
+      return `${pastIndex}回前の派遣（${dispatch.areaName}）`;
+    }
+
+    function entryButtonHtml(entry, open) {
+      const rare = entry.monsterRare ? '<span class="rare-tag">レア</span>' : "";
+      let title = entry.title;
+      if (entry.type === "return") {
+        title = title.replace(/（全戦闘記録[▼▲]）$/, "");
+        title += open ? "（全戦闘記録▲）" : "（全戦闘記録▼）";
+      } else if (entry.battleDetail?.length) {
+        title += open ? " ▲" : " ▼";
+      }
+      return `<span class="time">${formatClock(entry.timestamp)}</span>${title}${rare}`;
+    }
+
+    function renderLogEntry(entry) {
+      const hasBattle = entry.battleDetail?.length > 0;
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "log-entry" +
+        (entry.type === "flavor" ? " flavor" : "") +
+        (entry.type === "battle" ? " battle" : "") +
+        (hasBattle ? " clickable" : "");
+
+      btn.innerHTML = entryButtonHtml(entry, false);
+      li.appendChild(btn);
+
+      if (hasBattle) {
+        const detail = document.createElement("div");
+        detail.className = "battle-detail";
+        detail.innerHTML = entry.battleDetail
+          .map((ev) => {
+            const c = ev.kind || "";
+            return `<p class="${c}">${ev.text}</p>`;
+          })
+          .join("");
+        if (entry.summary && entry.type === "return") {
+          detail.innerHTML += `<p><strong>合計:</strong> ${entry.summary}</p>`;
+        }
+        li.appendChild(detail);
+        btn.addEventListener("click", () => {
+          const open = detail.classList.toggle("open");
+          btn.innerHTML = entryButtonHtml(entry, open);
+        });
+      }
+
+      return li;
+    }
+
+    function appendEntriesToList(ul, entries) {
+      if (!entries.length) {
+        ul.innerHTML = '<li class="log-empty">ログ待機中…</li>';
+        return;
+      }
+      const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
+      for (const entry of sorted) {
+        ul.appendChild(renderLogEntry(entry));
+      }
+    }
+
+    function renderCurrentDispatchLog(party) {
+      const root = $(`log-${party.id}`);
+      root.innerHTML = "";
+      const dispatch = party.dispatches[0];
+      if (!dispatch) {
+        root.innerHTML = '<p class="log-empty">まだログがありません</p>';
+        return;
+      }
+
+      const cap = document.createElement("p");
+      cap.className = "current-dispatch-label";
+      cap.textContent = currentDispatchLabel(dispatch);
+      if (dispatch.status === "active") {
+        cap.textContent += ` · ${formatClock(dispatch.endsAt)}まで`;
+      }
+      root.appendChild(cap);
+
+      const ul = document.createElement("ul");
+      ul.className = "adventure-log";
+      appendEntriesToList(ul, dispatch.entries);
+      root.appendChild(ul);
+    }
+
+    function renderPastDispatchLog(party) {
+      const root = $(`past-${party.id}`);
+      root.innerHTML = "";
+      const past = party.dispatches.slice(1);
+      if (!past.length) {
+        root.innerHTML = '<p class="log-empty">過去の派遣はありません</p>';
+        return;
+      }
+
+      past.forEach((dispatch, i) => {
+        const pastIndex = i + 1;
+        const expanded = (party.expandedDispatchIds || []).includes(dispatch.id);
+
+        const group = document.createElement("div");
+        group.className = "dispatch-group" + (expanded ? "" : " collapsed");
+
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "dispatch-head";
+        const sub = dispatch.summary
+          ? dispatch.summary
+          : formatClock(dispatch.endsAt) + " 帰還";
+        head.innerHTML =
+          `${pastDispatchLabel(pastIndex, dispatch)}<br><span class="sub">${sub}</span>`;
+
+        head.addEventListener("click", () => {
+          if (!party.expandedDispatchIds) party.expandedDispatchIds = [];
+          const ids = party.expandedDispatchIds;
+          const idx = ids.indexOf(dispatch.id);
+          if (idx >= 0) ids.splice(idx, 1);
+          else ids.push(dispatch.id);
+          saveGame();
+          renderPastDispatchLog(party);
+        });
+
+        const body = document.createElement("div");
+        body.className = "dispatch-body";
+        const ul = document.createElement("ul");
+        ul.className = "adventure-log";
+        appendEntriesToList(ul, dispatch.entries);
+        body.appendChild(ul);
+        group.appendChild(head);
+        group.appendChild(body);
+        root.appendChild(group);
+      });
+    }
+
+    function renderStages() {
+      $("stages-root").innerHTML = AREA_ORDER.map((id) => {
+        const a = AREAS[id];
+        const unlocked = isAreaUnlocked(id);
+        const clears = state.areaClears[id] || 0;
+        let cls = "stage-chip";
+        if (clears > 0) cls += " cleared";
+        else if (unlocked) cls += " unlocked";
+        else cls += " locked";
+        const hint = unlocked ? (clears > 0 ? `クリア ${clears}回` : "解放済") : getUnlockHint(id);
+        return `<span class="${cls}" title="${hint}">${a.name}</span>`;
+      }).join("");
+    }
+
+    function areaOptions(selected) {
+      return AREA_ORDER.map((id) => {
+        const a = AREAS[id];
+        const unlocked = isAreaUnlocked(id);
+        const label = unlocked
+          ? `${a.name}（${a.durationMs / 1000}秒）`
+          : `${a.name}（${getUnlockHint(id)}）`;
+        return `<option value="${id}" ${id === selected ? "selected" : ""} ${unlocked ? "" : "disabled"}>${label}</option>`;
+      }).join("");
+    }
+
+    function renderParties() {
+      const root = $("parties-root");
+      root.innerHTML = "";
+
+      for (const party of state.parties) {
+        const on = !!party.mission;
+        const area = on ? getArea(party.mission.areaId) : getArea(party.selectedArea);
+        const card = document.createElement("div");
+        card.className = "party-card";
+
+        card.innerHTML = `
+          <h3>${party.name}</h3>
+          <div class="row"><span>${party.hero.name}</span><span class="muted">Lv.${party.hero.level}</span></div>
+          <div class="row">
+            <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で冒険中` : "拠点で待機"}</span>
+            <span class="muted">XP ${party.hero.xp}/${party.hero.xpToNext}</span>
+          </div>
+          ${on ? `<div class="eta">${formatClock(party.mission.endsAt)} に帰還予定</div>` : ""}
+          <label class="field-label">派遣先</label>
+          <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
+          <div class="dispatch-wrap" data-progress="${party.id}">
+            <button type="button" class="primary dispatch-btn ${on ? "on-mission" : ""}" ${on ? "disabled" : ""}>
+              <span class="btn-progress" style="width:${on ? missionProgress(party) : 0}%"></span>
+              <span class="btn-label">${on ? "冒険中…" : "冒険へ行く"}</span>
+            </button>
+          </div>
+        `;
+
+        if (!on) {
+          card.querySelector(".area-select").addEventListener("change", (e) => {
+            party.selectedArea = e.target.value;
+            saveGame();
+          });
+        }
+        card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
+        root.appendChild(card);
+      }
+    }
+
+    function renderReports() {
+      $("reports-root").innerHTML = state.parties
+        .map((p) => {
+          const r = p.lastReport;
+          const body = r
+            ? `<strong>${p.hero.name}</strong>が<strong>${r.areaName}</strong>から帰還。<br>${r.monsters} など <strong>${r.kills}</strong> 体、<strong>${r.gold}</strong> G、<strong>${r.xp}</strong> XP` +
+              (r.levelUps?.length ? ` → Lv.<strong>${r.levelUps.at(-1)}</strong>` : "")
+            : "まだ帰還していません";
+          return `<div class="sub-panel"><h3>${p.name}</h3><p class="report">${body}</p></div>`;
+        })
+        .join("");
+    }
+
+    function renderStats() {
+      $("stats-root").innerHTML = state.parties
+        .map((p) => {
+          const s = p.stats;
+          return `<div class="sub-panel"><h3>${p.name}</h3>
+            <div class="stats">
+              <div class="stat-cell"><div class="label">ゴールド</div>${s.gold} G</div>
+              <div class="stat-cell"><div class="label">討伐</div>${s.kills} 体</div>
+              <div class="stat-cell"><div class="label">派遣</div>${s.missionsStarted} 回</div>
+              <div class="stat-cell"><div class="label">完了</div>${s.missionsCleared} 回</div>
+            </div></div>`;
+        })
+        .join("");
+    }
+
+    function renderAll() {
+      state.parties.forEach(ensureValidSelectedArea);
+      renderParties();
+      renderReports();
+      renderStages();
+      renderStats();
+      state.parties.forEach((p) => {
+        renderCurrentDispatchLog(p);
+        renderPastDispatchLog(p);
+      });
+    }
+
+    function migrate(data) {
+      if (!data.parties) return data;
+
+      for (const p of data.parties) {
+        if (!p.stats) p.stats = defaultStats();
+        if (!p.dispatches) p.dispatches = [];
+        if (!p.expandedDispatchIds) p.expandedDispatchIds = [];
+
+        if (p.adventureLog?.length && !p.dispatches.length) {
+          p.dispatches.push({
+            id: uid("dispatch"),
+            areaName: "過去の記録",
+            startedAt: 0,
+            endsAt: 0,
+            status: "complete",
+            entries: p.adventureLog,
+            summary: "移行データ",
+          });
+          delete p.adventureLog;
+        }
+
+        if (p.mission && !p.mission.journal && p.mission.rewards) {
+          const area = getArea(p.mission.areaId);
+          p.mission.journal = buildScheduledJournal(
+            p,
+            area,
+            p.mission.rewards,
+            p.mission.startedAt,
+            p.mission.endsAt
+          );
+          const d = p.dispatches.find((x) => x.id === p.mission.dispatchId);
+          if (d) {
+            for (const e of p.mission.journal) {
+              if (e.timestamp <= Date.now()) {
+                e.shown = true;
+                d.entries.push({ ...e });
+              }
+            }
+          }
+        }
+      }
+
+      if (data.gold != null && data.parties[0]) {
+        const p0 = data.parties[0].stats;
+        p0.gold += data.gold || 0;
+        p0.kills += data.totalKills || 0;
+        p0.missionsStarted += data.missionsStarted || 0;
+        p0.missionsCleared += data.missionsCleared || 0;
+      }
+
+      if (!data.areaClears) data.areaClears = {};
+
+      const inferFromDispatches = Object.keys(data.areaClears).length === 0;
+      if (inferFromDispatches) {
+        for (const p of data.parties) {
+          for (const d of p.dispatches || []) {
+            if (d.status !== "complete") continue;
+            const areaId =
+              d.areaId ||
+              AREA_ORDER.find((id) => AREAS[id].name === d.areaName) ||
+              "plain";
+            d.areaId = areaId;
+            data.areaClears[areaId] = (data.areaClears[areaId] || 0) + 1;
+            let prev = AREAS[areaId]?.unlockAfter;
+            while (prev) {
+              if (!data.areaClears[prev]) data.areaClears[prev] = 1;
+              prev = AREAS[prev]?.unlockAfter;
+            }
+          }
+        }
+      }
+
+      return data;
+    }
+
+    function saveGame() {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+        $("save-hint").textContent = `保存済 ${formatClock(Date.now())}`;
+      } catch {
+        $("save-hint").textContent = "保存失敗";
+      }
+    }
+
+    function loadGame() {
+      try {
+        const raw =
+          localStorage.getItem(SAVE_KEY) ||
+          localStorage.getItem("dispatch-hero-save-v6") ||
+          localStorage.getItem("dispatch-hero-save-v5");
+        if (!raw) return;
+        const data = migrate(JSON.parse(raw));
+        if (data.parties) {
+          state = { parties: data.parties, areaClears: data.areaClears || {} };
+          state.parties.forEach(trimDispatches);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    function resetGame() {
+      if (!confirm("セーブを消して最初からやり直しますか？")) return;
+      ["dispatch-hero-save-v7", "dispatch-hero-save-v6", "dispatch-hero-save-v5"].forEach(
+        (k) => localStorage.removeItem(k)
+      );
+      state = {
+        parties: [defaultParty("pt1", "アレン"), defaultParty("pt2", "リナ")],
+        areaClears: {},
+      };
+      nextId = 1;
+      stopTick();
+      saveGame();
+      renderAll();
+    }
+
+    function ensureTick() {
+      if (tickId) return;
+      tickId = setInterval(processMissions, 250);
+    }
+
+    function stopTick() {
+      if (tickId) {
+        clearInterval(tickId);
+        tickId = null;
+      }
+    }
+
+    $("reset-btn").addEventListener("click", resetGame);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        processMissions();
+        renderParties();
+        updateProgressBars();
+      }
+    });
+
+    loadGame();
+    for (const p of state.parties) {
+      if (p.mission) {
+        const d = p.dispatches.find((x) => x.id === p.mission.dispatchId);
+        if (!d) {
+          const area = getArea(p.mission.areaId);
+          p.dispatches.unshift({
+            id: p.mission.dispatchId || uid("dispatch"),
+            areaId: area.id,
+            areaName: area.name,
+            startedAt: p.mission.startedAt,
+            endsAt: p.mission.endsAt,
+            status: "active",
+            entries: [],
+          });
+        }
+        if (!p.mission.journal && p.mission.rewards) {
+          const area = getArea(p.mission.areaId);
+          p.mission.journal = buildScheduledJournal(
+            p,
+            area,
+            p.mission.rewards,
+            p.mission.startedAt,
+            p.mission.endsAt
+          );
+        }
+        revealDueEntries(p);
+      }
+    }
+    processMissions();
+    renderAll();
+    if (state.parties.some((p) => p.mission)) ensureTick();
+  </script>
+</body>
+</html>
