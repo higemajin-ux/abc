@@ -49,6 +49,7 @@ function createEnemy(monster, area, heroLevel) {
     maxHp: monster.hp + scale * 8,
     hp: monster.hp + scale * 8,
     atk: monster.atk + scale * 2,
+    def: (monster.def || Math.max(0, area.difficulty - 1)) + Math.floor(scale / 2),
     xp: monster.xp + scale * 4,
     gold: monster.gold + scale * 3,
     rare: !!monster.rare,
@@ -60,8 +61,8 @@ function livingMembers(party) {
   return party.filter((m) => m.hp > 0);
 }
 
-function damageFor(attackerAtk, defenderDef = 0, variance = 2) {
-  return Math.max(1, attackerAtk + roll(-variance, variance) - defenderDef);
+function damageFor(attackerAtk, defenderDef = 0) {
+  return Math.max(1, attackerAtk - defenderDef);
 }
 
 function hpLabel(unit) {
@@ -92,7 +93,7 @@ function performPriestAction(actor, party, enemy, events) {
     return;
   }
 
-  const damage = Math.max(1, Math.floor(damageFor(actor.atk, 0, 1) * 0.75));
+  const damage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 0.75));
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}が杖で牽制。${enemy.name}に${damage}ダメージ。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
@@ -100,21 +101,21 @@ function performPriestAction(actor, party, enemy, events) {
 
 function performMageAction(actor, enemy, events) {
   if (Math.random() < 0.35) {
-    const damage = damageFor(actor.atk + 8 + actor.level, 0, 3);
+    const damage = damageFor(actor.atk + 8 + actor.level, enemy.def);
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${actor.name}が攻撃魔法！ ${enemy.name}に${damage}ダメージ！` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     return;
   }
 
-  const damage = damageFor(actor.atk, 0, 2);
+  const damage = damageFor(actor.atk, enemy.def);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
 function performWarriorAction(actor, enemy, events) {
-  const damage = damageFor(actor.atk, 0, 2);
+  const damage = damageFor(actor.atk, enemy.def);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
@@ -132,7 +133,7 @@ function performEnemyAction(enemy, party, events) {
   const target = pick(livingMembers(party));
   if (!target) return;
 
-  const damage = damageFor(enemy.atk, target.def, 2);
+  const damage = damageFor(enemy.atk, target.def);
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
   events.push({ kind: "", text: `${enemy.name}の反撃！ ${target.name}に${damage}ダメージ。` });
   pushHp(events, target, target.hp <= 0 ? "down" : "");
