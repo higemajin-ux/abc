@@ -135,7 +135,7 @@ function performEnemyAction(enemy, party, events) {
 
   const damage = damageFor(enemy.atk, target.def);
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
-  events.push({ kind: "", text: `${enemy.name}の反撃！ ${target.name}に${damage}ダメージ。` });
+  events.push({ kind: "", text: `${enemy.name}の攻撃！ ${target.name}に${damage}ダメージ。` });
   pushHp(events, target, target.hp <= 0 ? "down" : "");
   if (target.hp <= 0) {
     events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
@@ -145,7 +145,7 @@ function performEnemyAction(enemy, party, events) {
 function runEncounter(members, monster, area) {
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
   const enemy = createEnemy(monster, area, highestLevel);
-  const party = members.map((m) => ({ ...m, hp: m.maxHp }));
+  const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
   const events = [];
   let round = 1;
 
