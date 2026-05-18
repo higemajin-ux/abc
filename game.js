@@ -259,6 +259,7 @@ function startMission(partyId) {
     startedAt: now,
     endsAt,
     rewards,
+    failed: rewards.encounters.some((encounter) => !encounter.victory),
     journal: buildScheduledJournal(party, area, rewards, now, endsAt),
   };
 
@@ -285,7 +286,9 @@ function completeMission(party) {
     dispatch.summary = party.mission.journal.find((e) => e.type === "return")?.summary;
   }
 
-  recordAreaClear(area.id);
+  if (!party.mission.failed) {
+    recordAreaClear(area.id);
+  }
   applyRewards(party, area, party.mission.rewards);
   party.mission = null;
 
