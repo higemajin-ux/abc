@@ -175,6 +175,12 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const entries = [];
   const span = endsAt - startedAt;
   let forcedReturnAt = endsAt;
+  const encounterCount = rewards.encounters.length;
+  const encounterRatios = rewards.encounters.map((_, index) => {
+    const slot = (index + 1) / (encounterCount + 1);
+    const jitter = (Math.random() - 0.5) * 0.12;
+    return clamp(0.1 + slot * 0.75 + jitter, 0.1, 0.85);
+  });
   entries.push({
     id: uid("entry"),
     timestamp: startedAt,
@@ -196,8 +202,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   }
 
   rewards.encounters.forEach((encounter, index) => {
-    const lastIndex = Math.max(1, rewards.encounters.length - 1);
-    const ratio = 0.3 + (index / lastIndex) * 0.48;
+    const ratio = encounterRatios[index];
     const battleTime = startedAt + Math.floor(span * ratio);
     if (rewards.forcedReturn && index === rewards.encounters.length - 1) {
       forcedReturnAt = battleTime + 1;
