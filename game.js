@@ -458,10 +458,10 @@ function appendEntriesToList(ul, entries) {
   }
   [...entries]
     .sort((a, b) => {
-      const timeDiff = b.timestamp - a.timestamp;
+      const timeDiff = a.timestamp - b.timestamp;
       if (timeDiff) return timeDiff;
-      if (a.type === "return" && b.type !== "return") return -1;
-      if (b.type === "return" && a.type !== "return") return 1;
+      if (a.type === "return" && b.type !== "return") return 1;
+      if (b.type === "return" && a.type !== "return") return -1;
       return 0;
     })
     .forEach((entry) => ul.appendChild(renderLogEntry(entry)));
