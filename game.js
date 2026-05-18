@@ -295,79 +295,16 @@ function completeMission(party) {
 
 function processMissions() {
   let dirty = false;
-
   for (const party of state.parties) {
     if (!party.mission) continue;
-
-    // 全滅時強制帰還
-if (
-  party.members &&
-  party.members.length &&
-  party.members.every((m) => m.hp <= 0)
-) {
-  const now = Date.now();
-
-  const wipeoutEntry = {
-    id: uid("entry"),
-    type: "return",
-    timestamp: now,
-    title: `${party.name}は全滅したため、ギルドへ強制帰還した。`,
-    battleDetail: [
-      { kind: "enemy", text: "全員が戦闘不能となった。" },
-      { kind: "text", text: "救助隊により回収された。" }
-    ],
-    summary: "全滅 / 強制帰還",
-    shown: true
-  };
-
-  // journalにも入れる
-  party.mission.journal.push(wipeoutEntry);
-
-  // 実際に表示される派遣ログにも直接入れる
-  const dispatch = party.dispatches.find(
-    (d) => d.id === party.mission.dispatchId
-  );
-
-  if (dispatch) {
-    dispatch.entries.push(wipeoutEntry);
-    dispatch.summary = "全滅 / 強制帰還";
-    dispatch.status = "failed";
-    dispatch.endsAt = now;
-  }
-
-  party.mission.endsAt = now;
-  party.mission.failed = true;
-
-  completeMission(party);
-
-  dirty = true;
-  continue;
-}
-
-    // ==========================
-    // 既存処理
-    // ==========================
-    if (revealDueEntries(party)) {
-      dirty = true;
-    }
-
-    if (Date.now() >= party.mission.endsAt) {
-      completeMission(party);
-    } else {
-      dirty = true;
-    }
+    if (revealDueEntries(party)) dirty = true;
+    if (Date.now() >= party.mission.endsAt) completeMission(party);
+    else dirty = true;
   }
 
   updateProgressBars();
-
-  state.parties.forEach((p) => {
-    renderCurrentDispatchLog(p);
-    renderPastDispatchLog(p);
-  });
-
-  if (!state.parties.some((p) => p.mission)) {
-    stopTick();
-  }
+  if (dirty) renderLogs();
+  if (!state.parties.some((p) => p.mission)) stopTick();
 }
 
 function updateProgressBars() {
