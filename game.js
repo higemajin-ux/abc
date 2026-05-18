@@ -103,9 +103,6 @@ function battleSummary(encounter) {
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
-// processMissions 内の戦闘処理部分
-const result = runEncounter(party.members, monster, area);
-
 function processMissions() {
   let dirty = false;
   for (const party of state.parties) {
