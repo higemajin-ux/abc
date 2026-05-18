@@ -174,6 +174,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
 function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const entries = [];
   const span = endsAt - startedAt;
+  let forcedReturnAt = endsAt;
   entries.push({
     id: uid("entry"),
     timestamp: startedAt,
@@ -197,9 +198,10 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   rewards.encounters.forEach((encounter, index) => {
     const lastIndex = Math.max(1, rewards.encounters.length - 1);
     const ratio = 0.3 + (index / lastIndex) * 0.48;
-    const battleTime = rewards.forcedReturn
-      ? startedAt + Math.floor(area.durationMs * ratio)
-      : startedAt + Math.floor(span * ratio);
+    const battleTime = startedAt + Math.floor(span * ratio);
+    if (rewards.forcedReturn && index === rewards.encounters.length - 1) {
+      forcedReturnAt = battleTime + 1;
+    }
     if (!rewards.forcedReturn && (encounter.enemy?.boss || encounter.monster?.boss)) {
       entries.push({
         id: uid("entry"),
@@ -224,16 +226,17 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   if (rewards.forcedReturn) {
     entries.push({
       id: uid("entry"),
-      timestamp: endsAt - 1,
+      timestamp: forcedReturnAt,
       type: "flavor",
       title: "全員のHPが尽き、全滅した。",
+      forceReturn: true,
       shown: false,
     });
   }
 
   entries.push({
     id: uid("entry"),
-    timestamp: endsAt,
+    timestamp: rewards.forcedReturn ? forcedReturnAt : endsAt,
     type: "return",
     title: rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
     battleDetail: rewards.encounters.flatMap((e) => e.events),
@@ -267,6 +270,10 @@ function revealDueEntries(party) {
     if (entry.shown || entry.timestamp > now) continue;
     entry.shown = true;
     dispatch.entries.push({ ...entry });
+    if (entry.forceReturn) {
+      party.mission.failed = true;
+      party.mission.endsAt = entry.timestamp;
+    }
     changed = true;
   }
   return changed;
@@ -314,14 +321,6 @@ function missionProgress(party) {
   return total <= 0 ? 100 : clamp(((Date.now() - startedAt) / total) * 100, 0, 100);
 }
 
-function missionEndTime(area, rewards, startedAt) {
-  if (!rewards.forcedReturn) return startedAt + area.durationMs;
-  const lastEncounterIndex = Math.max(0, rewards.encounters.length - 1);
-  const lastIndex = Math.max(1, rewards.encounters.length - 1);
-  const lastBattleRatio = 0.3 + (lastEncounterIndex / lastIndex) * 0.48;
-  return startedAt + Math.floor(area.durationMs * lastBattleRatio) + 2;
-}
-
 function startMission(partyId) {
   const party = getParty(partyId);
   if (!party || party.mission) return;
@@ -335,7 +334,7 @@ function startMission(partyId) {
   });
   const rewards = generateBattle(area, party);
   const now = Date.now();
-  const endsAt = missionEndTime(area, rewards, now);
+  const endsAt = now + area.durationMs;
   const dispatchId = uid("dispatch");
 
   party.dispatches.unshift({
@@ -354,6 +353,7 @@ function startMission(partyId) {
     areaId: area.id,
     startedAt: now,
     endsAt,
+    plannedEndsAt: endsAt,
     rewards,
     failed: false,
     journal: buildScheduledJournalV2(party, area, rewards, now, endsAt),
@@ -399,7 +399,10 @@ function processMissions() {
   for (const party of state.parties) {
     if (!party.mission) continue;
     if (revealDueEntries(party)) dirty = true;
-    if (Date.now() >= party.mission.endsAt) {
+    if (party.mission.failed) {
+      completeMission(party);
+    }
+    else if (Date.now() >= party.mission.endsAt) {
       party.mission.failed = !!party.mission.rewards?.failed;
       completeMission(party);
     }
