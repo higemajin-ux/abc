@@ -299,45 +299,50 @@ function processMissions() {
   for (const party of state.parties) {
     if (!party.mission) continue;
 
-    // ==========================
     // 全滅時強制帰還
-    // ==========================
-    if (
-      party.members &&
-      party.members.length &&
-      party.members.every((m) => m.hp <= 0)
-    ) {
-      const now = Date.now();
+if (
+  party.members &&
+  party.members.length &&
+  party.members.every((m) => m.hp <= 0)
+) {
+  const now = Date.now();
 
-      party.mission.journal.push({
-        id: uid("entry"),
-        type: "return",
-        timestamp: now,
-        title: `${party.name}は全滅したため、ギルドへ強制帰還した。`,
-        battleDetail: [
-          {
-            kind: "enemy",
-            text: "全員が戦闘不能となった。"
-          },
-          {
-            kind: "text",
-            text: "救助隊により回収された。"
-          }
-        ],
-        summary: "全滅 / 強制帰還",
-        shown: false
-      });
+  const wipeoutEntry = {
+    id: uid("entry"),
+    type: "return",
+    timestamp: now,
+    title: `${party.name}は全滅したため、ギルドへ強制帰還した。`,
+    battleDetail: [
+      { kind: "enemy", text: "全員が戦闘不能となった。" },
+      { kind: "text", text: "救助隊により回収された。" }
+    ],
+    summary: "全滅 / 強制帰還",
+    shown: true
+  };
 
-      party.mission.endsAt = now;
+  // journalにも入れる
+  party.mission.journal.push(wipeoutEntry);
 
-      revealDueEntries(party);
+  // 実際に表示される派遣ログにも直接入れる
+  const dispatch = party.dispatches.find(
+    (d) => d.id === party.mission.dispatchId
+  );
 
-      completeMission(party);
+  if (dispatch) {
+    dispatch.entries.push(wipeoutEntry);
+    dispatch.summary = "全滅 / 強制帰還";
+    dispatch.status = "failed";
+    dispatch.endsAt = now;
+  }
 
-      dirty = true;
+  party.mission.endsAt = now;
+  party.mission.failed = true;
 
-      continue;
-    }
+  completeMission(party);
+
+  dirty = true;
+  continue;
+}
 
     // ==========================
     // 既存処理
