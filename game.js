@@ -1,0 +1,722 @@
+"use strict";
+
+let nextId = 1;
+let tickId = null;
+let worldTickId = null;
+let state = {
+  parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
+  areaClears: {},
+};
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function uid(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${nextId++}`;
+}
+
+function formatClock(ts) {
+  return new Date(ts).toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function defaultStats() {
+  return { gold: 0, kills: 0, missionsStarted: 0, missionsCleared: 0 };
+}
+
+function defaultParty(id, name) {
+  const members = (PARTY_TEMPLATES[id] || PARTY_TEMPLATES.pt1).map((m) => createMember(m));
+  return {
+    id,
+    name,
+    members,
+    hero: members[0],
+    selectedArea: "plain",
+    mission: null,
+    dispatches: [],
+    expandedDispatchIds: [],
+    lastReport: null,
+    stats: defaultStats(),
+  };
+}
+
+function getParty(id) {
+  return state.parties.find((p) => p.id === id);
+}
+
+function getArea(id) {
+  return AREAS[id] || AREAS.plain;
+}
+
+function isAreaUnlocked(id) {
+  const area = getArea(id);
+  return !area.unlockAfter || (state.areaClears[area.unlockAfter] || 0) > 0;
+}
+
+function getUnlockHint(id) {
+  const area = getArea(id);
+  if (!area.unlockAfter) return "解放済";
+  return `${AREAS[area.unlockAfter].name}を1回クリア`;
+}
+
+function ensureValidSelectedArea(party) {
+  if (!isAreaUnlocked(party.selectedArea)) {
+    party.selectedArea = AREA_ORDER.find(isAreaUnlocked) || "plain";
+  }
+}
+
+function recordAreaClear(areaId) {
+  state.areaClears[areaId] = (state.areaClears[areaId] || 0) + 1;
+}
+
+function shouldBossAppear(area) {
+  if (!area.boss || !area.bossEvery) return false;
+  const clears = state.areaClears[area.id] || 0;
+  return clears > 0 && (clears + 1) % area.bossEvery === 0;
+}
+
+function chooseMonster(area) {
+  if (shouldBossAppear(area)) return MONSTERS[area.boss];
+  return MONSTERS[pick(area.monsters)];
+}
+
+function generateBattle(area, party) {
+  const encounters = [];
+  const count = clamp(area.difficulty + roll(0, 1), 1, 5);
+
+  for (let i = 0; i < count; i += 1) {
+    const monster = i === count - 1 ? chooseMonster(area) : MONSTERS[pick(area.monsters)];
+    encounters.push(runEncounter(party.members, monster, area));
+  }
+
+  return {
+    encounters,
+    kills: encounters.reduce((sum, e) => sum + e.kills, 0),
+    xp: encounters.reduce((sum, e) => sum + e.xp, 0),
+    gold: encounters.reduce((sum, e) => sum + e.gold, 0),
+  };
+}
+
+function battleSummary(encounter) {
+  const result = encounter.victory ? "討伐成功" : "撤退";
+  return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
+}
+
+function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
+  const entries = [];
+  const span = endsAt - startedAt;
+  entries.push({
+    id: uid("entry"),
+    timestamp: startedAt + 350,
+    type: "flavor",
+    title: `${party.name}、${area.name}へ出発。`,
+    shown: false,
+  });
+
+  area.flavor.forEach((text, index) => {
+    entries.push({
+      id: uid("entry"),
+      timestamp: startedAt + Math.floor(span * (0.18 + index * 0.14)),
+      type: "flavor",
+      title: text,
+      shown: false,
+    });
+  });
+
+  rewards.encounters.forEach((encounter, index) => {
+    const ratio = 0.35 + (index / Math.max(1, rewards.encounters.length)) * 0.43;
+    entries.push({
+      id: uid("entry"),
+      timestamp: startedAt + Math.floor(span * ratio),
+      type: "battle",
+      title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
+      monsterRare: encounter.monster.rare || encounter.monster.boss,
+      battleDetail: encounter.events,
+      summary: battleSummary(encounter),
+      shown: false,
+    });
+  });
+
+  entries.push({
+    id: uid("entry"),
+    timestamp: endsAt,
+    type: "return",
+    title: `帰還報告（全戦闘記録▼）`,
+    battleDetail: rewards.encounters.flatMap((e) => e.events),
+    summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
+    shown: false,
+  });
+
+  return entries.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+function getActiveDispatch(party) {
+  return party.dispatches.find((d) => d.status === "active") || null;
+}
+
+function trimDispatches(party) {
+  if (party.dispatches.length <= MAX_DISPATCH_HISTORY) return;
+  const removed = party.dispatches.splice(MAX_DISPATCH_HISTORY);
+  const removedIds = new Set(removed.map((d) => d.id));
+  party.expandedDispatchIds = (party.expandedDispatchIds || []).filter((id) => !removedIds.has(id));
+}
+
+function revealDueEntries(party) {
+  const dispatch = getActiveDispatch(party);
+  if (!dispatch || !party.mission) return false;
+
+  const now = Date.now();
+  let changed = false;
+  for (const entry of party.mission.journal) {
+    if (entry.shown || entry.timestamp > now) continue;
+    entry.shown = true;
+    dispatch.entries.push({ ...entry });
+    changed = true;
+  }
+  return changed;
+}
+
+function applyMemberXp(member, xp, levelUps) {
+  member.xp += xp;
+  while (member.xp >= member.xpToNext) {
+    member.xp -= member.xpToNext;
+    member.level += 1;
+    member.xpToNext = Math.floor(member.xpToNext * 1.35);
+    syncMemberStats(member);
+    member.hp = member.maxHp;
+    levelUps.push({ name: member.name, level: member.level });
+  }
+}
+
+function applyRewards(party, area, rewards) {
+  const s = party.stats;
+  s.gold += rewards.gold;
+  s.kills += rewards.kills;
+  s.missionsCleared += 1;
+
+  const levelUps = [];
+  const xpEach = Math.max(1, Math.floor(rewards.xp / party.members.length));
+  party.members.forEach((member) => {
+    applyMemberXp(member, xpEach, levelUps);
+    member.hp = member.maxHp;
+  });
+  party.hero = party.members[0];
+
+  const names = [...new Set(rewards.encounters.map((e) => e.monster.name))];
+  party.lastReport = {
+    areaName: area.name,
+    monsters: names.join("、"),
+    ...rewards,
+    levelUps,
+  };
+}
+
+function missionProgress(party) {
+  if (!party.mission) return 0;
+  const { startedAt, endsAt } = party.mission;
+  const total = endsAt - startedAt;
+  return total <= 0 ? 100 : clamp(((Date.now() - startedAt) / total) * 100, 0, 100);
+}
+
+function startMission(partyId) {
+  const party = getParty(partyId);
+  if (!party || party.mission) return;
+
+  ensureValidSelectedArea(party);
+  if (!isAreaUnlocked(party.selectedArea)) return;
+
+  const area = getArea(party.selectedArea);
+  const rewards = generateBattle(area, party);
+  const now = Date.now();
+  const endsAt = now + area.durationMs;
+  const dispatchId = uid("dispatch");
+
+  party.dispatches.unshift({
+    id: dispatchId,
+    areaId: area.id,
+    areaName: area.name,
+    startedAt: now,
+    endsAt,
+    status: "active",
+    entries: [],
+  });
+  trimDispatches(party);
+
+  party.mission = {
+    dispatchId,
+    areaId: area.id,
+    startedAt: now,
+    endsAt,
+    rewards,
+    journal: buildScheduledJournal(party, area, rewards, now, endsAt),
+  };
+
+  party.stats.missionsStarted += 1;
+  revealDueEntries(party);
+
+  saveGame();
+  renderParties();
+  renderReports();
+  renderLogs();
+  ensureTick();
+}
+
+function completeMission(party) {
+  if (!party.mission) return;
+
+  const area = getArea(party.mission.areaId);
+  const dispatch = party.dispatches.find((d) => d.id === party.mission.dispatchId);
+  revealDueEntries(party);
+
+  if (dispatch) {
+    dispatch.status = "complete";
+    dispatch.endsAt = party.mission.endsAt;
+    dispatch.summary = party.mission.journal.find((e) => e.type === "return")?.summary;
+  }
+
+  recordAreaClear(area.id);
+  applyRewards(party, area, party.mission.rewards);
+  party.mission = null;
+
+  saveGame();
+  renderAll();
+}
+
+function processMissions() {
+  let dirty = false;
+  for (const party of state.parties) {
+    if (!party.mission) continue;
+    if (revealDueEntries(party)) dirty = true;
+    if (Date.now() >= party.mission.endsAt) completeMission(party);
+    else dirty = true;
+  }
+
+  updateProgressBars();
+  if (dirty) renderLogs();
+  if (!state.parties.some((p) => p.mission)) stopTick();
+}
+
+function updateProgressBars() {
+  document.querySelectorAll("[data-progress]").forEach((wrap) => {
+    const party = getParty(wrap.dataset.progress);
+    const bar = wrap.querySelector(".btn-progress");
+    if (party?.mission && bar) bar.style.width = `${missionProgress(party)}%`;
+  });
+}
+
+function currentDispatchLabel(dispatch) {
+  if (dispatch.status === "active") return `いまの派遣（${dispatch.areaName}）`;
+  return `直近の派遣（${dispatch.areaName}）`;
+}
+
+function pastDispatchLabel(pastIndex, dispatch) {
+  return `${pastIndex}回前の派遣（${dispatch.areaName}）`;
+}
+
+function entryButtonHtml(entry, open) {
+  const rare = entry.monsterRare ? '<span class="rare-tag">重要</span>' : "";
+  let title = entry.title;
+  if (entry.type === "return") {
+    title = title.replace(/（全戦闘記録[▼▲]）$/, "");
+    title += open ? "（全戦闘記録▲）" : "（全戦闘記録▼）";
+  } else if (entry.battleDetail?.length) {
+    title += open ? " ▲" : " ▼";
+  }
+  return `<span class="time">${formatClock(entry.timestamp)}</span>${title}${rare}`;
+}
+
+function renderLogEntry(entry) {
+  const hasBattle = entry.battleDetail?.length > 0;
+  const li = document.createElement("li");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className =
+    "log-entry" +
+    (entry.type === "flavor" ? " flavor" : "") +
+    (entry.type === "battle" ? " battle" : "") +
+    (hasBattle ? " clickable" : "");
+
+  btn.innerHTML = entryButtonHtml(entry, false);
+  li.appendChild(btn);
+
+  if (hasBattle) {
+    const detail = document.createElement("div");
+    detail.className = "battle-detail";
+    detail.innerHTML = entry.battleDetail.map((ev) => `<p class="${ev.kind || ""}">${ev.text}</p>`).join("");
+    if (entry.summary && entry.type === "return") {
+      detail.innerHTML += `<p><strong>合計:</strong> ${entry.summary}</p>`;
+    }
+    li.appendChild(detail);
+    btn.addEventListener("click", () => {
+      const open = detail.classList.toggle("open");
+      btn.innerHTML = entryButtonHtml(entry, open);
+    });
+  }
+
+  return li;
+}
+
+function appendEntriesToList(ul, entries) {
+  if (!entries.length) {
+    ul.innerHTML = '<li class="log-empty">ログ待機中...</li>';
+    return;
+  }
+  [...entries]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .forEach((entry) => ul.appendChild(renderLogEntry(entry)));
+}
+
+function renderCurrentDispatchLog(root, party) {
+  const dispatch = party.dispatches[0];
+  if (!dispatch) {
+    root.innerHTML = '<p class="log-empty">まだログがありません</p>';
+    return;
+  }
+
+  const cap = document.createElement("p");
+  cap.className = "current-dispatch-label";
+  cap.textContent = currentDispatchLabel(dispatch);
+  if (dispatch.status === "active") cap.textContent += ` · ${formatClock(dispatch.endsAt)}まで`;
+  root.appendChild(cap);
+
+  const ul = document.createElement("ul");
+  ul.className = "adventure-log";
+  appendEntriesToList(ul, dispatch.entries);
+  root.appendChild(ul);
+}
+
+function renderPastDispatchLog(root, party) {
+  const past = party.dispatches.slice(1);
+  if (!past.length) {
+    root.innerHTML = '<p class="log-empty">過去の派遣はありません</p>';
+    return;
+  }
+
+  past.forEach((dispatch, i) => {
+    const pastIndex = i + 1;
+    const expanded = (party.expandedDispatchIds || []).includes(dispatch.id);
+    const group = document.createElement("div");
+    group.className = "dispatch-group" + (expanded ? "" : " collapsed");
+
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "dispatch-head";
+    const sub = dispatch.summary ? dispatch.summary : `${formatClock(dispatch.endsAt)} 帰還`;
+    head.innerHTML = `${pastDispatchLabel(pastIndex, dispatch)}<br><span class="sub">${sub}</span>`;
+    head.addEventListener("click", () => {
+      if (!party.expandedDispatchIds) party.expandedDispatchIds = [];
+      const ids = party.expandedDispatchIds;
+      const idx = ids.indexOf(dispatch.id);
+      if (idx >= 0) ids.splice(idx, 1);
+      else ids.push(dispatch.id);
+      saveGame();
+      renderLogs();
+    });
+
+    const body = document.createElement("div");
+    body.className = "dispatch-body";
+    const ul = document.createElement("ul");
+    ul.className = "adventure-log";
+    appendEntriesToList(ul, dispatch.entries);
+    body.appendChild(ul);
+    group.appendChild(head);
+    group.appendChild(body);
+    root.appendChild(group);
+  });
+}
+
+function memberChips(party) {
+  return party.members
+    .map((m) => {
+      const cls = m.hp <= 0 ? "member-chip down" : "member-chip";
+      return `<span class="${cls}">${m.name}<span class="member-job">${JOB_LABELS[m.job]}</span></span>`;
+    })
+    .join("");
+}
+
+function areaOptions(selected) {
+  return AREA_ORDER.map((id) => {
+    const a = AREAS[id];
+    const unlocked = isAreaUnlocked(id);
+    const label = unlocked ? `${a.name}（${a.durationMs / 1000}秒）` : `${a.name}（${getUnlockHint(id)}）`;
+    return `<option value="${id}" ${id === selected ? "selected" : ""} ${unlocked ? "" : "disabled"}>${label}</option>`;
+  }).join("");
+}
+
+function renderParties() {
+  const root = $("parties-root");
+  root.innerHTML = "";
+
+  for (const party of state.parties) {
+    const on = !!party.mission;
+    const area = on ? getArea(party.mission.areaId) : getArea(party.selectedArea);
+    const leader = party.members[0];
+    const card = document.createElement("div");
+    card.className = "party-card" + (on ? " on-mission-card" : "");
+    card.innerHTML = `
+      <h3>${party.name}</h3>
+      <div class="row"><span>隊長 ${leader.name}</span><span class="muted">Lv.${leader.level}</span></div>
+      <div class="row">
+        <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で戦闘中` : "派遣待機中"}</span>
+        <span class="muted">HP ${leader.hp}/${leader.maxHp}</span>
+      </div>
+      <div class="member-list">${memberChips(party)}</div>
+      ${on ? `<div class="eta">${formatClock(party.mission.endsAt)} に帰還予定</div>` : ""}
+      <label class="field-label">派遣先</label>
+      <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
+      <div class="dispatch-wrap" data-progress="${party.id}">
+        <button type="button" class="primary dispatch-btn ${on ? "on-mission" : ""}" ${on ? "disabled" : ""}>
+          <span class="btn-progress" style="width:${on ? missionProgress(party) : 0}%"></span>
+          <span class="btn-label">${on ? "冒険中..." : "冒険へ行く"}</span>
+        </button>
+      </div>
+    `;
+
+    if (!on) {
+      card.querySelector(".area-select").addEventListener("change", (e) => {
+        party.selectedArea = e.target.value;
+        saveGame();
+      });
+    }
+    card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
+    root.appendChild(card);
+  }
+}
+
+function renderReports() {
+  $("reports-root").innerHTML = state.parties
+    .map((p) => {
+      const r = p.lastReport;
+      const body = r
+        ? `<strong>${p.name}</strong>が<strong>${r.areaName}</strong>から帰還。<br>${r.monsters} など <strong>${r.kills}</strong> 体、<strong>${r.gold}</strong> G、<strong>${r.xp}</strong> XP` +
+          (r.levelUps?.length ? ` → ${r.levelUps.map((u) => `${u.name} Lv.${u.level}`).join("、")}` : "")
+        : "まだ帰還していません";
+      return `<div class="sub-panel"><h3>${p.name}</h3><p class="report">${body}</p></div>`;
+    })
+    .join("");
+}
+
+function renderStats() {
+  $("stats-root").innerHTML = state.parties
+    .map((p) => {
+      const s = p.stats;
+      return `<div class="sub-panel"><h3>${p.name}</h3>
+        <div class="stats">
+          <div class="stat-cell"><div class="label">ゴールド</div>${s.gold} G</div>
+          <div class="stat-cell"><div class="label">討伐</div>${s.kills} 体</div>
+          <div class="stat-cell"><div class="label">派遣</div>${s.missionsStarted} 回</div>
+          <div class="stat-cell"><div class="label">完了</div>${s.missionsCleared} 回</div>
+        </div></div>`;
+    })
+    .join("");
+}
+
+function renderStages() {
+  $("stages-root").innerHTML = AREA_ORDER.map((id) => {
+    const a = AREAS[id];
+    const unlocked = isAreaUnlocked(id);
+    const clears = state.areaClears[id] || 0;
+    let cls = "stage-chip";
+    if (clears > 0) cls += " cleared";
+    else if (unlocked) cls += " unlocked";
+    else cls += " locked";
+    const hint = unlocked ? (clears > 0 ? `クリア ${clears}回` : "解放済") : getUnlockHint(id);
+    return `<span class="${cls}" title="${hint}">${a.name}</span>`;
+  }).join("");
+}
+
+function renderWorldSituation() {
+  const totalClears = Object.values(state.areaClears).reduce((sum, v) => sum + v, 0);
+  const progress = clamp(totalClears * 12, 4, 100);
+  const bossAreas = AREA_ORDER.map((id) => AREAS[id]).filter((a) => isAreaUnlocked(a.id) && shouldBossAppear(a));
+  $("world-root").innerHTML = `
+    <p>${totalClears ? `ギルドの街道安全度は ${progress}% まで回復。` : "街道にはまだ魔物の気配が濃い。"}</p>
+    <div class="world-meter"><span style="width:${progress}%"></span></div>
+    ${
+      bossAreas.length
+        ? bossAreas.map((a) => `<p class="boss-alert">${a.name}で強敵の目撃報告。次回派遣は警戒推奨。</p>`).join("")
+        : '<p class="muted">大きな脅威の報告はありません。</p>'
+    }
+  `;
+}
+
+function renderLogs() {
+  const root = $("logs-root");
+  root.innerHTML = "";
+  for (const party of state.parties) {
+    const panel = document.createElement("div");
+    panel.className = "log-panel";
+    panel.innerHTML = `<h3>${party.name}</h3>`;
+
+    const current = document.createElement("div");
+    renderCurrentDispatchLog(current, party);
+    panel.appendChild(current);
+
+    const pastTitle = document.createElement("h3");
+    pastTitle.textContent = "過去の派遣";
+    pastTitle.style.marginTop = "14px";
+    panel.appendChild(pastTitle);
+
+    const past = document.createElement("div");
+    renderPastDispatchLog(past, party);
+    panel.appendChild(past);
+    root.appendChild(panel);
+  }
+}
+
+function renderAll() {
+  state.parties.forEach((p) => {
+    ensurePartyShape(p);
+    ensureValidSelectedArea(p);
+  });
+  renderParties();
+  renderReports();
+  renderStages();
+  renderWorldSituation();
+  renderStats();
+  renderLogs();
+}
+
+function ensurePartyShape(party) {
+  if (!party.stats) party.stats = defaultStats();
+  if (!party.dispatches) party.dispatches = [];
+  if (!party.expandedDispatchIds) party.expandedDispatchIds = [];
+  if (!party.members) {
+    const leaderName = party.hero?.name || (party.id === "pt2" ? "リナ" : "アレン");
+    const template = party.id === "pt2" ? PARTY_TEMPLATES.pt2 : PARTY_TEMPLATES.pt1;
+    party.members = template.map((m, i) => createMember({ ...m, name: i === 0 ? leaderName : m.name }, party.hero?.level || 1));
+  }
+  party.members = party.members.map(normalizeMember);
+  party.hero = party.members[0];
+}
+
+function migrate(data) {
+  if (!data.parties) return data;
+
+  for (const p of data.parties) {
+    ensurePartyShape(p);
+    if (p.adventureLog?.length && !p.dispatches.length) {
+      p.dispatches.push({
+        id: uid("dispatch"),
+        areaName: "過去の記録",
+        startedAt: 0,
+        endsAt: 0,
+        status: "complete",
+        entries: p.adventureLog,
+        summary: "移行データ",
+      });
+      delete p.adventureLog;
+    }
+  }
+
+  if (data.gold != null && data.parties[0]) {
+    const p0 = data.parties[0].stats;
+    p0.gold += data.gold || 0;
+    p0.kills += data.totalKills || 0;
+    p0.missionsStarted += data.missionsStarted || 0;
+    p0.missionsCleared += data.missionsCleared || 0;
+  }
+
+  if (!data.areaClears) data.areaClears = {};
+  return data;
+}
+
+function saveGame() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    $("save-hint").textContent = `保存済 ${formatClock(Date.now())}`;
+  } catch {
+    $("save-hint").textContent = "保存失敗";
+  }
+}
+
+function loadGame() {
+  try {
+    const raw =
+      localStorage.getItem(SAVE_KEY) ||
+      localStorage.getItem("dispatch-hero-save-v7") ||
+      localStorage.getItem("dispatch-hero-save-v6") ||
+      localStorage.getItem("dispatch-hero-save-v5");
+    if (!raw) return;
+    const data = migrate(JSON.parse(raw));
+    if (data.parties) {
+      state = { parties: data.parties, areaClears: data.areaClears || {} };
+      state.parties.forEach(trimDispatches);
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function resetGame() {
+  if (!confirm("セーブを消して最初からやり直しますか？")) return;
+  ["dispatch-hero-save-v8", "dispatch-hero-save-v7", "dispatch-hero-save-v6", "dispatch-hero-save-v5"].forEach((k) =>
+    localStorage.removeItem(k)
+  );
+  state = {
+    parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
+    areaClears: {},
+  };
+  nextId = 1;
+  stopTick();
+  saveGame();
+  renderAll();
+}
+
+function ensureTick() {
+  if (tickId) return;
+  tickId = setInterval(processMissions, 250);
+}
+
+function stopTick() {
+  if (tickId) {
+    clearInterval(tickId);
+    tickId = null;
+  }
+}
+
+function ensureWorldSituationTick() {
+  if (worldTickId) return;
+  worldTickId = setInterval(renderWorldSituation, 3000);
+}
+
+$("reset-btn").addEventListener("click", resetGame);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    processMissions();
+    renderParties();
+    updateProgressBars();
+  }
+});
+
+loadGame();
+for (const p of state.parties) {
+  ensurePartyShape(p);
+  if (p.mission) {
+    const area = getArea(p.mission.areaId);
+    const d = p.dispatches.find((x) => x.id === p.mission.dispatchId);
+    if (!d) {
+      p.dispatches.unshift({
+        id: p.mission.dispatchId || uid("dispatch"),
+        areaId: area.id,
+        areaName: area.name,
+        startedAt: p.mission.startedAt,
+        endsAt: p.mission.endsAt,
+        status: "active",
+        entries: [],
+      });
+    }
+    if (!p.mission.journal && p.mission.rewards) {
+      p.mission.journal = buildScheduledJournal(p, area, p.mission.rewards, p.mission.startedAt, p.mission.endsAt);
+    }
+    revealDueEntries(p);
+  }
+}
+processMissions();
+renderAll();
+ensureWorldSituationTick();
+if (state.parties.some((p) => p.mission)) ensureTick();
