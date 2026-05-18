@@ -157,7 +157,7 @@ function runEncounter(members, monster, area) {
   pushPartyHp(events, party);
 
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
-    events.push({ kind: "", text: `第${round}巡。` });
+    events.push({ kind: "", text: `${round}ターン目` });
     for (const member of party) {
       performMemberAction(member, party, enemy, events);
       if (enemy.hp <= 0) break;
