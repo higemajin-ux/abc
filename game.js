@@ -87,14 +87,24 @@ function generateBattle(area, party) {
 
   for (let i = 0; i < normalCount; i += 1) {
     encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area));
+    if (party.members.every((member) => member.hp <= 0)) break;
   }
-  encounters.push(runEncounter(party.members, chooseBoss(area), area));
+
+  const failedBeforeBoss =
+    party.members.every((member) => member.hp <= 0) || encounters.some((encounter) => !encounter.victory);
+  if (!failedBeforeBoss) {
+    encounters.push(runEncounter(party.members, chooseBoss(area), area));
+  }
+
+  const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory);
 
   return {
     encounters,
     kills: encounters.reduce((sum, e) => sum + e.kills, 0),
     xp: encounters.reduce((sum, e) => sum + e.xp, 0),
     gold: encounters.reduce((sum, e) => sum + e.gold, 0),
+    failed,
+    forcedReturn: failed && party.members.every((member) => member.hp <= 0),
   };
 }
 
@@ -155,6 +165,68 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     title: `帰還報告（全戦闘記録▼）`,
     battleDetail: rewards.encounters.flatMap((e) => e.events),
     summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
+    shown: false,
+  });
+
+  return entries.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
+  const entries = [];
+  const span = endsAt - startedAt;
+  entries.push({
+    id: uid("entry"),
+    timestamp: startedAt,
+    type: "flavor",
+    title: `${party.name}、${area.name}へ出発。`,
+    shown: false,
+  });
+
+  if (!rewards.forcedReturn) {
+    area.flavor.forEach((text, index) => {
+      entries.push({
+        id: uid("entry"),
+        timestamp: startedAt + Math.floor(span * (0.18 + index * 0.14)),
+        type: "flavor",
+        title: text,
+        shown: false,
+      });
+    });
+  }
+
+  rewards.encounters.forEach((encounter, index) => {
+    const lastIndex = Math.max(1, rewards.encounters.length - 1);
+    const ratio = rewards.forcedReturn ? 0 : 0.3 + (index / lastIndex) * 0.48;
+    if (!rewards.forcedReturn && (encounter.enemy?.boss || encounter.monster?.boss)) {
+      entries.push({
+        id: uid("entry"),
+        timestamp: startedAt + Math.floor(span * Math.max(0.2, ratio - 0.08)),
+        type: "flavor",
+        title: `奥の空気が重く沈む。${area.name}の主が近い。`,
+        shown: false,
+      });
+    }
+    entries.push({
+      id: uid("entry"),
+      timestamp: rewards.forcedReturn ? endsAt : startedAt + Math.floor(span * ratio),
+      type: "battle",
+      title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
+      monsterRare: encounter.monster.rare || encounter.monster.boss,
+      battleDetail: encounter.events,
+      summary: battleSummary(encounter),
+      shown: false,
+    });
+  });
+
+  entries.push({
+    id: uid("entry"),
+    timestamp: endsAt,
+    type: "return",
+    title: rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
+    battleDetail: rewards.encounters.flatMap((e) => e.events),
+    summary: rewards.forcedReturn
+      ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
+      : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     shown: false,
   });
 
@@ -239,7 +311,7 @@ function startMission(partyId) {
   const area = getArea(party.selectedArea);
   const rewards = generateBattle(area, party);
   const now = Date.now();
-  const endsAt = now + area.durationMs;
+  const endsAt = rewards.forcedReturn ? now : now + area.durationMs;
   const dispatchId = uid("dispatch");
 
   party.dispatches.unshift({
@@ -259,8 +331,8 @@ function startMission(partyId) {
     startedAt: now,
     endsAt,
     rewards,
-    failed: rewards.encounters.some((encounter) => !encounter.victory),
-    journal: buildScheduledJournal(party, area, rewards, now, endsAt),
+    failed: rewards.failed,
+    journal: buildScheduledJournalV2(party, area, rewards, now, endsAt),
   };
 
   party.stats.missionsStarted += 1;
@@ -270,6 +342,10 @@ function startMission(partyId) {
   renderParties();
   renderReports();
   renderLogs();
+  if (party.mission.failed && party.mission.endsAt <= Date.now()) {
+    completeMission(party);
+    return;
+  }
   ensureTick();
 }
 
@@ -286,7 +362,12 @@ function completeMission(party) {
     dispatch.summary = party.mission.journal.find((e) => e.type === "return")?.summary;
   }
 
-  if (!party.mission.failed) {
+  const missionFailed =
+    party.mission.failed ||
+    party.mission.rewards?.failed ||
+    party.members.every((member) => member.hp <= 0);
+
+  if (!missionFailed) {
     recordAreaClear(area.id);
   }
   applyRewards(party, area, party.mission.rewards);
@@ -721,7 +802,7 @@ for (const p of state.parties) {
       });
     }
     if (!p.mission.journal && p.mission.rewards) {
-      p.mission.journal = buildScheduledJournal(p, area, p.mission.rewards, p.mission.startedAt, p.mission.endsAt);
+      p.mission.journal = buildScheduledJournalV2(p, area, p.mission.rewards, p.mission.startedAt, p.mission.endsAt);
     }
     revealDueEntries(p);
   }
