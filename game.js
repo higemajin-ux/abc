@@ -103,6 +103,29 @@ function battleSummary(encounter) {
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
+// processMissions 内の戦闘処理部分
+const result = runEncounter(party.members, monster, area);
+
+// --- 全滅判定の追加 ---
+if (party.members.every(m => m.hp <= 0)) {
+  // 戦闘結果を要約してログに追加
+  const summary = battleSummary({ 
+      monster: monster, 
+      victory: false, 
+      xp: 0, 
+      gold: 0 
+  });
+  
+  party.mission.journal.push({ 
+    type: "text", 
+    summary: `全滅！ ${summary}。ギルドへ強制帰還しました。` 
+  });
+  
+  completeMission(party);
+  return; 
+}
+// --- 追加終了 ---
+
 function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
   const entries = [];
   const span = endsAt - startedAt;
