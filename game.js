@@ -174,9 +174,10 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
 function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const entries = [];
   const span = endsAt - startedAt;
+  const forcedBase = rewards.forcedReturn ? endsAt - rewards.encounters.length - 2 : startedAt;
   entries.push({
     id: uid("entry"),
-    timestamp: startedAt,
+    timestamp: forcedBase,
     type: "flavor",
     title: `${party.name}、${area.name}へ出発。`,
     shown: false,
@@ -208,7 +209,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     }
     entries.push({
       id: uid("entry"),
-      timestamp: rewards.forcedReturn ? endsAt : startedAt + Math.floor(span * ratio),
+      timestamp: rewards.forcedReturn ? forcedBase + index + 1 : startedAt + Math.floor(span * ratio),
       type: "battle",
       title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
       monsterRare: encounter.monster.rare || encounter.monster.boss,
@@ -217,6 +218,16 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
       shown: false,
     });
   });
+
+  if (rewards.forcedReturn) {
+    entries.push({
+      id: uid("entry"),
+      timestamp: endsAt - 1,
+      type: "flavor",
+      title: "全員のHPが尽き、全滅した。",
+      shown: false,
+    });
+  }
 
   entries.push({
     id: uid("entry"),
@@ -458,10 +469,10 @@ function appendEntriesToList(ul, entries) {
   }
   [...entries]
     .sort((a, b) => {
-      const timeDiff = a.timestamp - b.timestamp;
+      const timeDiff = b.timestamp - a.timestamp;
       if (timeDiff) return timeDiff;
-      if (a.type === "return" && b.type !== "return") return 1;
-      if (b.type === "return" && a.type !== "return") return -1;
+      if (a.type === "return" && b.type !== "return") return -1;
+      if (b.type === "return" && a.type !== "return") return 1;
       return 0;
     })
     .forEach((entry) => ul.appendChild(renderLogEntry(entry)));
