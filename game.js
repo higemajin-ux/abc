@@ -320,6 +320,9 @@ function startMission(partyId) {
   if (!isAreaUnlocked(party.selectedArea)) return;
 
   const area = getArea(party.selectedArea);
+  party.members.forEach((member) => {
+    if (member.hp <= 0) member.hp = member.maxHp;
+  });
   const rewards = generateBattle(area, party);
   const now = Date.now();
   const endsAt = rewards.forcedReturn ? now : now + area.durationMs;
