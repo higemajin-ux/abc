@@ -295,16 +295,74 @@ function completeMission(party) {
 
 function processMissions() {
   let dirty = false;
+
   for (const party of state.parties) {
     if (!party.mission) continue;
-    if (revealDueEntries(party)) dirty = true;
-    if (Date.now() >= party.mission.endsAt) completeMission(party);
-    else dirty = true;
+
+    // ==========================
+    // 全滅時強制帰還
+    // ==========================
+    if (
+      party.members &&
+      party.members.length &&
+      party.members.every((m) => m.hp <= 0)
+    ) {
+      const now = Date.now();
+
+      party.mission.journal.push({
+        id: uid("entry"),
+        type: "return",
+        timestamp: now,
+        title: `${party.name}は全滅したため、ギルドへ強制帰還した。`,
+        battleDetail: [
+          {
+            kind: "enemy",
+            text: "全員が戦闘不能となった。"
+          },
+          {
+            kind: "text",
+            text: "救助隊により回収された。"
+          }
+        ],
+        summary: "全滅 / 強制帰還",
+        shown: false
+      });
+
+      party.mission.endsAt = now;
+
+      revealDueEntries(party);
+
+      completeMission(party);
+
+      dirty = true;
+
+      continue;
+    }
+
+    // ==========================
+    // 既存処理
+    // ==========================
+    if (revealDueEntries(party)) {
+      dirty = true;
+    }
+
+    if (Date.now() >= party.mission.endsAt) {
+      completeMission(party);
+    } else {
+      dirty = true;
+    }
   }
 
   updateProgressBars();
-  if (dirty) renderLogs();
-  if (!state.parties.some((p) => p.mission)) stopTick();
+
+  state.parties.forEach((p) => {
+    renderCurrentDispatchLog(p);
+    renderPastDispatchLog(p);
+  });
+
+  if (!state.parties.some((p) => p.mission)) {
+    stopTick();
+  }
 }
 
 function updateProgressBars() {
