@@ -103,33 +103,6 @@ function battleSummary(encounter) {
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
-function processMissions() {
-  let dirty = false;
-  for (const party of state.parties) {
-    if (!party.mission) continue;
-
-    // --- ここから全滅時強制帰還の処理 ---
-    // パーティーの生き残りが0人なら自動で帰還処理を行う
-    if (party.members.every(m => m.hp <= 0)) {
-      party.mission.journal.push({ 
-        type: "text", 
-        summary: "全滅したため、ギルドへ強制帰還しました。" 
-      });
-      completeMission(party);
-      continue; // 帰還したので次のパーティーへ
-    }
-    // --- ここまで ---
-
-    if (revealDueEntries(party)) dirty = true;
-    if (Date.now() >= party.mission.endsAt) completeMission(party);
-    else dirty = true;
-  }
-
-  updateProgressBars();
-  if (dirty) renderLogs();
-  if (!state.parties.some((p) => p.mission)) stopTick();
-}
-
 function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
   const entries = [];
   const span = endsAt - startedAt;
