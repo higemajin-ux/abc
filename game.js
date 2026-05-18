@@ -74,24 +74,21 @@ function recordAreaClear(areaId) {
 }
 
 function shouldBossAppear(area) {
-  if (!area.boss || !area.bossEvery) return false;
-  const clears = state.areaClears[area.id] || 0;
-  return clears > 0 && (clears + 1) % area.bossEvery === 0;
+  return !!area.boss;
 }
 
-function chooseMonster(area) {
-  if (shouldBossAppear(area)) return MONSTERS[area.boss];
-  return MONSTERS[pick(area.monsters)];
+function chooseBoss(area) {
+  return MONSTERS[area.boss] || MONSTERS[pick(area.monsters)];
 }
 
 function generateBattle(area, party) {
   const encounters = [];
-  const count = clamp(area.difficulty + roll(0, 1), 1, 5);
+  const normalCount = clamp(area.difficulty + roll(0, 1), 1, 4);
 
-  for (let i = 0; i < count; i += 1) {
-    const monster = i === count - 1 ? chooseMonster(area) : MONSTERS[pick(area.monsters)];
-    encounters.push(runEncounter(party.members, monster, area));
+  for (let i = 0; i < normalCount; i += 1) {
+    encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area));
   }
+  encounters.push(runEncounter(party.members, chooseBoss(area), area));
 
   return {
     encounters,
@@ -128,7 +125,17 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
   });
 
   rewards.encounters.forEach((encounter, index) => {
-    const ratio = 0.35 + (index / Math.max(1, rewards.encounters.length)) * 0.43;
+    const lastIndex = Math.max(1, rewards.encounters.length - 1);
+    const ratio = 0.3 + (index / lastIndex) * 0.48;
+    if (encounter.enemy?.boss || encounter.monster?.boss) {
+      entries.push({
+        id: uid("entry"),
+        timestamp: startedAt + Math.floor(span * Math.max(0.2, ratio - 0.08)),
+        type: "flavor",
+        title: `奥の空気が重く沈む。${area.name}の主が近い。`,
+        shown: false,
+      });
+    }
     entries.push({
       id: uid("entry"),
       timestamp: startedAt + Math.floor(span * ratio),
