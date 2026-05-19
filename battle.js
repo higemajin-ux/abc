@@ -89,6 +89,36 @@ function snapshotPartyHp(party) {
   }));
 }
 
+function memberBattleLines(member) {
+  return MEMBER_BATTLE_LINES[member.name] || JOB_BATTLE_LINES[member.job] || null;
+}
+
+function pushMemberLine(member, stage, events, speechState, chance = 1) {
+  const lines = memberBattleLines(member);
+  if (!lines?.[stage]) return;
+  if (!speechState[member.id]) speechState[member.id] = {};
+  if (speechState[member.id][stage]) return;
+  if (Math.random() > chance) return;
+
+  speechState[member.id][stage] = true;
+  events.push({
+    kind: stage === "down" ? "down" : "voice",
+    text: `${member.name}「${lines[stage]}」`,
+  });
+}
+
+function reactToHpDrop(member, beforeHp, events, speechState) {
+  if (beforeHp <= member.hp) return;
+  const hpRate = member.maxHp > 0 ? (member.hp / member.maxHp) * 100 : 0;
+  if (member.hp <= 0) {
+    pushMemberLine(member, "down", events, speechState, 1);
+  } else if (hpRate <= 30) {
+    pushMemberLine(member, "critical", events, speechState, 0.55);
+  } else if (hpRate <= 50) {
+    pushMemberLine(member, "wounded", events, speechState, 0.35);
+  }
+}
+
 function performPriestAction(actor, party, enemy, events) {
   const wounded = livingMembers(party)
     .filter((m) => m.hp < Math.floor(m.maxHp * 0.45))
@@ -138,21 +168,23 @@ function performMemberAction(actor, party, enemy, events) {
   else performWarriorAction(actor, enemy, events);
 }
 
-function performEnemyAction(enemy, party, events) {
+function performEnemyAction(enemy, party, events, speechState) {
   if (enemy.hp <= 0) return;
   const target = pick(livingMembers(party));
   if (!target) return;
 
   const damage = damageFor(enemy.atk, target.def);
+  const beforeHp = target.hp;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
   events.push({ kind: "", text: `${enemy.name}の攻撃！ ${target.name}に${damage}ダメージ。` });
   pushHp(events, target, target.hp <= 0 ? "down" : "");
+  reactToHpDrop(target, beforeHp, events, speechState);
   if (target.hp <= 0) {
     events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
   }
 }
 
-function runEncounter(members, monster, area) {
+function runEncounter(members, monster, area, speechState = {}) {
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
   const enemy = createEnemy(monster, area, highestLevel);
   const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
@@ -172,7 +204,7 @@ function runEncounter(members, monster, area) {
       performMemberAction(member, party, enemy, events);
       if (enemy.hp <= 0) break;
     }
-    performEnemyAction(enemy, party, events);
+    performEnemyAction(enemy, party, events, speechState);
     round += 1;
   }
 
