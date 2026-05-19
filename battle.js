@@ -98,6 +98,32 @@ function snapshotPartyHp(party) {
   }));
 }
 
+function bossLinesFor(member) {
+  return MEMBER_BOSS_LINES[member.name] || JOB_BOSS_LINES[member.job] || null;
+}
+
+function pickBossLine(member, hpSnapshot) {
+  const lines = bossLinesFor(member);
+  if (!lines) return null;
+  const hpRate = hpSnapshot.maxHp > 0 ? (hpSnapshot.hp / hpSnapshot.maxHp) * 100 : 0;
+  const pool = hpRate <= 30 && lines.critical?.length ? lines.critical : lines.normal;
+  return pool?.length ? pick(pool) : null;
+}
+
+function buildBossPreludeEvents(members, hpSnapshot) {
+  const hpById = new Map((hpSnapshot || []).map((member) => [member.id, member]));
+  const candidates = members
+    .map((member) => ({ member, hp: hpById.get(member.id) }))
+    .filter(({ hp }) => hp && hp.hp > 0);
+  const speakers = candidates.sort(() => Math.random() - 0.5).slice(0, 2);
+  return speakers
+    .map(({ member, hp }) => {
+      const line = pickBossLine(member, hp);
+      return line ? { kind: "voice", text: `${member.name}「${line}」` } : null;
+    })
+    .filter(Boolean);
+}
+
 function memberBattleLines(member) {
   return MEMBER_BATTLE_LINES[member.name] || JOB_BATTLE_LINES[member.job] || null;
 }
@@ -197,6 +223,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
   const enemy = createEnemy(monster, area, highestLevel);
   const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
+  const startMembersSnapshot = snapshotPartyHp(party);
   const events = [];
   let round = 1;
 
@@ -229,6 +256,8 @@ function runEncounter(members, monster, area, speechState = {}) {
     enemy,
     victory,
     events,
+    startMembersSnapshot,
+    bossPreludeEvents: enemy.boss ? buildBossPreludeEvents(party, startMembersSnapshot) : [],
     membersSnapshot: snapshotPartyHp(party),
     kills: victory ? 1 : 0,
     xp: victory ? enemy.xp : Math.floor(enemy.xp * 0.35),
