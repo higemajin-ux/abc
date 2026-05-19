@@ -441,7 +441,8 @@ function performPriestAction(actor, party, enemy, events) {
 
   const groupTargets = livingMembers(party).filter((m) => hpRate(m) <= 0.75 && m.hp < m.maxHp);
   if (groupTargets.length >= 2) {
-    events.push({ kind: "heal", text: `${actor.name}の祈りが広がった。` });
+    events.push({ kind: "heal", text: `${actor.name}はヒールレインを唱えた。` });
+    events.push({ kind: "heal", text: "味方全員の傷が少し癒えた。" });
     for (const target of livingMembers(party)) {
       recoverHp(target, roll(5, 8) + Math.floor(actor.level * 0.8));
       pushHp(events, target, "heal");
@@ -478,6 +479,23 @@ function tickEnemySlow(enemy) {
   if (!enemy.slowTurns) return;
   enemy.slowTurns -= 1;
   if (enemy.slowTurns <= 0) enemy.slowTurns = 0;
+}
+
+function applyEnemyBlind(enemy) {
+  if (enemy.blindTurns > 0) return false;
+  enemy.blindTurns = 2;
+  return true;
+}
+
+function tickEnemyBlind(enemy) {
+  if (!enemy.blindTurns) return;
+  enemy.blindTurns -= 1;
+  if (enemy.blindTurns <= 0) enemy.blindTurns = 0;
+}
+
+function tickEnemyTurnStatuses(enemy) {
+  tickEnemySlow(enemy);
+  tickEnemyBlind(enemy);
 }
 
 function applyEnemyPoison(enemy, events) {
@@ -615,6 +633,14 @@ function performScoutAction(actor, party, enemy, events) {
     events.push({ kind: "heal", text: `${criticalAlly.name}のHPが${healed}回復した。` });
     pushHp(events, criticalAlly, "heal");
     return;
+  }
+
+  if (enemy.hp > 0 && !enemy.blindTurns && Math.random() < 0.4) {
+    if (applyEnemyBlind(enemy)) {
+      events.push({ kind: "voice", text: `${actor.name}は目つぶしを使った。` });
+      events.push({ kind: "voice", text: `${enemy.name}の視界を奪った。` });
+      return;
+    }
   }
 
   if (!actor.focusTurns && Math.random() < 0.35) {
@@ -854,15 +880,21 @@ function buildScoutExplorationEvents(party) {
 
 function performEnemyAction(enemy, party, events, speechState) {
   if (enemy.hp <= 0) {
-    tickEnemySlow(enemy);
+    tickEnemyTurnStatuses(enemy);
     return;
   }
   let target = pickEnemyTarget(party);
   if (!target) {
-    tickEnemySlow(enemy);
+    tickEnemyTurnStatuses(enemy);
     return;
   }
   target = maybeCoverTarget(party, target, events);
+
+  if (enemy.blindTurns > 0 && Math.random() < 0.4) {
+    events.push({ kind: "", text: `${enemy.name}の攻撃は外れた。` });
+    tickEnemyTurnStatuses(enemy);
+    return;
+  }
 
   const hit = rollPhysicalHit(damageFor(enemy.atk, target.def), enemy);
   let damage = hit.damage;
@@ -899,7 +931,7 @@ function performEnemyAction(enemy, party, events, speechState) {
     reactToHpDrop(target, beforeHp, events, speechState);
   }
   maybeCounterAttack(target, enemy, events);
-  tickEnemySlow(enemy);
+  tickEnemyTurnStatuses(enemy);
 }
 
 function runEncounter(members, monster, area, speechState = {}) {
