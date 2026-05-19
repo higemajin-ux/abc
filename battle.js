@@ -72,6 +72,8 @@ function formationTargetWeight(member) {
 function pickEnemyTarget(party) {
   const candidates = livingMembers(party);
   if (!candidates.length) return null;
+  const taunting = candidates.filter((member) => member.tauntTurns > 0);
+  if (taunting.length) return pick(taunting);
 
   const total = candidates.reduce((sum, member) => sum + formationTargetWeight(member), 0);
   let rollValue = Math.random() * total;
@@ -255,6 +257,16 @@ function startMemberTurn(member) {
   member.guard = false;
 }
 
+function tickTaunts(party) {
+  for (const member of party) {
+    if (member.hp <= 0) {
+      member.tauntTurns = 0;
+    } else if (member.tauntTurns > 0) {
+      member.tauntTurns -= 1;
+    }
+  }
+}
+
 function performDefensiveActions(party, enemy, events) {
   if (enemy.hp <= 0) return;
   for (const member of party) {
@@ -267,7 +279,27 @@ function performDefensiveActions(party, enemy, events) {
   }
 }
 
-function performWarriorAction(actor, enemy, events) {
+function shouldWarriorTaunt(actor, party) {
+  if (actor.job !== "warrior" || actor.hp <= 0 || actor.tauntTurns > 0) return false;
+  const needsAttention = livingMembers(party).some((member) => {
+    if (member.id === actor.id || member.maxHp <= 0) return false;
+    const hpRate = (member.hp / member.maxHp) * 100;
+    return hpRate <= 50 || (member.formation === "後衛" && hpRate <= 70);
+  });
+  return needsAttention && Math.random() < 0.5;
+}
+
+function performWarriorAction(actor, party, enemy, events) {
+  if (shouldWarriorTaunt(actor, party)) {
+    actor.tauntTurns = 2;
+    events.push({ kind: "guard", text: `${actor.name}は前に出た。` });
+    events.push({ kind: "guard", text: `${actor.name}が敵を引きつけた。` });
+    if (Math.random() < 0.15) {
+      events.push({ kind: "voice", text: `${actor.name}「こちらだ」` });
+    }
+    return;
+  }
+
   const damage = damageFor(actor.atk, enemy.def);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
@@ -278,7 +310,7 @@ function performMemberAction(actor, party, enemy, events) {
   if (actor.hp <= 0 || enemy.hp <= 0) return;
   if (actor.job === "priest") performPriestAction(actor, party, enemy, events);
   else if (actor.job === "mage") performMageAction(actor, enemy, events);
-  else performWarriorAction(actor, enemy, events);
+  else performWarriorAction(actor, party, enemy, events);
 }
 
 function shouldCoverTarget(target) {
@@ -368,6 +400,7 @@ function runEncounter(members, monster, area, speechState = {}) {
 
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
     events.push({ kind: "", text: `${round}ターン目` });
+    tickTaunts(party);
     performDefensiveActions(party, enemy, events);
     for (const member of party) {
       performMemberAction(member, party, enemy, events);
