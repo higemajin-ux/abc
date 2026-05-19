@@ -102,12 +102,24 @@ function bossLinesFor(member) {
   return MEMBER_BOSS_LINES[member.name] || JOB_BOSS_LINES[member.job] || null;
 }
 
+function returnLinesFor(member) {
+  return MEMBER_RETURN_LINES[member.name] || JOB_RETURN_LINES[member.job] || null;
+}
+
 function pickBossLine(member, hpSnapshot) {
   const lines = bossLinesFor(member);
   if (!lines) return "来るぞ。構えろ";
   const hpRate = hpSnapshot.maxHp > 0 ? (hpSnapshot.hp / hpSnapshot.maxHp) * 100 : 0;
   const pool = hpRate <= 30 && lines.critical?.length ? lines.critical : lines.normal;
   return pool?.length ? pick(pool) : "来るぞ。構えろ";
+}
+
+function pickReturnLine(member, hpSnapshot) {
+  const lines = returnLinesFor(member);
+  if (!lines) return "戻りました。報告します";
+  const hpRate = hpSnapshot.maxHp > 0 ? (hpSnapshot.hp / hpSnapshot.maxHp) * 100 : 0;
+  const pool = hpRate <= 30 && lines.wounded?.length ? lines.wounded : lines.normal;
+  return pool?.length ? pick(pool) : "戻りました。報告します";
 }
 
 function buildBossPreludeEvents(members, hpSnapshot) {
@@ -126,6 +138,25 @@ function buildBossPreludeEvents(members, hpSnapshot) {
       return line ? { kind: "voice", text: `${member.name}「${line}」` } : null;
     })
     .filter(Boolean);
+}
+
+function buildReturnEvents(members, hpSnapshot) {
+  const memberById = new Map(members.map((member) => [member.id, member]));
+  const hpSource = hpSnapshot?.length ? hpSnapshot : snapshotPartyHp(members);
+  const candidates = hpSource
+    .filter((hp) => hp.hp > 0)
+    .map((hp) => ({ member: memberById.get(hp.id), hp }))
+    .filter(({ member }) => member);
+  if (!candidates.length) return [];
+
+  const count = Math.min(candidates.length, roll(1, 2));
+  return candidates
+    .sort(() => Math.random() - 0.5)
+    .slice(0, count)
+    .map(({ member, hp }) => ({
+      kind: "voice",
+      text: `${member.name}「${pickReturnLine(member, hp)}」`,
+    }));
 }
 
 function memberBattleLines(member) {
