@@ -260,9 +260,11 @@ function shouldWarriorIronWall(actor, enemyCount = 1) {
 }
 
 function startMemberTurn(member) {
+  const wasIronWall = !!member.ironWall;
   member.guard = false;
   member.ironWall = false;
   member.actionConsumed = false;
+  return { wasIronWall };
 }
 
 function tickTaunts(party) {
@@ -275,10 +277,13 @@ function tickTaunts(party) {
   }
 }
 
-function performWarriorIronWallActive(member, events) {
+function performWarriorIronWallActive(member, events, continued = false) {
   member.ironWall = true;
   member.actionConsumed = true;
-  events.push({ kind: "guard", text: `${member.name}は鉄壁の構えを取った。` });
+  events.push({
+    kind: "guard",
+    text: continued ? `${member.name}は鉄壁の構えを取っている。` : `${member.name}は鉄壁の構えを取った。`,
+  });
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${member.name}「ここは通さない」` });
   }
@@ -293,12 +298,12 @@ function performWarriorDefendPassive(member, events) {
 function performTurnStartSkillChecks(party, enemy, events) {
   if (enemy.hp <= 0) return;
   for (const member of party) {
-    startMemberTurn(member);
+    const turnState = startMemberTurn(member);
     if (member.hp <= 0) continue;
 
     // Active defensive skills consume the member's normal action.
     if (shouldWarriorIronWall(member)) {
-      performWarriorIronWallActive(member, events);
+      performWarriorIronWallActive(member, events, turnState.wasIronWall);
       continue;
     }
 
@@ -327,7 +332,7 @@ function performWarriorAction(actor, party, enemy, events) {
   // Active actions in this block consume the normal attack.
   if (shouldWarriorTaunt(actor, party)) {
     actor.tauntTurns = 2;
-    events.push({ kind: "guard", text: `${actor.name}は前に出た。` });
+    events.push({ kind: "guard", text: `${actor.name}の挑発。` });
     events.push({ kind: "guard", text: `${actor.name}が敵を引きつけた。` });
     if (Math.random() < 0.15) {
       events.push({ kind: "voice", text: `${actor.name}「こちらだ」` });
