@@ -576,11 +576,11 @@ function memberDetails(party) {
           <span>${JOB_LABELS[m.job] || m.job}</span>
         </div>
         <div class="member-stat-grid">
-          <span>HP</span><strong>${m.hp} / ${m.maxHp}</strong>
-          <span>ATK</span><strong>${memberStatValue(m.atk)}</strong>
-          <span>DEF</span><strong>${memberStatValue(m.def)}</strong>
-          <span>DEX</span><strong>${memberStatValue(m.dex)}</strong>
-          <span>LUC</span><strong>${memberStatValue(m.luc)}</strong>
+          <div class="member-stat-row"><span>HP</span><strong>${m.hp} / ${m.maxHp}</strong></div>
+          <div class="member-stat-row"><span>ATK</span><strong>${memberStatValue(m.atk)}</strong></div>
+          <div class="member-stat-row"><span>DEF</span><strong>${memberStatValue(m.def)}</strong></div>
+          <div class="member-stat-row"><span>DEX</span><strong>${memberStatValue(m.dex)}</strong></div>
+          <div class="member-stat-row"><span>LUC</span><strong>${memberStatValue(m.luc)}</strong></div>
         </div>
       </div>`
     )
