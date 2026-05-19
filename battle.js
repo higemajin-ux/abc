@@ -63,6 +63,25 @@ function livingMembers(party) {
   return party.filter((m) => m.hp > 0);
 }
 
+function formationTargetWeight(member) {
+  if (member.formation === "前衛") return 6;
+  if (member.formation === "後衛") return 1;
+  return 3;
+}
+
+function pickEnemyTarget(party) {
+  const candidates = livingMembers(party);
+  if (!candidates.length) return null;
+
+  const total = candidates.reduce((sum, member) => sum + formationTargetWeight(member), 0);
+  let rollValue = Math.random() * total;
+  for (const member of candidates) {
+    rollValue -= formationTargetWeight(member);
+    if (rollValue <= 0) return member;
+  }
+  return candidates.at(-1);
+}
+
 function damageFor(attackerAtk, defenderDef = 0) {
   return Math.max(1, attackerAtk - defenderDef);
 }
@@ -240,7 +259,7 @@ function performMemberAction(actor, party, enemy, events) {
 
 function performEnemyAction(enemy, party, events, speechState) {
   if (enemy.hp <= 0) return;
-  const target = pick(livingMembers(party));
+  const target = pickEnemyTarget(party);
   if (!target) return;
 
   const damage = damageFor(enemy.atk, target.def);
