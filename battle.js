@@ -81,6 +81,14 @@ function pushPartyHp(events, party) {
   }
 }
 
+function snapshotPartyHp(party) {
+  return party.map((member) => ({
+    id: member.id,
+    hp: member.hp,
+    maxHp: member.maxHp,
+  }));
+}
+
 function performPriestAction(actor, party, enemy, events) {
   const wounded = livingMembers(party)
     .filter((m) => m.hp < Math.floor(m.maxHp * 0.45))
@@ -180,6 +188,7 @@ function runEncounter(members, monster, area) {
     enemy,
     victory,
     events,
+    membersSnapshot: snapshotPartyHp(party),
     kills: victory ? 1 : 0,
     xp: victory ? enemy.xp : Math.floor(enemy.xp * 0.35),
     gold: victory ? enemy.gold : Math.floor(enemy.gold * 0.25),
