@@ -30,14 +30,14 @@ function pickWeightedMonster(area, rareWeight = 1) {
 }
 
 function tryMageMagicSense(members, monster, area) {
-  if (monster.boss || !area.monsters?.length) return { monster, events: [] };
+  if (monster.boss || !area.monsters?.length) return { monster, explorationEvents: [] };
   const mages = livingMembers(members).filter((member) => member.job === "mage");
-  if (!mages.length || Math.random() >= 0.2) return { monster, events: [] };
+  if (!mages.length || Math.random() >= 0.2) return { monster, explorationEvents: [] };
 
   const detector = pick(mages);
   return {
     monster: pickWeightedMonster(area, 3),
-    events: [
+    explorationEvents: [
       { kind: "spell", text: `${detector.name}は魔力探知を使った。` },
       { kind: "voice", text: `${detector.name}<br>「……珍しいやつがいるな」` },
     ],
@@ -327,7 +327,7 @@ function performPriestAction(actor, party, enemy, events) {
   if (lowest && hpRate(lowest) <= 0.3) {
     const amount = roll(15, 22) + Math.floor(actor.level * 2);
     recoverHp(lowest, amount);
-    events.push({ kind: "heal", text: `${actor.name}は中回復を唱えた。` });
+    events.push({ kind: "heal", text: `${actor.name}はミドルヒールを唱えた。` });
     events.push({ kind: "heal", text: `${lowest.name}の傷が癒えた。` });
     pushHp(events, lowest, "heal");
     return;
@@ -340,7 +340,7 @@ function performPriestAction(actor, party, enemy, events) {
   if (wounded) {
     const amount = roll(8, 13) + Math.floor(actor.level * 1.4);
     const healed = recoverHp(wounded, amount);
-    events.push({ kind: "heal", text: `${actor.name}が回復魔法！ ${wounded.name}のHPが${healed}回復！` });
+    events.push({ kind: "heal", text: `${actor.name}のヒール。${wounded.name}のHPが${healed}回復した。` });
     pushHp(events, wounded, "heal");
     return;
   }
@@ -391,7 +391,7 @@ function applyEnemyPoison(enemy, events) {
   if (enemy.poisonTurns > 0) {
     enemy.poisonTier = "venom";
     enemy.poisonTurns = 3;
-    events.push({ kind: "spell", text: `${enemy.name}の毒が悪化した。` });
+    events.push({ kind: "spell", text: `${enemy.name}は猛毒化した。` });
     return;
   }
 
@@ -440,7 +440,7 @@ function performMageAction(actor, enemy, events) {
     const baseDamage = damageFor(Math.floor(actor.atk * 0.5) + Math.floor(actor.level / 2), Math.floor(enemy.def * 0.2));
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-    events.push({ kind: "spell", text: `${actor.name}の毒霧。${enemy.name}に${damage}ダメージ。` });
+    events.push({ kind: "spell", text: `${actor.name}のアシッドミスト。${enemy.name}に${damage}ダメージ。` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     if (enemy.hp > 0) applyEnemyPoison(enemy, events);
     return;
@@ -517,9 +517,9 @@ function performScoutAction(actor, party, enemy, events) {
     .sort((a, b) => hpRate(a) - hpRate(b))[0];
   if (criticalAlly && Math.random() < 0.55) {
     const amount = roll(5, 9) + Math.floor(actor.level * 0.7);
-    recoverHp(criticalAlly, amount);
+    const healed = recoverHp(criticalAlly, amount);
     events.push({ kind: "heal", text: `${actor.name}は応急手当をした。` });
-    events.push({ kind: "heal", text: `${criticalAlly.name}は少し落ち着いた。` });
+    events.push({ kind: "heal", text: `${criticalAlly.name}のHPが${healed}回復した。` });
     pushHp(events, criticalAlly, "heal");
     return;
   }
@@ -721,17 +721,23 @@ function buildScoutPassiveEvents(party) {
   if (!scouts.length) return [];
 
   const scout = pick(scouts);
-  const events = [
+  return [
     { kind: "voice", text: `${scout.name}が敵を先に見つけた。` },
     { kind: "voice", text: "奇襲成功。" },
   ];
+}
 
+function buildScoutExplorationEvents(party) {
+  const scouts = livingScouts(party);
+  if (!scouts.length) return [];
+
+  const scout = pick(scouts);
+  const events = [];
   if (Math.random() < 0.2) {
-    events.push({ kind: "voice", text: `${scout.name}<br>「……何かある」` });
+    events.push({ kind: "voice", text: `${scout.name}が宝箱を見つけた。` });
   }
   if (Math.random() < 0.15) {
-    events.push({ kind: "voice", text: `${scout.name}が罠を見つけた。` });
-    events.push({ kind: "voice", text: "被害はなかった。" });
+    events.push({ kind: "voice", text: `${scout.name}が罠を解除した。` });
   }
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${scout.name}が近道を見つけた。` });
@@ -792,7 +798,8 @@ function runEncounter(members, monster, area, speechState = {}) {
     if (member.job === "priest") member.sureReviveUsed = false;
   });
   const startMembersSnapshot = snapshotPartyHp(party);
-  const events = [...magicSense.events, ...buildScoutPassiveEvents(party)];
+  const events = [...buildScoutPassiveEvents(party)];
+  const explorationEvents = [...magicSense.explorationEvents, ...buildScoutExplorationEvents(party)];
   let round = 1;
 
   events.push({
@@ -828,6 +835,7 @@ function runEncounter(members, monster, area, speechState = {}) {
     enemy,
     victory,
     events,
+    explorationEvents,
     startMembersSnapshot,
     bossPreludeEvents: enemy.boss ? buildBossPreludeEvents(party, startMembersSnapshot) : [],
     membersSnapshot: snapshotPartyHp(party),
