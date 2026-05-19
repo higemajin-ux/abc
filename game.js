@@ -156,6 +156,18 @@ function buildMvpLine(party, rewards) {
   return `今回もっとも活躍したのは${best.member.name}だったようだ。`;
 }
 
+function reportAuthorName(party, mvpLine, returnEvents) {
+  const mvpName = mvpLine?.match(/^今回もっとも活躍したのは(.+)だったようだ。$/)?.[1];
+  if (mvpName) return mvpName;
+
+  const returnSpeaker = returnEvents
+    .map((event) => event.text?.split("「")[0])
+    .find((name) => party.members.some((member) => member.name === name));
+  if (returnSpeaker) return returnSpeaker;
+
+  return party.members.find((member) => member.hp > 0)?.name || party.members[0]?.name || null;
+}
+
 function snapshotMembers(members) {
   return members.map((member) => ({
     id: member.id,
@@ -361,6 +373,8 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const returnTime = rewards.forcedReturn ? forcedReturnAt : endsAt;
   const returnMembersSnapshot = rewards.encounters.at(-1)?.membersSnapshot;
   const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot);
+  const mvpLine = buildMvpLine(party, rewards);
+  const reportAuthor = reportAuthorName(party, mvpLine, returnEvents);
   returnEvents.forEach((event, eventIndex) => {
     entries.push({
       id: uid("entry"),
@@ -378,10 +392,11 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     type: "return",
     title: rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
     battleDetail: rewards.encounters.flatMap((e) => e.events),
+    reportAuthor,
     summary: rewards.forcedReturn
       ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
       : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
-    mvpLine: buildMvpLine(party, rewards),
+    mvpLine,
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
@@ -638,7 +653,10 @@ function renderLogEntry(entry) {
   if (hasBattle) {
     const detail = document.createElement("div");
     detail.className = "battle-detail";
-    detail.innerHTML = entry.battleDetail.map((ev) => `<p class="${ev.kind || ""}">${ev.text}</p>`).join("");
+    detail.innerHTML = entry.type === "return" && entry.reportAuthor
+      ? `<p>${entry.reportAuthor}からの報告</p>`
+      : "";
+    detail.innerHTML += entry.battleDetail.map((ev) => `<p class="${ev.kind || ""}">${ev.text}</p>`).join("");
     if (entry.summary && entry.type === "return") {
       detail.innerHTML += `<p><strong>合計:</strong> ${entry.summary}</p>`;
     }
