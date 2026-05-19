@@ -253,8 +253,16 @@ function shouldWarriorDefend(actor) {
   return false;
 }
 
+function shouldWarriorIronWall(actor, enemyCount = 1) {
+  if (actor.job !== "warrior" || actor.hp <= 0 || actor.ironWall) return false;
+  const hpRate = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
+  return hpRate <= 50 || enemyCount >= 2;
+}
+
 function startMemberTurn(member) {
   member.guard = false;
+  member.ironWall = false;
+  member.actionConsumed = false;
 }
 
 function tickTaunts(party) {
@@ -267,15 +275,36 @@ function tickTaunts(party) {
   }
 }
 
-function performDefensiveActions(party, enemy, events) {
+function performWarriorIronWallActive(member, events) {
+  member.ironWall = true;
+  member.actionConsumed = true;
+  events.push({ kind: "guard", text: `${member.name}は鉄壁の構えを取った。` });
+  if (Math.random() < 0.15) {
+    events.push({ kind: "voice", text: `${member.name}「ここは通さない」` });
+  }
+}
+
+function performWarriorDefendPassive(member, events) {
+  member.guard = true;
+  events.push({ kind: "guard", text: `${member.name}は盾を構えた。` });
+  events.push({ kind: "guard", text: `次の行動まで受けるダメージを50%軽減。` });
+}
+
+function performTurnStartSkillChecks(party, enemy, events) {
   if (enemy.hp <= 0) return;
   for (const member of party) {
     startMemberTurn(member);
     if (member.hp <= 0) continue;
+
+    // Active defensive skills consume the member's normal action.
+    if (shouldWarriorIronWall(member)) {
+      performWarriorIronWallActive(member, events);
+      continue;
+    }
+
+    // Passive defenses do not consume the member's normal action.
     if (!shouldWarriorDefend(member)) continue;
-    member.guard = true;
-    events.push({ kind: "guard", text: `${member.name}は盾を構えた。` });
-    events.push({ kind: "guard", text: `次の行動まで受けるダメージを50%軽減。` });
+    performWarriorDefendPassive(member, events);
   }
 }
 
@@ -290,6 +319,7 @@ function shouldWarriorTaunt(actor, party) {
 }
 
 function performWarriorAction(actor, party, enemy, events) {
+  // Active actions in this block consume the normal attack.
   if (shouldWarriorTaunt(actor, party)) {
     actor.tauntTurns = 2;
     events.push({ kind: "guard", text: `${actor.name}は前に出た。` });
@@ -308,6 +338,7 @@ function performWarriorAction(actor, party, enemy, events) {
 
 function performMemberAction(actor, party, enemy, events) {
   if (actor.hp <= 0 || enemy.hp <= 0) return;
+  if (actor.actionConsumed) return;
   if (actor.job === "priest") performPriestAction(actor, party, enemy, events);
   else if (actor.job === "mage") performMageAction(actor, enemy, events);
   else performWarriorAction(actor, party, enemy, events);
@@ -337,6 +368,7 @@ function pickCoverWarrior(party, target) {
 }
 
 function maybeCoverTarget(party, target, events) {
+  // Passive cover can redirect an enemy attack without consuming an action.
   const coverer = pickCoverWarrior(party, target);
   if (!coverer) return target;
 
@@ -348,6 +380,7 @@ function maybeCoverTarget(party, target, events) {
 }
 
 function maybeCounterAttack(actor, enemy, events) {
+  // Passive counter only happens after direct damage is taken.
   if (actor.job !== "warrior" || actor.hp <= 0 || enemy.hp <= 0) return;
   if (Math.random() >= 0.6) return;
 
@@ -368,7 +401,9 @@ function performEnemyAction(enemy, party, events, speechState) {
   target = maybeCoverTarget(party, target, events);
 
   let damage = damageFor(enemy.atk, target.def);
-  if (target.guard) {
+  if (target.ironWall) {
+    damage = Math.max(1, Math.floor(damage * 0.25));
+  } else if (target.guard) {
     damage = Math.max(1, Math.floor(damage * 0.5));
   }
   const beforeHp = target.hp;
@@ -378,6 +413,8 @@ function performEnemyAction(enemy, party, events, speechState) {
   reactToHpDrop(target, beforeHp, events, speechState);
   if (target.hp <= 0) {
     target.guard = false;
+    target.ironWall = false;
+    target.actionConsumed = false;
     events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
   }
   maybeCounterAttack(target, enemy, events);
@@ -401,7 +438,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
     events.push({ kind: "", text: `${round}ターン目` });
     tickTaunts(party);
-    performDefensiveActions(party, enemy, events);
+    performTurnStartSkillChecks(party, enemy, events);
     for (const member of party) {
       performMemberAction(member, party, enemy, events);
       if (enemy.hp <= 0) break;
