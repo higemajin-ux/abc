@@ -244,21 +244,30 @@ function performMageAction(actor, enemy, events) {
 }
 
 function shouldWarriorDefend(actor) {
-  if (actor.job !== "warrior" || actor.guard) return false;
+  if (actor.job !== "warrior" || actor.hp <= 0) return false;
   const hpRate = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
   if (hpRate <= 30) return Math.random() < 0.45;
   if (hpRate <= 50) return Math.random() < 0.25;
   return false;
 }
 
-function performWarriorAction(actor, enemy, events) {
-  if (shouldWarriorDefend(actor)) {
-    actor.guard = true;
-    events.push({ kind: "guard", text: `${actor.name}は盾を構えた。` });
-    events.push({ kind: "guard", text: `次に受けるダメージを50%軽減。` });
-    return;
-  }
+function startMemberTurn(member) {
+  member.guard = false;
+}
 
+function performDefensiveActions(party, enemy, events) {
+  if (enemy.hp <= 0) return;
+  for (const member of party) {
+    startMemberTurn(member);
+    if (member.hp <= 0) continue;
+    if (!shouldWarriorDefend(member)) continue;
+    member.guard = true;
+    events.push({ kind: "guard", text: `${member.name}は盾を構えた。` });
+    events.push({ kind: "guard", text: `次の行動まで受けるダメージを50%軽減。` });
+  }
+}
+
+function performWarriorAction(actor, enemy, events) {
   const damage = damageFor(actor.atk, enemy.def);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
@@ -329,7 +338,6 @@ function performEnemyAction(enemy, party, events, speechState) {
   let damage = damageFor(enemy.atk, target.def);
   if (target.guard) {
     damage = Math.max(1, Math.floor(damage * 0.5));
-    target.guard = false;
   }
   const beforeHp = target.hp;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
@@ -337,6 +345,7 @@ function performEnemyAction(enemy, party, events, speechState) {
   pushHp(events, target, target.hp <= 0 ? "down" : "");
   reactToHpDrop(target, beforeHp, events, speechState);
   if (target.hp <= 0) {
+    target.guard = false;
     events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
   }
   maybeCounterAttack(target, enemy, events);
@@ -359,6 +368,7 @@ function runEncounter(members, monster, area, speechState = {}) {
 
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
     events.push({ kind: "", text: `${round}ターン目` });
+    performDefensiveActions(party, enemy, events);
     for (const member of party) {
       performMemberAction(member, party, enemy, events);
       if (enemy.hp <= 0) break;
