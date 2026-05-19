@@ -7,24 +7,28 @@ const JOB_LABELS = {
   warrior: "戦士",
   priest: "神官",
   mage: "魔法使い",
+  scout: "斥候",
 };
 
 const JOB_STATS = {
   warrior: { maxHp: 42, atk: 12, def: 5, dex: 6, luc: 4 },
   priest: { maxHp: 32, atk: 7, def: 3, dex: 7, luc: 8 },
   mage: { maxHp: 28, atk: 8, def: 2, dex: 8, luc: 6 },
+  scout: { maxHp: 34, atk: 9, def: 3, dex: 10, luc: 7 },
 };
 
 const PARTY_TEMPLATES = {
   pt1: [
-    { id: "pt1-allen", name: "アレン", job: "warrior" },
-    { id: "pt1-mina", name: "ミナ", job: "priest" },
-    { id: "pt1-gald", name: "ガルド", job: "mage" },
+    { id: "pt1-allen", name: "アレン", job: "warrior", formation: "前衛" },
+    { id: "pt1-mina", name: "ミナ", job: "priest", formation: "中衛" },
+    { id: "pt1-nil", name: "ニル", job: "scout", formation: "中衛" },
+    { id: "pt1-gald", name: "ガルド", job: "mage", formation: "後衛" },
   ],
   pt2: [
-    { id: "pt2-rina", name: "リナ", job: "warrior" },
-    { id: "pt2-sena", name: "セナ", job: "priest" },
-    { id: "pt2-otto", name: "オットー", job: "mage" },
+    { id: "pt2-rina", name: "リナ", job: "warrior", formation: "前衛" },
+    { id: "pt2-sena", name: "セナ", job: "priest", formation: "中衛" },
+    { id: "pt2-kai", name: "カイ", job: "scout", formation: "中衛" },
+    { id: "pt2-otto", name: "オットー", job: "mage", formation: "後衛" },
   ],
 };
 
