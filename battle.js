@@ -243,17 +243,103 @@ function reactToHpDrop(member, beforeHp, events, speechState) {
   }
 }
 
+function hpRate(unit) {
+  return unit.maxHp > 0 ? unit.hp / unit.maxHp : 0;
+}
+
+function lowestHpLivingMember(party) {
+  return livingMembers(party).sort((a, b) => hpRate(a) - hpRate(b))[0] || null;
+}
+
+function recoverHp(target, amount) {
+  const before = target.hp;
+  target.hp = clamp(target.hp + amount, 0, target.maxHp);
+  return target.hp - before;
+}
+
+function hasBadStatus(member) {
+  return (
+    member.poisonTurns > 0 ||
+    member.poisonTier === "venom" ||
+    member.paralysisTurns > 0 ||
+    member.paralyzeTurns > 0 ||
+    member.burnTurns > 0 ||
+    member.slowTurns > 0
+  );
+}
+
+function clearBadStatus(member) {
+  member.poisonTurns = 0;
+  member.poisonTier = null;
+  member.paralysisTurns = 0;
+  member.paralyzeTurns = 0;
+  member.burnTurns = 0;
+  if (member.slowTurns > 0) {
+    member.dex = member.baseDex || member.dex;
+    member.slowTurns = 0;
+  }
+}
+
 function performPriestAction(actor, party, enemy, events) {
+  const fallen = party.filter((m) => m.hp <= 0);
+  if (fallen.length) {
+    const target = pick(fallen);
+    const sureRevive = !actor.sureReviveUsed;
+    events.push({ kind: "heal", text: `${actor.name}は祈った。` });
+    if (sureRevive || Math.random() < 0.5) {
+      actor.sureReviveUsed = actor.sureReviveUsed || sureRevive;
+      target.hp = Math.max(1, Math.floor(target.maxHp * (sureRevive ? 0.35 : 0.25)));
+      events.push({ kind: "heal", text: `${target.name}が立ち上がった。` });
+      pushHp(events, target, "heal");
+    } else {
+      events.push({ kind: "heal", text: "祈りは届かなかった。" });
+    }
+    return;
+  }
+
+  const statusTarget = livingMembers(party).find(hasBadStatus);
+  if (statusTarget) {
+    clearBadStatus(statusTarget);
+    events.push({ kind: "heal", text: `${actor.name}は祈りを捧げた。` });
+    events.push({ kind: "heal", text: `${statusTarget.name}の状態が安定した。` });
+    return;
+  }
+
+  const lowest = lowestHpLivingMember(party);
+  if (lowest && hpRate(lowest) <= 0.3) {
+    const amount = roll(15, 22) + Math.floor(actor.level * 2);
+    recoverHp(lowest, amount);
+    events.push({ kind: "heal", text: `${actor.name}は中回復を唱えた。` });
+    events.push({ kind: "heal", text: `${lowest.name}の傷が癒えた。` });
+    pushHp(events, lowest, "heal");
+    return;
+  }
+
   const wounded = livingMembers(party)
     .filter((m) => m.hp < Math.floor(m.maxHp * 0.45))
-    .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+    .sort((a, b) => hpRate(a) - hpRate(b))[0];
 
   if (wounded) {
     const amount = roll(8, 13) + Math.floor(actor.level * 1.4);
-    const before = wounded.hp;
-    wounded.hp = clamp(wounded.hp + amount, 0, wounded.maxHp);
-    events.push({ kind: "heal", text: `${actor.name}が回復魔法！ ${wounded.name}のHPが${wounded.hp - before}回復！` });
+    const healed = recoverHp(wounded, amount);
+    events.push({ kind: "heal", text: `${actor.name}が回復魔法！ ${wounded.name}のHPが${healed}回復！` });
     pushHp(events, wounded, "heal");
+    return;
+  }
+
+  const groupTargets = livingMembers(party).filter((m) => hpRate(m) <= 0.75 && m.hp < m.maxHp);
+  if (groupTargets.length >= 2) {
+    events.push({ kind: "heal", text: `${actor.name}の祈りが広がった。` });
+    for (const target of livingMembers(party)) {
+      recoverHp(target, roll(5, 8) + Math.floor(actor.level * 0.8));
+      pushHp(events, target, "heal");
+    }
+    return;
+  }
+
+  if (lowest && hpRate(lowest) <= 0.65 && !lowest.magicBarrier) {
+    lowest.magicBarrier = true;
+    events.push({ kind: "heal", text: `${actor.name}は${lowest.name}に魔力障壁を張った。` });
     return;
   }
 
@@ -596,6 +682,10 @@ function performEnemyAction(enemy, party, events, speechState) {
     damage = Math.max(1, Math.floor(damage * 1.5));
     target.desperateVulnerable = false;
   }
+  if (target.magicBarrier) {
+    damage = Math.max(1, Math.floor(damage * 0.5));
+    target.magicBarrier = false;
+  }
   const beforeHp = target.hp;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
   events.push({ kind: "", text: `${enemy.name}の攻撃！ ${target.name}に${damage}ダメージ。` });
@@ -618,6 +708,9 @@ function runEncounter(members, monster, area, speechState = {}) {
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
   const enemy = createEnemy(monster, area, highestLevel);
   const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
+  party.forEach((member) => {
+    if (member.job === "priest") member.sureReviveUsed = false;
+  });
   const startMembersSnapshot = snapshotPartyHp(party);
   const events = [...magicSense.events];
   let round = 1;
