@@ -656,6 +656,30 @@ h1 {
   margin-top: 3px;
 }
 
+.battle-detail .hp-text {
+  font-weight: 700;
+}
+
+.battle-detail .hp-text.hp-safe {
+  color: var(--ink-on-dark);
+}
+
+.battle-detail .hp-text.hp-warn {
+  color: #d9b766;
+}
+
+.battle-detail .hp-text.hp-caution {
+  color: #d6904a;
+}
+
+.battle-detail .hp-text.hp-danger {
+  color: var(--red);
+}
+
+.battle-detail .hp-text.hp-down {
+  color: #9f5a52;
+}
+
 .battle-detail .heal {
   color: var(--green);
 }
