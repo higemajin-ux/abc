@@ -96,6 +96,10 @@ function livingMembers(party) {
   return party.filter((m) => m.hp > 0);
 }
 
+function livingScouts(party) {
+  return livingMembers(party).filter((member) => member.job === "scout" || member.job === "rogue");
+}
+
 function formationTargetWeight(member) {
   if (member.formation === "前衛") return 6;
   if (member.formation === "後衛") return 1;
@@ -119,6 +123,20 @@ function pickEnemyTarget(party) {
 
 function damageFor(attackerAtk, defenderDef = 0) {
   return Math.max(1, attackerAtk - defenderDef);
+}
+
+function physicalCriticalChance(attacker, focused = false) {
+  const dex = attacker.dex || 0;
+  const luc = attacker.luc || 0;
+  const baseChance = (5 + dex * 0.3 + luc * 0.5) / 100;
+  const focusBonus = focused ? 0.25 : 0;
+  return Math.min(0.5, baseChance + focusBonus);
+}
+
+function applyPhysicalCritical(damage, attacker, events, focused = false) {
+  if (Math.random() >= physicalCriticalChance(attacker, focused)) return damage;
+  events.push({ kind: "battle", text: "クリティカル！" });
+  return Math.max(1, Math.floor(damage * 1.5));
 }
 
 function hpClass(unit) {
@@ -343,7 +361,8 @@ function performPriestAction(actor, party, enemy, events) {
     return;
   }
 
-  const damage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 0.75));
+  const baseDamage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 0.75));
+  const damage = applyPhysicalCritical(baseDamage, actor, events);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}が杖で牽制。${enemy.name}に${damage}ダメージ。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
@@ -488,6 +507,40 @@ function performMageAction(actor, enemy, events) {
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
+function performScoutAction(actor, party, enemy, events) {
+  if (actor.focusTurns > 0) {
+    actor.focusTurns -= 1;
+  }
+
+  const criticalAlly = livingMembers(party)
+    .filter((member) => member.hp < Math.floor(member.maxHp * 0.3))
+    .sort((a, b) => hpRate(a) - hpRate(b))[0];
+  if (criticalAlly && Math.random() < 0.55) {
+    const amount = roll(5, 9) + Math.floor(actor.level * 0.7);
+    recoverHp(criticalAlly, amount);
+    events.push({ kind: "heal", text: `${actor.name}は応急手当をした。` });
+    events.push({ kind: "heal", text: `${criticalAlly.name}は少し落ち着いた。` });
+    pushHp(events, criticalAlly, "heal");
+    return;
+  }
+
+  if (!actor.focusTurns && Math.random() < 0.35) {
+    actor.focusTurns = 2;
+    events.push({ kind: "voice", text: `${actor.name}は集中している。` });
+    return;
+  }
+
+  const focused = actor.focusTurns > 0;
+  const baseDamage = damageFor(actor.atk, enemy.def);
+  const damage = applyPhysicalCritical(baseDamage, actor, events, focused);
+  enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+  events.push({
+    kind: "",
+    text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！`,
+  });
+  pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+}
+
 function shouldWarriorDefend(actor) {
   if (actor.job !== "warrior" || actor.hp <= 0) return false;
   const hpRate = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
@@ -585,7 +638,8 @@ function performWarriorAction(actor, party, enemy, events) {
 
   if (shouldWarriorDesperateStrike(actor)) {
     actor.desperateVulnerable = true;
-    const damage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 1.8));
+    const baseDamage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 1.8));
+    const damage = applyPhysicalCritical(baseDamage, actor, events);
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "guard", text: `${actor.name}は捨て身に出た。` });
     if (Math.random() < 0.15) {
@@ -596,7 +650,7 @@ function performWarriorAction(actor, party, enemy, events) {
     return;
   }
 
-  const damage = damageFor(actor.atk, enemy.def);
+  const damage = applyPhysicalCritical(damageFor(actor.atk, enemy.def), actor, events);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
@@ -607,6 +661,7 @@ function performMemberAction(actor, party, enemy, events) {
   if (actor.actionConsumed) return;
   if (actor.job === "priest") performPriestAction(actor, party, enemy, events);
   else if (actor.job === "mage") performMageAction(actor, enemy, events);
+  else if (actor.job === "scout" || actor.job === "rogue") performScoutAction(actor, party, enemy, events);
   else performWarriorAction(actor, party, enemy, events);
 }
 
@@ -651,13 +706,38 @@ function maybeCounterAttack(actor, enemy, events) {
   if (Math.random() >= 0.6) return;
 
   const damageRate = 0.5 + Math.random() * 0.3;
-  const damage = Math.max(1, Math.floor(actor.atk * damageRate));
+  const baseDamage = Math.max(1, Math.floor(actor.atk * damageRate));
+  const damage = applyPhysicalCritical(baseDamage, actor, events);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${actor.name}「こちらも返す」` });
   }
   events.push({ kind: "guard", text: `${actor.name}の反撃！${enemy.name}に${damage}ダメージ。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+}
+
+function buildScoutPassiveEvents(party) {
+  const scouts = livingScouts(party);
+  if (!scouts.length) return [];
+
+  const scout = pick(scouts);
+  const events = [
+    { kind: "voice", text: `${scout.name}が敵を先に見つけた。` },
+    { kind: "voice", text: "奇襲成功。" },
+  ];
+
+  if (Math.random() < 0.2) {
+    events.push({ kind: "voice", text: `${scout.name}<br>「……何かある」` });
+  }
+  if (Math.random() < 0.15) {
+    events.push({ kind: "voice", text: `${scout.name}が罠を見つけた。` });
+    events.push({ kind: "voice", text: "被害はなかった。" });
+  }
+  if (Math.random() < 0.15) {
+    events.push({ kind: "voice", text: `${scout.name}が近道を見つけた。` });
+  }
+
+  return events;
 }
 
 function performEnemyAction(enemy, party, events, speechState) {
@@ -672,7 +752,7 @@ function performEnemyAction(enemy, party, events, speechState) {
   }
   target = maybeCoverTarget(party, target, events);
 
-  let damage = damageFor(enemy.atk, target.def);
+  let damage = applyPhysicalCritical(damageFor(enemy.atk, target.def), enemy, events);
   if (target.ironWall) {
     damage = Math.max(1, Math.floor(damage * 0.25));
   } else if (target.guard) {
@@ -712,7 +792,7 @@ function runEncounter(members, monster, area, speechState = {}) {
     if (member.job === "priest") member.sureReviveUsed = false;
   });
   const startMembersSnapshot = snapshotPartyHp(party);
-  const events = [...magicSense.events];
+  const events = [...magicSense.events, ...buildScoutPassiveEvents(party)];
   let round = 1;
 
   events.push({
