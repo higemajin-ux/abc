@@ -581,8 +581,24 @@ function renderPastDispatchLog(root, party) {
 function memberChips(party) {
   return party.members
     .map((m) => {
-      const cls = !party.mission && m.hp <= 0 ? "member-chip down" : "member-chip";
-      return `<span class="${cls}">${m.name}<span class="member-job">${JOB_LABELS[m.job]}</span></span>`;
+      const hpRate = m.maxHp > 0 ? (m.hp / m.maxHp) * 100 : 0;
+      let hpClass = "hp-safe";
+      let hpText = `${m.hp}/${m.maxHp}`;
+      if (m.hp <= 0) {
+        hpClass = "hp-down";
+        hpText = "戦闘不能";
+      } else if (hpRate < 30) {
+        hpClass = "hp-danger";
+      } else if (hpRate < 50) {
+        hpClass = "hp-caution";
+      } else if (hpRate < 70) {
+        hpClass = "hp-warn";
+      }
+      return `<span class="member-chip ${hpClass}">
+        <span class="member-name">${m.name}</span>
+        <span class="member-job">${JOB_LABELS[m.job]}</span>
+        <span class="member-hp">${hpText}</span>
+      </span>`;
     })
     .join("");
 }
