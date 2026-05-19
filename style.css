@@ -229,24 +229,71 @@ h1 {
 .member-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   margin-top: 12px;
 }
 
 .member-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  justify-content: space-between;
+  min-width: 138px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 9px;
+  border-radius: 7px;
+  padding: 6px 9px;
   background: var(--bg);
   font-size: 0.85rem;
 }
 
-.member-chip.down {
+.member-name {
+  color: var(--ink-on-dark);
+  font-weight: 700;
+}
+
+.member-hp {
+  margin-left: auto;
+  color: var(--muted-on-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.member-chip.hp-warn {
+  border-color: rgba(210, 154, 62, 0.58);
+}
+
+.member-chip.hp-warn .member-hp,
+.member-chip.hp-warn .member-name {
+  color: #d9b766;
+}
+
+.member-chip.hp-caution {
+  border-color: rgba(188, 105, 46, 0.62);
+}
+
+.member-chip.hp-caution .member-hp,
+.member-chip.hp-caution .member-name {
+  color: #d6904a;
+}
+
+.member-chip.hp-danger {
+  border-color: rgba(201, 70, 62, 0.68);
+}
+
+.member-chip.hp-danger .member-hp,
+.member-chip.hp-danger .member-name {
   color: var(--red);
-  border-color: rgba(168, 70, 53, 0.35);
+}
+
+.member-chip.hp-down {
+  border-color: rgba(94, 31, 28, 0.72);
+  background: rgba(69, 28, 24, 0.46);
+}
+
+.member-chip.hp-down .member-hp,
+.member-chip.hp-down .member-name {
+  color: #9f5a52;
 }
 
 .member-details {
@@ -675,6 +722,14 @@ h1 {
   .logs-grid,
   .split {
     grid-template-columns: 1fr;
+  }
+
+  .member-list {
+    gap: 8px;
+  }
+
+  .member-chip {
+    min-width: min(100%, 156px);
   }
 
   .member-stat-row strong {
