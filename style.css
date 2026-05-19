@@ -385,9 +385,26 @@ h1 {
   transition: width 0.15s linear;
 }
 
+.btn-progress.progress-explore {
+  background: linear-gradient(90deg, rgba(91, 122, 72, 0.38), rgba(139, 162, 93, 0.7));
+}
+
+.btn-progress.progress-danger {
+  background: linear-gradient(90deg, rgba(166, 119, 44, 0.42), rgba(210, 154, 62, 0.74));
+}
+
+.btn-progress.progress-boss {
+  background: linear-gradient(90deg, rgba(118, 35, 31, 0.5), rgba(183, 64, 48, 0.76));
+}
+
+.btn-progress.progress-return {
+  background: linear-gradient(90deg, rgba(102, 81, 112, 0.48), rgba(191, 154, 82, 0.72));
+}
+
 .btn-label {
   position: relative;
   z-index: 1;
+  text-shadow: 0 1px 0 rgba(255, 239, 198, 0.32);
 }
 
 .stage-list {
