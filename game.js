@@ -113,6 +113,31 @@ function battleSummary(encounter) {
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
+function snapshotMembers(members) {
+  return members.map((member) => ({
+    id: member.id,
+    hp: member.hp,
+    maxHp: member.maxHp,
+  }));
+}
+
+function applyMembersSnapshot(party, snapshot) {
+  if (!snapshot?.length) return false;
+  const byId = new Map(snapshot.map((member) => [member.id, member]));
+  let changed = false;
+  for (const member of party.members) {
+    const snap = byId.get(member.id);
+    if (!snap) continue;
+    const nextHp = clamp(snap.hp, 0, member.maxHp);
+    if (member.hp !== nextHp) {
+      member.hp = nextHp;
+      changed = true;
+    }
+  }
+  party.hero = party.members[0];
+  return changed;
+}
+
 function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
   const entries = [];
   const span = endsAt - startedAt;
@@ -154,6 +179,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
       monsterRare: encounter.monster.rare || encounter.monster.boss,
       battleDetail: encounter.events,
       summary: battleSummary(encounter),
+      membersSnapshot: encounter.membersSnapshot,
       shown: false,
     });
   });
@@ -165,6 +191,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     title: `帰還報告（全戦闘記録▼）`,
     battleDetail: rewards.encounters.flatMap((e) => e.events),
     summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
+    membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
 
@@ -224,6 +251,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
       monsterRare: encounter.monster.rare || encounter.monster.boss,
       battleDetail: encounter.events,
       summary: battleSummary(encounter),
+      membersSnapshot: encounter.membersSnapshot,
       shown: false,
     });
   });
@@ -248,6 +276,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     summary: rewards.forcedReturn
       ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
       : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
+    membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
 
@@ -275,6 +304,9 @@ function revealDueEntries(party) {
     if (entry.shown || entry.timestamp > now) continue;
     entry.shown = true;
     dispatch.entries.push({ ...entry });
+    if (applyMembersSnapshot(party, entry.membersSnapshot)) {
+      changed = true;
+    }
     if (entry.forceReturn) {
       party.mission.failed = true;
       party.mission.endsAt = entry.timestamp;
@@ -362,10 +394,12 @@ function startMission(partyId) {
   party.members.forEach((member) => {
     if (member.hp <= 0) member.hp = member.maxHp;
   });
+  const startMembersSnapshot = snapshotMembers(party.members);
   const rewards = generateBattle(area, party);
   const now = Date.now();
   const endsAt = now + area.durationMs;
   const dispatchId = uid("dispatch");
+  applyMembersSnapshot(party, startMembersSnapshot);
 
   party.dispatches.unshift({
     id: dispatchId,
@@ -386,6 +420,7 @@ function startMission(partyId) {
     plannedEndsAt: endsAt,
     rewards,
     failed: false,
+    startMembersSnapshot,
     journal: buildScheduledJournalV2(party, area, rewards, now, endsAt),
   };
 
@@ -426,9 +461,13 @@ function completeMission(party) {
 
 function processMissions() {
   let dirty = false;
+  let partyDirty = false;
   for (const party of state.parties) {
     if (!party.mission) continue;
-    if (revealDueEntries(party)) dirty = true;
+    if (revealDueEntries(party)) {
+      dirty = true;
+      partyDirty = true;
+    }
     if (party.mission.failed) {
       completeMission(party);
     }
@@ -436,10 +475,10 @@ function processMissions() {
       party.mission.failed = !!party.mission.rewards?.failed;
       completeMission(party);
     }
-    else dirty = true;
   }
 
   updateProgressBars();
+  if (partyDirty) renderParties();
   if (dirty) renderLogs();
   if (!state.parties.some((p) => p.mission)) stopTick();
 }
