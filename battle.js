@@ -233,12 +233,15 @@ function performPriestAction(actor, party, enemy, events) {
 function performMageAction(actor, enemy, events) {
   const skillRoll = Math.random();
   if (skillRoll < 0.3) {
+    const focused = Math.random() < 0.3;
+    if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     events.push({ kind: "spell", text: `${actor.name}の雷撃！` });
-    if (Math.random() >= 0.85) {
+    if (!focused && Math.random() >= 0.85) {
       events.push({ kind: "spell", text: `${actor.name}の雷撃は外れた。` });
       return;
     }
-    const damage = damageFor(Math.floor(actor.atk * 1.8) + actor.level, Math.floor(enemy.def * 0.25));
+    const baseDamage = damageFor(Math.floor(actor.atk * 1.8) + actor.level, Math.floor(enemy.def * 0.25));
+    const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
@@ -246,7 +249,10 @@ function performMageAction(actor, enemy, events) {
   }
 
   if (skillRoll < 0.8) {
-    const damage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
+    const focused = Math.random() < 0.3;
+    if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
+    const baseDamage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
+    const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${actor.name}の火球。${enemy.name}に${damage}ダメージ。` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
