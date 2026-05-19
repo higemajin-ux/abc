@@ -97,7 +97,7 @@ function livingMembers(party) {
 }
 
 function livingScouts(party) {
-  return livingMembers(party).filter((member) => member.job === "scout" || member.job === "rogue");
+  return livingMembers(party).filter((member) => member.job === "scout");
 }
 
 function formationTargetWeight(member) {
@@ -661,7 +661,7 @@ function performMemberAction(actor, party, enemy, events) {
   if (actor.actionConsumed) return;
   if (actor.job === "priest") performPriestAction(actor, party, enemy, events);
   else if (actor.job === "mage") performMageAction(actor, enemy, events);
-  else if (actor.job === "scout" || actor.job === "rogue") performScoutAction(actor, party, enemy, events);
+  else if (actor.job === "scout") performScoutAction(actor, party, enemy, events);
   else performWarriorAction(actor, party, enemy, events);
 }
 
