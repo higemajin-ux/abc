@@ -279,9 +279,9 @@ function shouldCoverTarget(target) {
 
 function coverChanceFor(target) {
   const hpRate = target.maxHp > 0 ? (target.hp / target.maxHp) * 100 : 0;
-  if (hpRate <= 25) return 0.7;
-  if (hpRate <= 40) return 0.5;
-  if (hpRate <= 70) return 0.3;
+  if (hpRate <= 25) return 1;
+  if (hpRate <= 40) return 0.7;
+  if (hpRate <= 70) return 0.5;
   return 0;
 }
 
@@ -308,7 +308,7 @@ function maybeCoverTarget(party, target, events) {
 
 function maybeCounterAttack(actor, enemy, events) {
   if (actor.job !== "warrior" || actor.hp <= 0 || enemy.hp <= 0) return;
-  if (Math.random() >= 0.4) return;
+  if (Math.random() >= 0.6) return;
 
   const damageRate = 0.5 + Math.random() * 0.3;
   const damage = Math.max(1, Math.floor(actor.atk * damageRate));
@@ -316,9 +316,7 @@ function maybeCounterAttack(actor, enemy, events) {
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${actor.name}「こちらも返す」` });
   }
-  events.push({ kind: "guard", text: `${actor.name}が反撃した。` });
-  events.push({ kind: "guard", text: `${actor.name}が短く斬り返した。` });
-  events.push({ kind: "", text: `${enemy.name}に${damage}ダメージ。` });
+  events.push({ kind: "guard", text: `${actor.name}の反撃！${enemy.name}に${damage}ダメージ。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
