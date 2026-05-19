@@ -243,7 +243,22 @@ function performMageAction(actor, enemy, events) {
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
+function shouldWarriorDefend(actor) {
+  if (actor.job !== "warrior" || actor.guard) return false;
+  const hpRate = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
+  if (hpRate <= 30) return Math.random() < 0.45;
+  if (hpRate <= 50) return Math.random() < 0.25;
+  return false;
+}
+
 function performWarriorAction(actor, enemy, events) {
+  if (shouldWarriorDefend(actor)) {
+    actor.guard = true;
+    events.push({ kind: "guard", text: `${actor.name}は盾を構えた。` });
+    events.push({ kind: "guard", text: `次に受けるダメージを50%軽減。` });
+    return;
+  }
+
   const damage = damageFor(actor.atk, enemy.def);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
@@ -262,7 +277,12 @@ function performEnemyAction(enemy, party, events, speechState) {
   const target = pickEnemyTarget(party);
   if (!target) return;
 
-  const damage = damageFor(enemy.atk, target.def);
+  let damage = damageFor(enemy.atk, target.def);
+  if (target.guard) {
+    damage = Math.max(1, Math.floor(damage * 0.5));
+    target.guard = false;
+    events.push({ kind: "guard", text: `${target.name}へのダメージが軽減された。` });
+  }
   const beforeHp = target.hp;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
   events.push({ kind: "", text: `${enemy.name}の攻撃！ ${target.name}に${damage}ダメージ。` });
