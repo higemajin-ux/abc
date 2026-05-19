@@ -581,7 +581,7 @@ function renderPastDispatchLog(root, party) {
 function memberChips(party) {
   return party.members
     .map((m) => {
-      const cls = m.hp <= 0 ? "member-chip down" : "member-chip";
+      const cls = !party.mission && m.hp <= 0 ? "member-chip down" : "member-chip";
       return `<span class="${cls}">${m.name}<span class="member-job">${JOB_LABELS[m.job]}</span></span>`;
     })
     .join("");
@@ -598,7 +598,7 @@ function memberFormation(member) {
 function memberDetails(party) {
   return party.members
     .map(
-      (m) => `<div class="member-detail-card ${m.hp <= 0 ? "down" : ""}">
+      (m) => `<div class="member-detail-card ${!party.mission && m.hp <= 0 ? "down" : ""}">
         <div class="member-detail-head">
           <strong>${m.name}</strong>
           <span>${JOB_LABELS[m.job] || m.job}</span>
