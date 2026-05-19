@@ -159,6 +159,30 @@ h1 {
   animation: dangerPulse 1.9s ease-in-out infinite;
 }
 
+.party-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.detail-toggle {
+  flex: 0 0 auto;
+  border: 1px solid var(--line-bright);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  min-height: 34px;
+  padding: 5px 12px;
+}
+
+.detail-toggle:hover {
+  background: rgba(214, 168, 79, 0.08);
+}
+
 @keyframes dangerPulse {
   0%, 100% {
     box-shadow:
@@ -223,6 +247,62 @@ h1 {
 .member-chip.down {
   color: var(--red);
   border-color: rgba(168, 70, 53, 0.35);
+}
+
+.member-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.member-details[hidden] {
+  display: none;
+}
+
+.member-detail-card {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(20, 16, 12, 0.72);
+  padding: 10px;
+}
+
+.member-detail-card.down {
+  border-color: rgba(201, 70, 62, 0.45);
+}
+
+.member-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.member-detail-head span {
+  color: var(--muted-on-dark);
+  font-size: 0.84rem;
+}
+
+.member-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.member-stat-grid span,
+.member-stat-grid strong {
+  min-width: 0;
+  text-align: center;
+}
+
+.member-stat-grid span {
+  color: var(--muted-on-dark);
+  font-size: 0.72rem;
+}
+
+.member-stat-grid strong {
+  color: var(--ink-on-dark);
+  font-size: 0.82rem;
 }
 
 .field-label {
@@ -563,5 +643,13 @@ h1 {
   .logs-grid,
   .split {
     grid-template-columns: 1fr;
+  }
+
+  .member-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .member-stat-grid strong {
+    font-size: 0.8rem;
   }
 }
