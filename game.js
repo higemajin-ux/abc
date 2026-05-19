@@ -84,16 +84,17 @@ function chooseBoss(area) {
 function generateBattle(area, party) {
   const encounters = [];
   const normalCount = clamp(area.difficulty + roll(0, 1), 1, 4);
+  const speechState = {};
 
   for (let i = 0; i < normalCount; i += 1) {
-    encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area));
+    encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area, speechState));
     if (party.members.every((member) => member.hp <= 0)) break;
   }
 
   const failedBeforeBoss =
     party.members.every((member) => member.hp <= 0) || encounters.some((encounter) => !encounter.victory);
   if (!failedBeforeBoss) {
-    encounters.push(runEncounter(party.members, chooseBoss(area), area));
+    encounters.push(runEncounter(party.members, chooseBoss(area), area, speechState));
   }
 
   const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory);
