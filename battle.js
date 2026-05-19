@@ -84,6 +84,7 @@ function createEnemy(monster, area, heroLevel) {
     hp: monster.hp + scale * 8,
     atk: monster.atk + scale * 2,
     def: (monster.def || Math.max(0, area.difficulty - 1)) + Math.floor(scale / 2),
+    baseDex: monster.dex || area.difficulty + 4,
     dex: monster.dex || area.difficulty + 4,
     xp: monster.xp + scale * 4,
     gold: monster.gold + scale * 3,
@@ -125,8 +126,13 @@ function damageFor(attackerAtk, defenderDef = 0) {
   return Math.max(1, attackerAtk - defenderDef);
 }
 
+function effectiveDex(unit) {
+  const baseDex = unit.baseDex || unit.dex || 0;
+  return unit.slowTurns > 0 ? Math.max(1, Math.floor(baseDex * 0.5)) : baseDex;
+}
+
 function physicalCriticalChance(attacker, focused = false) {
-  const dex = attacker.dex || 0;
+  const dex = effectiveDex(attacker);
   const luc = attacker.luc || 0;
   const baseChance = (5 + dex * 0.3 + luc * 0.5) / 100;
   const focusBonus = focused ? 0.25 : 0;
@@ -301,7 +307,6 @@ function hasBadStatus(member) {
   return (
     member.poisonTurns > 0 ||
     member.poisonTier === "venom" ||
-    member.paralysisTurns > 0 ||
     member.paralyzeTurns > 0 ||
     member.burnTurns > 0 ||
     member.slowTurns > 0
@@ -311,13 +316,9 @@ function hasBadStatus(member) {
 function clearBadStatus(member) {
   member.poisonTurns = 0;
   member.poisonTier = null;
-  member.paralysisTurns = 0;
   member.paralyzeTurns = 0;
   member.burnTurns = 0;
-  if (member.slowTurns > 0) {
-    member.dex = member.baseDex || member.dex;
-    member.slowTurns = 0;
-  }
+  member.slowTurns = 0;
 }
 
 function consumeReviveEquipment(member) {
@@ -327,8 +328,20 @@ function consumeReviveEquipment(member) {
   return true;
 }
 
-function trySurviveFatalDamage(member, events) {
+function trySurviveFatalDamage(member, events, party = null, canUsePriestBlessing = false) {
   if (member.hp > 0) return true;
+
+  if (canUsePriestBlessing && party && !party.priestBlessingUsed) {
+    party.priestBlessingUsed = true;
+    member.hp = 1;
+    member.pendingDownConfirm = false;
+    events.push({ kind: "heal", text: `${member.name}は神の加護に守られた。` });
+    if (Math.random() < 0.15) {
+      events.push({ kind: "voice", text: `${member.name}<br>「……まだ終われません」` });
+    }
+    pushHp(events, member, "heal");
+    return true;
+  }
 
   if (member.divineBlessing || member.godBlessing || member.blessingTurns > 0) {
     member.hp = Math.max(1, Math.floor(member.maxHp * 0.3));
@@ -458,17 +471,13 @@ function targetEnemyGroup(enemy) {
 
 function applyEnemySlow(enemy) {
   enemy.baseDex = enemy.baseDex || enemy.dex || 1;
-  enemy.dex = Math.max(1, Math.floor(enemy.baseDex * 0.5));
   enemy.slowTurns = 2;
 }
 
 function tickEnemySlow(enemy) {
   if (!enemy.slowTurns) return;
   enemy.slowTurns -= 1;
-  if (enemy.slowTurns <= 0) {
-    enemy.dex = enemy.baseDex || enemy.dex;
-    enemy.slowTurns = 0;
-  }
+  if (enemy.slowTurns <= 0) enemy.slowTurns = 0;
 }
 
 function applyEnemyPoison(enemy, events) {
@@ -819,7 +828,7 @@ function pushScoutAmbushEvents(scout, events) {
 }
 
 function actionOrderForRound(party, round, ambushScout) {
-  const ordered = [...party].sort((a, b) => (b.dex || 0) - (a.dex || 0));
+  const ordered = [...party].sort((a, b) => effectiveDex(b) - effectiveDex(a));
   if (round !== 1 || !ambushScout || ambushScout.hp <= 0) return ordered;
   return [ambushScout, ...ordered.filter((member) => member.id !== ambushScout.id)];
 }
@@ -871,11 +880,15 @@ function performEnemyAction(enemy, party, events, speechState) {
     target.magicBarrier = false;
   }
   const beforeHp = target.hp;
+  const canUsePriestBlessing =
+    beforeHp > 0 &&
+    !party.priestBlessingUsed &&
+    party.some((member) => member.job === "priest" && member.hp > 0);
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
   events.push({ kind: "", text: `${enemy.name}の攻撃。` });
   if (target.hp <= 0) {
     events.push({ kind: "", text: `${damageResultText(target, damage, hit.critical)}。` });
-    if (trySurviveFatalDamage(target, events)) {
+    if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
       reactToHpDrop(target, beforeHp, events, speechState);
     } else {
       confirmMemberDown(target, events, speechState);
@@ -895,6 +908,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
   const enemy = createEnemy(monster, area, highestLevel);
   const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
+  party.priestBlessingUsed = false;
   party.forEach((member) => {
     if (member.job === "priest") member.sureReviveUsed = false;
   });
