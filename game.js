@@ -189,7 +189,8 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
       timestamp: startedAt + Math.floor(span * ratio),
       type: "battle",
       title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
-      monsterRare: encounter.monster.rare || encounter.monster.boss,
+      monsterBoss: !!encounter.monster.boss,
+      monsterRare: !!encounter.monster.rare && !encounter.monster.boss,
       battleDetail: encounter.events,
       summary: battleSummary(encounter),
       membersSnapshot: encounter.membersSnapshot,
@@ -273,7 +274,8 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
       timestamp: battleTime,
       type: "battle",
       title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
-      monsterRare: encounter.monster.rare || encounter.monster.boss,
+      monsterBoss: !!encounter.monster.boss,
+      monsterRare: !!encounter.monster.rare && !encounter.monster.boss,
       battleDetail: encounter.events,
       summary: battleSummary(encounter),
       membersSnapshot: encounter.membersSnapshot,
@@ -539,7 +541,11 @@ function pastDispatchLabel(pastIndex, dispatch) {
 }
 
 function entryButtonHtml(entry, open) {
-  const rare = entry.monsterRare ? '<span class="rare-tag">重要</span>' : "";
+  const monsterTag = entry.monsterBoss
+    ? '<span class="enemy-tag boss-tag">[BOSS]</span>'
+    : entry.monsterRare
+      ? '<span class="enemy-tag rare-tag">[RARE]</span>'
+      : "";
   let title = entry.title;
   if (entry.type === "return") {
     title = title.replace(/（全戦闘記録[▼▲]）$/, "");
@@ -547,7 +553,7 @@ function entryButtonHtml(entry, open) {
   } else if (entry.battleDetail?.length) {
     title += open ? " ▲" : " ▼";
   }
-  return `<span class="time">${formatClock(entry.timestamp)}</span>${title}${rare}`;
+  return `<span class="time">${formatClock(entry.timestamp)}</span>${title}${monsterTag}`;
 }
 
 function renderLogEntry(entry) {
