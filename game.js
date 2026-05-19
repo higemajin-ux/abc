@@ -113,6 +113,48 @@ function battleSummary(encounter) {
   const result = encounter.victory ? "討伐成功" : "撤退";
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
+function buildMvpLine(party, rewards) {
+  const stats = new Map(
+    party.members.map((member) => [member.name, { member, score: 0 }])
+  );
+  const names = [...stats.keys()].sort((a, b) => b.length - a.length);
+  let actorName = null;
+
+  const addScore = (name, amount) => {
+    const stat = stats.get(name);
+    if (!stat || amount <= 0) return;
+    stat.score += amount;
+  };
+
+  for (const encounter of rewards.encounters || []) {
+    for (const event of encounter.events || []) {
+      const text = event.text || "";
+      const starter = names.find((name) => text.startsWith(name));
+      if (starter) actorName = starter;
+      else if (text.includes("の攻撃。")) actorName = null;
+
+      const damage = text.match(/に(\d+)ダメージ/);
+      if (damage && actorName) addScore(actorName, Math.ceil(Number(damage[1]) / 10));
+
+      const healing = text.match(/HPが(\d+)回復/);
+      if (healing && actorName) addScore(actorName, Math.ceil(Number(healing[1]) / 8));
+
+      if (text.includes("を討伐") && actorName) addScore(actorName, 8);
+      if (text.includes("かばった") && starter) addScore(starter, 5);
+      if (text.includes("敵を先に見つけた") && starter) addScore(starter, 4);
+      if (/(魔力障壁|集中|挑発|鉄壁|盾を構え|状態が安定|応急手当|リバイブ|リザレクト)/.test(text) && starter) {
+        addScore(starter, 3);
+      }
+      if (/(毒に侵された|猛毒化|燃えている|動きが鈍った)/.test(text) && actorName) {
+        addScore(actorName, 4);
+      }
+    }
+  }
+
+  const best = [...stats.values()].sort((a, b) => b.score - a.score)[0];
+  if (!best || best.score <= 0) return null;
+  return `今回もっとも活躍したのは${best.member.name}だったようだ。`;
+}
 
 function snapshotMembers(members) {
   return members.map((member) => ({
@@ -216,6 +258,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     title: `帰還報告（全戦闘記録▼）`,
     battleDetail: rewards.encounters.flatMap((e) => e.events),
     summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
+    mvpLine: buildMvpLine(party, rewards),
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
@@ -338,6 +381,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     summary: rewards.forcedReturn
       ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
       : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
+    mvpLine: buildMvpLine(party, rewards),
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
@@ -597,6 +641,9 @@ function renderLogEntry(entry) {
     detail.innerHTML = entry.battleDetail.map((ev) => `<p class="${ev.kind || ""}">${ev.text}</p>`).join("");
     if (entry.summary && entry.type === "return") {
       detail.innerHTML += `<p><strong>合計:</strong> ${entry.summary}</p>`;
+    }
+    if (entry.mvpLine && entry.type === "return") {
+      detail.innerHTML += `<p>${entry.mvpLine}</p>`;
     }
     li.appendChild(detail);
     btn.addEventListener("click", () => {
