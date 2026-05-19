@@ -318,6 +318,11 @@ function shouldWarriorTaunt(actor, party) {
   return needsAttention && Math.random() < 0.5;
 }
 
+function shouldWarriorDesperateStrike(actor) {
+  if (actor.job !== "warrior" || actor.hp <= 0) return false;
+  return true;
+}
+
 function performWarriorAction(actor, party, enemy, events) {
   // Active actions in this block consume the normal attack.
   if (shouldWarriorTaunt(actor, party)) {
@@ -327,6 +332,19 @@ function performWarriorAction(actor, party, enemy, events) {
     if (Math.random() < 0.15) {
       events.push({ kind: "voice", text: `${actor.name}「こちらだ」` });
     }
+    return;
+  }
+
+  if (shouldWarriorDesperateStrike(actor)) {
+    actor.desperateVulnerable = true;
+    const damage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 1.8));
+    enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+    events.push({ kind: "guard", text: `${actor.name}は捨て身に出た。` });
+    if (Math.random() < 0.15) {
+      events.push({ kind: "voice", text: `${actor.name}「行くぞ」` });
+    }
+    events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
+    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     return;
   }
 
@@ -406,6 +424,10 @@ function performEnemyAction(enemy, party, events, speechState) {
   } else if (target.guard) {
     damage = Math.max(1, Math.floor(damage * 0.5));
   }
+  if (target.desperateVulnerable) {
+    damage = Math.max(1, Math.floor(damage * 1.5));
+    target.desperateVulnerable = false;
+  }
   const beforeHp = target.hp;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
   events.push({ kind: "", text: `${enemy.name}の攻撃！ ${target.name}に${damage}ダメージ。` });
@@ -415,6 +437,7 @@ function performEnemyAction(enemy, party, events, speechState) {
     target.guard = false;
     target.ironWall = false;
     target.actionConsumed = false;
+    target.desperateVulnerable = false;
     events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
   }
   maybeCounterAttack(target, enemy, events);
