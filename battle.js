@@ -231,7 +231,21 @@ function performPriestAction(actor, party, enemy, events) {
 }
 
 function performMageAction(actor, enemy, events) {
-  if (Math.random() < 0.5) {
+  const skillRoll = Math.random();
+  if (skillRoll < 0.3) {
+    events.push({ kind: "spell", text: `${actor.name}の雷撃！` });
+    if (Math.random() >= 0.85) {
+      events.push({ kind: "spell", text: `${actor.name}の雷撃は外れた。` });
+      return;
+    }
+    const damage = damageFor(Math.floor(actor.atk * 1.8) + actor.level, Math.floor(enemy.def * 0.25));
+    enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+    events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
+    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    return;
+  }
+
+  if (skillRoll < 0.8) {
     const damage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${actor.name}の火球。${enemy.name}に${damage}ダメージ。` });
