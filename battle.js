@@ -133,10 +133,23 @@ function physicalCriticalChance(attacker, focused = false) {
   return Math.min(0.5, baseChance + focusBonus);
 }
 
-function applyPhysicalCritical(damage, attacker, events, focused = false) {
-  if (Math.random() >= physicalCriticalChance(attacker, focused)) return damage;
-  events.push({ kind: "battle", text: "クリティカル！" });
-  return Math.max(1, Math.floor(damage * 1.5));
+function rollPhysicalHit(damage, attacker, focused = false) {
+  const critical = Math.random() < physicalCriticalChance(attacker, focused);
+  return {
+    damage: critical ? Math.max(1, Math.floor(damage * 1.5)) : damage,
+    critical,
+  };
+}
+
+function damageResultText(target, damage, critical = false) {
+  return `${critical ? "クリティカル！" : ""}${target.name}に${damage}ダメージ`;
+}
+
+function formationPriority(member) {
+  if (member.formation === "前衛") return 0;
+  if (member.formation === "中衛") return 1;
+  if (member.formation === "後衛") return 2;
+  return 1;
 }
 
 function hpClass(unit) {
@@ -251,10 +264,9 @@ function pushMemberLine(member, stage, events, speechState, chance = 1) {
 
 function reactToHpDrop(member, beforeHp, events, speechState) {
   if (beforeHp <= member.hp) return;
+  if (member.hp <= 0) return;
   const hpRate = member.maxHp > 0 ? (member.hp / member.maxHp) * 100 : 0;
-  if (member.hp <= 0) {
-    pushMemberLine(member, "down", events, speechState, 1);
-  } else if (hpRate <= 30) {
+  if (hpRate <= 30) {
     pushMemberLine(member, "critical", events, speechState, 0.55);
   } else if (hpRate <= 50) {
     pushMemberLine(member, "wounded", events, speechState, 0.35);
@@ -267,6 +279,16 @@ function hpRate(unit) {
 
 function lowestHpLivingMember(party) {
   return livingMembers(party).sort((a, b) => hpRate(a) - hpRate(b))[0] || null;
+}
+
+function magicBarrierTarget(party) {
+  return livingMembers(party)
+    .filter((member) => !member.magicBarrier && hpRate(member) <= 0.65)
+    .sort((a, b) => {
+      const formationDiff = formationPriority(a) - formationPriority(b);
+      if (formationDiff) return formationDiff;
+      return hpRate(a) - hpRate(b);
+    })[0] || null;
 }
 
 function recoverHp(target, amount) {
@@ -298,6 +320,64 @@ function clearBadStatus(member) {
   }
 }
 
+function consumeReviveEquipment(member) {
+  if (member.reviveEquipmentUsed) return false;
+  if (!member.reviveEquipment && !member.hasReviveEquipment) return false;
+  member.reviveEquipmentUsed = true;
+  return true;
+}
+
+function trySurviveFatalDamage(member, events) {
+  if (member.hp > 0) return true;
+
+  if (member.divineBlessing || member.godBlessing || member.blessingTurns > 0) {
+    member.hp = Math.max(1, Math.floor(member.maxHp * 0.3));
+    member.pendingDownConfirm = false;
+    member.divineBlessing = false;
+    member.godBlessing = false;
+    member.blessingTurns = 0;
+    events.push({ kind: "heal", text: `${member.name}は神の祝福で踏みとどまった。` });
+    pushHp(events, member, "heal");
+    return true;
+  }
+
+  if (consumeReviveEquipment(member)) {
+    member.hp = Math.max(1, Math.floor(member.maxHp * 0.25));
+    member.pendingDownConfirm = false;
+    events.push({ kind: "heal", text: `${member.name}は復活装備で踏みとどまった。` });
+    pushHp(events, member, "heal");
+    return true;
+  }
+
+  if ((member.guts || member.hasGuts) && !member.gutsUsed) {
+    member.gutsUsed = true;
+    member.hp = 1;
+    member.pendingDownConfirm = false;
+    events.push({ kind: "heal", text: `${member.name}は根性で踏みとどまった。` });
+    pushHp(events, member, "heal");
+    return true;
+  }
+
+  return false;
+}
+
+function confirmMemberDown(member, events, speechState) {
+  member.guard = false;
+  member.ironWall = false;
+  member.actionConsumed = false;
+  member.desperateVulnerable = false;
+  member.pendingDownConfirm = true;
+}
+
+function confirmRemainingDownMembers(party, events, speechState) {
+  for (const member of party) {
+    if (member.hp > 0 || !member.pendingDownConfirm) continue;
+    events.push({ kind: "down", text: `${member.name}は戦闘不能になった。` });
+    pushMemberLine(member, "down", events, speechState, 1);
+    member.pendingDownConfirm = false;
+  }
+}
+
 function performPriestAction(actor, party, enemy, events) {
   const fallen = party.filter((m) => m.hp <= 0);
   if (fallen.length) {
@@ -307,6 +387,7 @@ function performPriestAction(actor, party, enemy, events) {
     if (sureRevive || Math.random() < 0.5) {
       actor.sureReviveUsed = actor.sureReviveUsed || sureRevive;
       target.hp = Math.max(1, Math.floor(target.maxHp * (sureRevive ? 0.35 : 0.25)));
+      target.pendingDownConfirm = false;
       events.push({ kind: "heal", text: `${target.name}が立ち上がった。` });
       pushHp(events, target, "heal");
     } else {
@@ -355,16 +436,19 @@ function performPriestAction(actor, party, enemy, events) {
     return;
   }
 
-  if (lowest && hpRate(lowest) <= 0.65 && !lowest.magicBarrier) {
-    lowest.magicBarrier = true;
-    events.push({ kind: "heal", text: `${actor.name}は${lowest.name}に魔力障壁を張った。` });
+  const barrierTarget = magicBarrierTarget(party);
+  if (barrierTarget) {
+    barrierTarget.magicBarrier = true;
+    events.push({ kind: "heal", text: `${actor.name}は${barrierTarget.name}に魔力障壁を張った。` });
     return;
   }
 
   const baseDamage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 0.75));
-  const damage = applyPhysicalCritical(baseDamage, actor, events);
+  const hit = rollPhysicalHit(baseDamage, actor);
+  const { damage } = hit;
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-  events.push({ kind: "", text: `${actor.name}が杖で牽制。${enemy.name}に${damage}ダメージ。` });
+  events.push({ kind: "", text: `${actor.name}が杖で牽制。` });
+  events.push({ kind: "", text: `${damageResultText(enemy, damage, hit.critical)}。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
@@ -532,12 +616,11 @@ function performScoutAction(actor, party, enemy, events) {
 
   const focused = actor.focusTurns > 0;
   const baseDamage = damageFor(actor.atk, enemy.def);
-  const damage = applyPhysicalCritical(baseDamage, actor, events, focused);
+  const hit = rollPhysicalHit(baseDamage, actor, focused);
+  const { damage } = hit;
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-  events.push({
-    kind: "",
-    text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！`,
-  });
+  events.push({ kind: "", text: `${actor.name}の攻撃。` });
+  events.push({ kind: "", text: `${damageResultText(enemy, damage, hit.critical)}。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
@@ -639,20 +722,24 @@ function performWarriorAction(actor, party, enemy, events) {
   if (shouldWarriorDesperateStrike(actor)) {
     actor.desperateVulnerable = true;
     const baseDamage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 1.8));
-    const damage = applyPhysicalCritical(baseDamage, actor, events);
+    const hit = rollPhysicalHit(baseDamage, actor);
+    const { damage } = hit;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "guard", text: `${actor.name}は捨て身に出た。` });
     if (Math.random() < 0.15) {
       events.push({ kind: "voice", text: `${actor.name}「行くぞ」` });
     }
-    events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
+    events.push({ kind: "", text: `${actor.name}の攻撃。` });
+    events.push({ kind: "", text: `${damageResultText(enemy, damage, hit.critical)}。` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     return;
   }
 
-  const damage = applyPhysicalCritical(damageFor(actor.atk, enemy.def), actor, events);
+  const hit = rollPhysicalHit(damageFor(actor.atk, enemy.def), actor);
+  const { damage } = hit;
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-  events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
+  events.push({ kind: "", text: `${actor.name}の攻撃。` });
+  events.push({ kind: "", text: `${damageResultText(enemy, damage, hit.critical)}。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
@@ -707,12 +794,13 @@ function maybeCounterAttack(actor, enemy, events) {
 
   const damageRate = 0.5 + Math.random() * 0.3;
   const baseDamage = Math.max(1, Math.floor(actor.atk * damageRate));
-  const damage = applyPhysicalCritical(baseDamage, actor, events);
+  const hit = rollPhysicalHit(baseDamage, actor);
+  const { damage } = hit;
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${actor.name}「こちらも返す」` });
   }
-  events.push({ kind: "guard", text: `${actor.name}の反撃！${enemy.name}に${damage}ダメージ。` });
+  events.push({ kind: "guard", text: `${actor.name}の反撃！${damageResultText(enemy, damage, hit.critical)}。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
@@ -758,7 +846,8 @@ function performEnemyAction(enemy, party, events, speechState) {
   }
   target = maybeCoverTarget(party, target, events);
 
-  let damage = applyPhysicalCritical(damageFor(enemy.atk, target.def), enemy, events);
+  const hit = rollPhysicalHit(damageFor(enemy.atk, target.def), enemy);
+  let damage = hit.damage;
   if (target.ironWall) {
     damage = Math.max(1, Math.floor(damage * 0.25));
   } else if (target.guard) {
@@ -774,15 +863,18 @@ function performEnemyAction(enemy, party, events, speechState) {
   }
   const beforeHp = target.hp;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
-  events.push({ kind: "", text: `${enemy.name}の攻撃！ ${target.name}に${damage}ダメージ。` });
-  pushHp(events, target, target.hp <= 0 ? "down" : "");
-  reactToHpDrop(target, beforeHp, events, speechState);
+  events.push({ kind: "", text: `${enemy.name}の攻撃。` });
   if (target.hp <= 0) {
-    target.guard = false;
-    target.ironWall = false;
-    target.actionConsumed = false;
-    target.desperateVulnerable = false;
-    events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
+    events.push({ kind: "", text: `${damageResultText(target, damage, hit.critical)}。` });
+    if (trySurviveFatalDamage(target, events)) {
+      reactToHpDrop(target, beforeHp, events, speechState);
+    } else {
+      confirmMemberDown(target, events, speechState);
+    }
+  } else {
+    events.push({ kind: "", text: `${damageResultText(target, damage, hit.critical)}。` });
+    pushHp(events, target);
+    reactToHpDrop(target, beforeHp, events, speechState);
   }
   maybeCounterAttack(target, enemy, events);
   tickEnemySlow(enemy);
@@ -822,6 +914,8 @@ function runEncounter(members, monster, area, speechState = {}) {
     performEnemyAction(enemy, party, events, speechState);
     round += 1;
   }
+
+  confirmRemainingDownMembers(party, events, speechState);
 
   const victory = enemy.hp <= 0;
   if (victory) {
