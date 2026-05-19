@@ -383,12 +383,12 @@ function performPriestAction(actor, party, enemy, events) {
   if (fallen.length) {
     const target = pick(fallen);
     const sureRevive = !actor.sureReviveUsed;
-    events.push({ kind: "heal", text: `${actor.name}は祈った。` });
+    events.push({ kind: "heal", text: `${actor.name}は${sureRevive ? "リバイブ" : "リザレクト"}を唱えた。` });
     if (sureRevive || Math.random() < 0.5) {
       actor.sureReviveUsed = actor.sureReviveUsed || sureRevive;
       target.hp = Math.max(1, Math.floor(target.maxHp * (sureRevive ? 0.35 : 0.25)));
       target.pendingDownConfirm = false;
-      events.push({ kind: "heal", text: `${target.name}が立ち上がった。` });
+      events.push({ kind: "heal", text: sureRevive ? `${target.name}は再び立ち上がった。` : `${target.name}が立ち上がった。` });
       pushHp(events, target, "heal");
     } else {
       events.push({ kind: "heal", text: "祈りは届かなかった。" });
@@ -804,15 +804,24 @@ function maybeCounterAttack(actor, enemy, events) {
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
-function buildScoutPassiveEvents(party) {
+function pickAmbushScout(party) {
   const scouts = livingScouts(party);
-  if (!scouts.length) return [];
+  return scouts.length ? pick(scouts) : null;
+}
 
-  const scout = pick(scouts);
-  return [
-    { kind: "voice", text: `${scout.name}が敵を先に見つけた。` },
-    { kind: "voice", text: "奇襲成功。" },
-  ];
+function pushScoutAmbushEvents(scout, events) {
+  if (!scout || scout.hp <= 0) return;
+  events.push({ kind: "voice", text: `${scout.name}が敵を先に見つけた。` });
+  events.push({ kind: "voice", text: "奇襲成功。" });
+  if (Math.random() < 0.15) {
+    events.push({ kind: "voice", text: `${scout.name}<br>「先に行く」` });
+  }
+}
+
+function actionOrderForRound(party, round, ambushScout) {
+  const ordered = [...party].sort((a, b) => (b.dex || 0) - (a.dex || 0));
+  if (round !== 1 || !ambushScout || ambushScout.hp <= 0) return ordered;
+  return [ambushScout, ...ordered.filter((member) => member.id !== ambushScout.id)];
 }
 
 function buildScoutExplorationEvents(party) {
@@ -890,7 +899,8 @@ function runEncounter(members, monster, area, speechState = {}) {
     if (member.job === "priest") member.sureReviveUsed = false;
   });
   const startMembersSnapshot = snapshotPartyHp(party);
-  const events = [...buildScoutPassiveEvents(party)];
+  const events = [];
+  const ambushScout = pickAmbushScout(party);
   const explorationEvents = [...magicSense.explorationEvents, ...buildScoutExplorationEvents(party)];
   let round = 1;
 
@@ -906,8 +916,15 @@ function runEncounter(members, monster, area, speechState = {}) {
     tickEnemyDots(enemy, events);
     if (enemy.hp <= 0) break;
     tickTaunts(party);
+    const actionOrder = actionOrderForRound(party, round, ambushScout);
+    if (round === 1 && actionOrder[0]?.id === ambushScout?.id) {
+      pushScoutAmbushEvents(ambushScout, events);
+      performMemberAction(ambushScout, party, enemy, events);
+      if (enemy.hp <= 0) break;
+    }
     performTurnStartSkillChecks(party, enemy, events);
-    for (const member of party) {
+    for (const member of actionOrder) {
+      if (round === 1 && member.id === ambushScout?.id) continue;
       performMemberAction(member, party, enemy, events);
       if (enemy.hp <= 0) break;
     }
