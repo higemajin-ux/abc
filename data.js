@@ -32,6 +32,72 @@ const PARTY_TEMPLATES = {
   ],
 };
 
+const MEMBER_BATTLE_LINES = {
+  アレン: {
+    wounded: "まだいける……！",
+    critical: "くっ、足が……",
+    down: "すまない、ここまでだ……",
+  },
+  ミナ: {
+    wounded: "少し、傷が深いです",
+    critical: "回復が……間に合わない……",
+    down: "ごめんなさい、動けません……",
+  },
+  ガルド: {
+    wounded: "面白くなってきたな",
+    critical: "ちっ、油断したか",
+    down: "……後は任せた",
+  },
+  リナ: {
+    wounded: "まだ押し返せる！",
+    critical: "まずい、踏ん張りが……",
+    down: "ごめん、後を頼む……",
+  },
+  セナ: {
+    wounded: "傷が深いです、でも……",
+    critical: "祈りが、追いつかない……",
+    down: "すみません、動けません……",
+  },
+  オットー: {
+    wounded: "この程度なら計算内だ",
+    critical: "くっ、読み違えたか……",
+    down: "ここから先は任せた……",
+  },
+  ニル: {
+    wounded: "まだ影は踏ませない",
+    critical: "息が、乱れてきた……",
+    down: "ここまで、みたいだ……",
+  },
+  カイ: {
+    wounded: "まだ逃げ道はある",
+    critical: "足が重い……まずいな",
+    down: "悪い、先に落ちる……",
+  },
+};
+
+const JOB_BATTLE_LINES = {
+  warrior: {
+    wounded: "まだ倒れるわけにはいかない……！",
+    critical: "くっ、体が重い……",
+    down: "ここまでだ……後を頼む……",
+  },
+  priest: {
+    wounded: "傷が深くなってきました",
+    critical: "回復が追いつきません……",
+    down: "ごめんなさい、動けません……",
+  },
+  mage: {
+    wounded: "少し、集中が乱れたな",
+    critical: "まずい、魔力が散る……",
+    down: "……後は任せた",
+  },
+  scout: {
+    wounded: "まだ動ける、問題ない",
+    critical: "足を取られた……！",
+    down: "悪い、ここまでだ……",
+  },
+};
+
 const AREAS = {
   plain: {
     id: "plain",
