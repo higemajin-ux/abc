@@ -84,6 +84,7 @@ function createEnemy(monster, area, heroLevel) {
     hp: monster.hp + scale * 8,
     atk: monster.atk + scale * 2,
     def: (monster.def || Math.max(0, area.difficulty - 1)) + Math.floor(scale / 2),
+    dex: monster.dex || area.difficulty + 4,
     xp: monster.xp + scale * 4,
     gold: monster.gold + scale * 3,
     rare: !!monster.rare,
@@ -262,7 +263,84 @@ function performPriestAction(actor, party, enemy, events) {
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
+function targetEnemyGroup(enemy) {
+  return [enemy];
+}
+
+function applyEnemySlow(enemy) {
+  enemy.baseDex = enemy.baseDex || enemy.dex || 1;
+  enemy.dex = Math.max(1, Math.floor(enemy.baseDex * 0.5));
+  enemy.slowTurns = 2;
+}
+
+function tickEnemySlow(enemy) {
+  if (!enemy.slowTurns) return;
+  enemy.slowTurns -= 1;
+  if (enemy.slowTurns <= 0) {
+    enemy.dex = enemy.baseDex || enemy.dex;
+    enemy.slowTurns = 0;
+  }
+}
+
+function applyEnemyPoison(enemy, events) {
+  if (enemy.poisonTurns > 0) {
+    enemy.poisonTier = "venom";
+    enemy.poisonTurns = 3;
+    events.push({ kind: "spell", text: `${enemy.name}の毒が悪化した。` });
+    return;
+  }
+
+  enemy.poisonTier = "poison";
+  enemy.poisonTurns = 3;
+  events.push({ kind: "spell", text: `${enemy.name}は毒に侵された。` });
+}
+
+function applyEnemyBurn(enemy, events) {
+  enemy.burnTurns = 2;
+  events.push({ kind: "spell", text: `${enemy.name}は燃えている。` });
+}
+
+function tickEnemyDots(enemy, events) {
+  if (enemy.hp <= 0) return;
+
+  if (enemy.poisonTurns > 0) {
+    const baseDamage = Math.max(3, Math.floor(enemy.maxHp * 0.05));
+    const damage = enemy.poisonTier === "venom" ? baseDamage * 2 : baseDamage;
+    enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+    events.push({ kind: "spell", text: `${enemy.name}は毒で${damage}ダメージ。` });
+    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    enemy.poisonTurns -= 1;
+    if (enemy.poisonTurns <= 0) {
+      enemy.poisonTurns = 0;
+      enemy.poisonTier = null;
+    }
+  }
+
+  if (enemy.hp <= 0) return;
+
+  if (enemy.burnTurns > 0) {
+    const damage = Math.max(4, Math.floor(enemy.maxHp * 0.06));
+    enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+    events.push({ kind: "spell", text: `${enemy.name}は燃焼で${damage}ダメージ。` });
+    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    enemy.burnTurns -= 1;
+    if (enemy.burnTurns <= 0) enemy.burnTurns = 0;
+  }
+}
+
 function performMageAction(actor, enemy, events) {
+  if (Math.random() < 0.35) {
+    const focused = Math.random() < 0.3;
+    if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
+    const baseDamage = damageFor(Math.floor(actor.atk * 0.5) + Math.floor(actor.level / 2), Math.floor(enemy.def * 0.2));
+    const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
+    enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+    events.push({ kind: "spell", text: `${actor.name}の毒霧。${enemy.name}に${damage}ダメージ。` });
+    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    if (enemy.hp > 0) applyEnemyPoison(enemy, events);
+    return;
+  }
+
   const skillRoll = Math.random();
   if (skillRoll < 0.3) {
     const focused = Math.random() < 0.3;
@@ -280,7 +358,33 @@ function performMageAction(actor, enemy, events) {
     return;
   }
 
-  if (skillRoll < 0.8) {
+  if (skillRoll < 0.7) {
+    const focused = Math.random() < 0.3;
+    if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
+    events.push({ kind: "spell", text: `${actor.name}の氷槍。` });
+
+    for (const target of targetEnemyGroup(enemy)) {
+      if (target.hp <= 0) continue;
+      if (!focused && Math.random() >= 0.9) {
+        events.push({ kind: "spell", text: `${target.name}には当たらなかった。` });
+        continue;
+      }
+
+      const baseDamage = damageFor(Math.floor(actor.atk * 0.8) + actor.level, Math.floor(target.def * 0.3));
+      const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
+      target.hp = clamp(target.hp - damage, 0, target.maxHp);
+      events.push({ kind: "spell", text: `${target.name}に${damage}ダメージ。` });
+      pushHp(events, target, target.hp <= 0 ? "down" : "");
+
+      if (target.hp > 0 && !target.slowTurns && Math.random() < 0.3) {
+        applyEnemySlow(target);
+        events.push({ kind: "spell", text: `${target.name}の動きが鈍った。` });
+      }
+    }
+    return;
+  }
+
+  if (skillRoll < 0.9) {
     const focused = Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     const baseDamage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
@@ -288,6 +392,7 @@ function performMageAction(actor, enemy, events) {
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${actor.name}の火球。${enemy.name}に${damage}ダメージ。` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    if (enemy.hp > 0 && Math.random() < 0.3) applyEnemyBurn(enemy, events);
     return;
   }
 
@@ -470,9 +575,15 @@ function maybeCounterAttack(actor, enemy, events) {
 }
 
 function performEnemyAction(enemy, party, events, speechState) {
-  if (enemy.hp <= 0) return;
+  if (enemy.hp <= 0) {
+    tickEnemySlow(enemy);
+    return;
+  }
   let target = pickEnemyTarget(party);
-  if (!target) return;
+  if (!target) {
+    tickEnemySlow(enemy);
+    return;
+  }
   target = maybeCoverTarget(party, target, events);
 
   let damage = damageFor(enemy.atk, target.def);
@@ -498,6 +609,7 @@ function performEnemyAction(enemy, party, events, speechState) {
     events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
   }
   maybeCounterAttack(target, enemy, events);
+  tickEnemySlow(enemy);
 }
 
 function runEncounter(members, monster, area, speechState = {}) {
@@ -519,6 +631,8 @@ function runEncounter(members, monster, area, speechState = {}) {
 
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
     events.push({ kind: "", text: `${round}ターン目` });
+    tickEnemyDots(enemy, events);
+    if (enemy.hp <= 0) break;
     tickTaunts(party);
     performTurnStartSkillChecks(party, enemy, events);
     for (const member of party) {
