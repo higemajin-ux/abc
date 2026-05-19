@@ -247,7 +247,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     if (rewards.forcedReturn && index === rewards.encounters.length - 1) {
       forcedReturnAt = battleTime + 1;
     }
-    if (!rewards.forcedReturn && (encounter.enemy?.boss || encounter.monster?.boss)) {
+    if (encounter.enemy?.boss || encounter.monster?.boss) {
       const preludeTime = startedAt + Math.floor(span * Math.max(0.2, ratio - 0.08));
       entries.push({
         id: uid("entry"),
