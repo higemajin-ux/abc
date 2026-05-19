@@ -563,6 +563,30 @@ function memberChips(party) {
     .join("");
 }
 
+function memberStatValue(value) {
+  return value == null ? "-" : value;
+}
+
+function memberDetails(party) {
+  return party.members
+    .map(
+      (m) => `<div class="member-detail-card ${m.hp <= 0 ? "down" : ""}">
+        <div class="member-detail-head">
+          <strong>${m.name}</strong>
+          <span>${JOB_LABELS[m.job] || m.job}</span>
+        </div>
+        <div class="member-stat-grid">
+          <span>HP</span><strong>${m.hp} / ${m.maxHp}</strong>
+          <span>ATK</span><strong>${memberStatValue(m.atk)}</strong>
+          <span>DEF</span><strong>${memberStatValue(m.def)}</strong>
+          <span>DEX</span><strong>${memberStatValue(m.dex)}</strong>
+          <span>LUC</span><strong>${memberStatValue(m.luc)}</strong>
+        </div>
+      </div>`
+    )
+    .join("");
+}
+
 function areaOptions(selected) {
   return AREA_ORDER.map((id) => {
     const a = AREAS[id];
@@ -583,13 +607,17 @@ function renderParties() {
     const card = document.createElement("div");
     card.className = "party-card" + (on ? " on-mission-card" : "");
     card.innerHTML = `
-      <h3>${party.name}</h3>
+      <div class="party-card-head">
+        <h3>${party.name}</h3>
+        <button type="button" class="detail-toggle" aria-expanded="false">詳細</button>
+      </div>
       <div class="row"><span>隊長 ${leader.name}</span><span class="muted">Lv.${leader.level}</span></div>
       <div class="row">
         <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で戦闘中` : "派遣待機中"}</span>
         <span class="muted">HP ${leader.hp}/${leader.maxHp}</span>
       </div>
       <div class="member-list">${memberChips(party)}</div>
+      <div class="member-details" hidden>${memberDetails(party)}</div>
       ${on ? `<div class="eta">${formatClock(party.mission.endsAt)} に帰還予定</div>` : ""}
       <label class="field-label">派遣先</label>
       <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
@@ -607,6 +635,14 @@ function renderParties() {
         saveGame();
       });
     }
+    const detailToggle = card.querySelector(".detail-toggle");
+    const memberDetailsRoot = card.querySelector(".member-details");
+    detailToggle.addEventListener("click", () => {
+      const open = memberDetailsRoot.hasAttribute("hidden");
+      memberDetailsRoot.toggleAttribute("hidden", !open);
+      detailToggle.setAttribute("aria-expanded", String(open));
+      detailToggle.textContent = open ? "閉じる" : "詳細";
+    });
     card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
     root.appendChild(card);
   }
