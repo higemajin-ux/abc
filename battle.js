@@ -24,11 +24,13 @@ function createMember(template, level = 1) {
     hp: template.hp == null ? maxHp : clamp(template.hp, 0, maxHp),
     atk: base.atk + Math.floor((level - 1) * 1.5),
     def: base.def + Math.floor((level - 1) * 0.8),
+    dex: template.dex ?? base.dex,
+    luc: template.luc ?? base.luc,
   };
 }
 
 function normalizeMember(member) {
-  const template = { id: member.id, name: member.name, job: member.job || "warrior" };
+  const template = { id: member.id, name: member.name, job: member.job || "warrior", dex: member.dex, luc: member.luc };
   const normalized = createMember(template, member.level || 1);
   normalized.xp = member.xp || 0;
   normalized.xpToNext = member.xpToNext || 40;
