@@ -111,10 +111,13 @@ function pickBossLine(member, hpSnapshot) {
 }
 
 function buildBossPreludeEvents(members, hpSnapshot) {
-  const hpById = new Map((hpSnapshot || []).map((member) => [member.id, member]));
-  const candidates = members
-    .map((member) => ({ member, hp: hpById.get(member.id) }))
-    .filter(({ hp }) => hp && hp.hp > 0);
+  const memberById = new Map(members.map((member) => [member.id, member]));
+  const candidates = (hpSnapshot || [])
+    .filter((hp) => hp.hp > 0)
+    .map((hp) => ({ member: memberById.get(hp.id), hp }))
+    .filter(({ member }) => member);
+  if (!candidates.length) return [];
+
   const speakers = candidates.sort(() => Math.random() - 0.5).slice(0, 2);
   return speakers
     .map(({ member, hp }) => {
