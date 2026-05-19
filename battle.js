@@ -274,12 +274,20 @@ function performMemberAction(actor, party, enemy, events) {
 
 function shouldCoverTarget(target) {
   if (!target || target.hp <= 0 || target.maxHp <= 0) return false;
-  return (target.hp / target.maxHp) * 100 <= 30;
+  return (target.hp / target.maxHp) * 100 <= 70;
+}
+
+function coverChanceFor(target) {
+  const hpRate = target.maxHp > 0 ? (target.hp / target.maxHp) * 100 : 0;
+  if (hpRate <= 25) return 0.6;
+  if (hpRate <= 40) return 0.4;
+  if (hpRate <= 70) return 0.2;
+  return 0;
 }
 
 function pickCoverWarrior(party, target) {
   if (!shouldCoverTarget(target)) return null;
-  if (Math.random() >= 0.25) return null;
+  if (Math.random() >= coverChanceFor(target)) return null;
 
   const candidates = livingMembers(party).filter(
     (member) => member.job === "warrior" && member.id !== target.id
