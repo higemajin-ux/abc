@@ -326,6 +326,31 @@ function missionProgress(party) {
   return total <= 0 ? 100 : clamp(((Date.now() - startedAt) / total) * 100, 0, 100);
 }
 
+function progressStage(progress) {
+  if (progress <= 35) return { key: "explore", label: "探索中" };
+  if (progress <= 70) return { key: "danger", label: "危険区域" };
+  if (progress <= 90) return { key: "boss", label: "ボス接近" };
+  return { key: "return", label: "帰還準備" };
+}
+
+function progressLabel(party) {
+  if (!party.mission) return "冒険へ行く";
+  const progress = Math.round(missionProgress(party));
+  return `${progressStage(progress).label} ${progress}%`;
+}
+
+function applyProgressState(wrap, party) {
+  const bar = wrap.querySelector(".btn-progress");
+  const label = wrap.querySelector(".btn-label");
+  if (!party?.mission || !bar) return;
+
+  const progress = missionProgress(party);
+  const stage = progressStage(progress);
+  bar.style.width = `${progress}%`;
+  bar.className = `btn-progress progress-${stage.key}`;
+  if (label) label.textContent = `${stage.label} ${Math.round(progress)}%`;
+}
+
 function startMission(partyId) {
   const party = getParty(partyId);
   if (!party || party.mission) return;
@@ -422,8 +447,7 @@ function processMissions() {
 function updateProgressBars() {
   document.querySelectorAll("[data-progress]").forEach((wrap) => {
     const party = getParty(wrap.dataset.progress);
-    const bar = wrap.querySelector(".btn-progress");
-    if (party?.mission && bar) bar.style.width = `${missionProgress(party)}%`;
+    applyProgressState(wrap, party);
   });
 }
 
@@ -628,8 +652,8 @@ function renderParties() {
       <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
       <div class="dispatch-wrap" data-progress="${party.id}">
         <button type="button" class="primary dispatch-btn ${on ? "on-mission" : ""}" ${on ? "disabled" : ""}>
-          <span class="btn-progress" style="width:${on ? missionProgress(party) : 0}%"></span>
-          <span class="btn-label">${on ? "冒険中..." : "冒険へ行く"}</span>
+          <span class="btn-progress ${on ? `progress-${progressStage(missionProgress(party)).key}` : ""}" style="width:${on ? missionProgress(party) : 0}%"></span>
+          <span class="btn-label">${progressLabel(party)}</span>
         </button>
       </div>
     `;
