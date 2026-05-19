@@ -67,8 +67,17 @@ function damageFor(attackerAtk, defenderDef = 0) {
   return Math.max(1, attackerAtk - defenderDef);
 }
 
+function hpClass(unit) {
+  const hpRate = unit.maxHp > 0 ? (unit.hp / unit.maxHp) * 100 : 0;
+  if (unit.hp <= 0) return "hp-down";
+  if (hpRate < 30) return "hp-danger";
+  if (hpRate < 50) return "hp-caution";
+  if (hpRate < 70) return "hp-warn";
+  return "hp-safe";
+}
+
 function hpLabel(unit) {
-  return `${unit.name}（HP ${unit.hp}/${unit.maxHp}）`;
+  return `<span class="hp-text ${hpClass(unit)}">${unit.name}（HP ${unit.hp}/${unit.maxHp}）</span>`;
 }
 
 function pushHp(events, unit, kind = "") {
