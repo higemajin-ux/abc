@@ -279,9 +279,9 @@ function shouldCoverTarget(target) {
 
 function coverChanceFor(target) {
   const hpRate = target.maxHp > 0 ? (target.hp / target.maxHp) * 100 : 0;
-  if (hpRate <= 25) return 0.6;
-  if (hpRate <= 40) return 0.4;
-  if (hpRate <= 70) return 0.2;
+  if (hpRate <= 25) return 0.7;
+  if (hpRate <= 40) return 0.5;
+  if (hpRate <= 70) return 0.3;
   return 0;
 }
 
@@ -303,9 +303,23 @@ function maybeCoverTarget(party, target, events) {
     events.push({ kind: "voice", text: `${coverer.name}「下がれ！」` });
   }
   events.push({ kind: "guard", text: `${coverer.name}が${target.name}をかばった。` });
-  events.push({ kind: "guard", text: `${coverer.name}が前に出た。` });
-  events.push({ kind: "guard", text: `${coverer.name}が攻撃を引き受けた。` });
   return coverer;
+}
+
+function maybeCounterAttack(actor, enemy, events) {
+  if (actor.job !== "warrior" || actor.hp <= 0 || enemy.hp <= 0) return;
+  if (Math.random() >= 0.4) return;
+
+  const damageRate = 0.5 + Math.random() * 0.3;
+  const damage = Math.max(1, Math.floor(actor.atk * damageRate));
+  enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+  if (Math.random() < 0.15) {
+    events.push({ kind: "voice", text: `${actor.name}「こちらも返す」` });
+  }
+  events.push({ kind: "guard", text: `${actor.name}が反撃した。` });
+  events.push({ kind: "guard", text: `${actor.name}が短く斬り返した。` });
+  events.push({ kind: "", text: `${enemy.name}に${damage}ダメージ。` });
+  pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
 function performEnemyAction(enemy, party, events, speechState) {
@@ -318,7 +332,6 @@ function performEnemyAction(enemy, party, events, speechState) {
   if (target.guard) {
     damage = Math.max(1, Math.floor(damage * 0.5));
     target.guard = false;
-    events.push({ kind: "guard", text: `${target.name}へのダメージが軽減された。` });
   }
   const beforeHp = target.hp;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
@@ -328,6 +341,7 @@ function performEnemyAction(enemy, party, events, speechState) {
   if (target.hp <= 0) {
     events.push({ kind: "down", text: `${target.name}は戦闘不能になった。` });
   }
+  maybeCounterAttack(target, enemy, events);
 }
 
 function runEncounter(members, monster, area, speechState = {}) {
