@@ -38,8 +38,8 @@ function tryMageMagicSense(members, monster, area) {
   return {
     monster: pickWeightedMonster(area, 3),
     events: [
-      { kind: "voice", text: `${detector.name}<br>「……何か来ます」` },
-      { kind: "", text: "嫌な気配が近づいている。" },
+      { kind: "spell", text: `${detector.name}は魔力探知を使った。` },
+      { kind: "voice", text: `${detector.name}<br>「……珍しいやつがいるな」` },
     ],
   };
 }
