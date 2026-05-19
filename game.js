@@ -163,6 +163,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
   rewards.encounters.forEach((encounter, index) => {
     const lastIndex = Math.max(1, rewards.encounters.length - 1);
     const ratio = 0.3 + (index / lastIndex) * 0.48;
+    const battleTime = startedAt + Math.floor(span * ratio);
     if (encounter.enemy?.boss || encounter.monster?.boss) {
       const preludeTime = startedAt + Math.floor(span * Math.max(0.2, ratio - 0.08));
       entries.push({
@@ -184,9 +185,19 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
         });
       });
     }
+    (encounter.explorationEvents || []).forEach((event, eventIndex) => {
+      entries.push({
+        id: uid("entry"),
+        timestamp: Math.max(startedAt, battleTime - encounter.explorationEvents.length + eventIndex),
+        type: "flavor",
+        title: event.text,
+        membersSnapshot: encounter.startMembersSnapshot,
+        shown: false,
+      });
+    });
     entries.push({
       id: uid("entry"),
-      timestamp: startedAt + Math.floor(span * ratio),
+      timestamp: battleTime,
       type: "battle",
       title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
       monsterBoss: !!encounter.monster.boss,
@@ -269,6 +280,16 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
         });
       });
     }
+    (encounter.explorationEvents || []).forEach((event, eventIndex) => {
+      entries.push({
+        id: uid("entry"),
+        timestamp: Math.max(startedAt, battleTime - encounter.explorationEvents.length + eventIndex),
+        type: "flavor",
+        title: event.text,
+        membersSnapshot: encounter.startMembersSnapshot,
+        shown: false,
+      });
+    });
     entries.push({
       id: uid("entry"),
       timestamp: battleTime,
