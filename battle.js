@@ -272,10 +272,39 @@ function performMemberAction(actor, party, enemy, events) {
   else performWarriorAction(actor, enemy, events);
 }
 
+function shouldCoverTarget(target) {
+  if (!target || target.hp <= 0 || target.maxHp <= 0) return false;
+  return (target.hp / target.maxHp) * 100 <= 30;
+}
+
+function pickCoverWarrior(party, target) {
+  if (!shouldCoverTarget(target)) return null;
+  if (Math.random() >= 0.25) return null;
+
+  const candidates = livingMembers(party).filter(
+    (member) => member.job === "warrior" && member.id !== target.id
+  );
+  return candidates.length ? pick(candidates) : null;
+}
+
+function maybeCoverTarget(party, target, events) {
+  const coverer = pickCoverWarrior(party, target);
+  if (!coverer) return target;
+
+  if (Math.random() < 0.15) {
+    events.push({ kind: "voice", text: `${coverer.name}「下がれ！」` });
+  }
+  events.push({ kind: "guard", text: `${coverer.name}が${target.name}をかばった。` });
+  events.push({ kind: "guard", text: `${coverer.name}が前に出た。` });
+  events.push({ kind: "guard", text: `${coverer.name}が攻撃を引き受けた。` });
+  return coverer;
+}
+
 function performEnemyAction(enemy, party, events, speechState) {
   if (enemy.hp <= 0) return;
-  const target = pickEnemyTarget(party);
+  let target = pickEnemyTarget(party);
   if (!target) return;
+  target = maybeCoverTarget(party, target, events);
 
   let damage = damageFor(enemy.atk, target.def);
   if (target.guard) {
