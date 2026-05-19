@@ -292,9 +292,23 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     });
   }
 
+  const returnTime = rewards.forcedReturn ? forcedReturnAt : endsAt;
+  const returnMembersSnapshot = rewards.encounters.at(-1)?.membersSnapshot;
+  const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot);
+  returnEvents.forEach((event, eventIndex) => {
+    entries.push({
+      id: uid("entry"),
+      timestamp: Math.max(startedAt, returnTime - returnEvents.length + eventIndex),
+      type: "flavor",
+      title: event.text,
+      membersSnapshot: returnMembersSnapshot,
+      shown: false,
+    });
+  });
+
   entries.push({
     id: uid("entry"),
-    timestamp: rewards.forcedReturn ? forcedReturnAt : endsAt,
+    timestamp: returnTime,
     type: "return",
     title: rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
     battleDetail: rewards.encounters.flatMap((e) => e.events),
