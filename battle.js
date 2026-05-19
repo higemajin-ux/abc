@@ -324,8 +324,8 @@ function shouldWarriorTaunt(actor, party) {
 }
 
 function shouldWarriorDesperateStrike(actor) {
-  if (actor.job !== "warrior" || actor.hp <= 0) return false;
-  return true;
+  if (actor.job !== "warrior" || actor.hp <= 0 || actor.ironWall) return false;
+  return Math.random() < 0.3;
 }
 
 function performWarriorAction(actor, party, enemy, events) {
