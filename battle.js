@@ -231,10 +231,11 @@ function performPriestAction(actor, party, enemy, events) {
 }
 
 function performMageAction(actor, enemy, events) {
-  if (Math.random() < 0.35) {
-    const damage = damageFor(actor.atk + 8 + actor.level, enemy.def);
+  if (Math.random() < 0.5) {
+    const damage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-    events.push({ kind: "spell", text: `${actor.name}が攻撃魔法！ ${enemy.name}に${damage}ダメージ！` });
+    events.push({ kind: "spell", text: `${actor.name}の火球。` });
+    events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     return;
   }
