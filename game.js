@@ -567,6 +567,10 @@ function memberStatValue(value) {
   return value == null ? "-" : value;
 }
 
+function memberFormation(member) {
+  return member.formation || "中衛";
+}
+
 function memberDetails(party) {
   return party.members
     .map(
@@ -574,6 +578,7 @@ function memberDetails(party) {
         <div class="member-detail-head">
           <strong>${m.name}</strong>
           <span>${JOB_LABELS[m.job] || m.job}</span>
+          <span class="member-formation">【${memberFormation(m)}】</span>
         </div>
         <div class="member-stat-grid">
           <div class="member-stat-row"><span>HP</span><strong>${m.hp} / ${m.maxHp}</strong></div>
@@ -746,12 +751,24 @@ function ensurePartyShape(party) {
   if (!party.stats) party.stats = defaultStats();
   if (!party.dispatches) party.dispatches = [];
   if (!party.expandedDispatchIds) party.expandedDispatchIds = [];
+  const template = party.id === "pt2" ? PARTY_TEMPLATES.pt2 : PARTY_TEMPLATES.pt1;
   if (!party.members) {
     const leaderName = party.hero?.name || (party.id === "pt2" ? "リナ" : "アレン");
-    const template = party.id === "pt2" ? PARTY_TEMPLATES.pt2 : PARTY_TEMPLATES.pt1;
     party.members = template.map((m, i) => createMember({ ...m, name: i === 0 ? leaderName : m.name }, party.hero?.level || 1));
   }
-  party.members = party.members.map(normalizeMember);
+  for (const templateMember of template) {
+    if (!party.members.some((member) => member.id === templateMember.id)) {
+      party.members.push(createMember(templateMember, party.hero?.level || 1));
+    }
+  }
+  party.members = party.members.map((member, index) => {
+    const normalized = normalizeMember(member);
+    const templateMember = template.find((m) => m.id === member.id) || template[index];
+    normalized.formation = member.formation || templateMember?.formation || "中衛";
+    return normalized;
+  });
+  const order = new Map(template.map((member, index) => [member.id, index]));
+  party.members.sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
   party.hero = party.members[0];
 }
 
