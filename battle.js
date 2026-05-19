@@ -104,15 +104,16 @@ function bossLinesFor(member) {
 
 function pickBossLine(member, hpSnapshot) {
   const lines = bossLinesFor(member);
-  if (!lines) return null;
+  if (!lines) return "来るぞ。構えろ";
   const hpRate = hpSnapshot.maxHp > 0 ? (hpSnapshot.hp / hpSnapshot.maxHp) * 100 : 0;
   const pool = hpRate <= 30 && lines.critical?.length ? lines.critical : lines.normal;
-  return pool?.length ? pick(pool) : null;
+  return pool?.length ? pick(pool) : "来るぞ。構えろ";
 }
 
 function buildBossPreludeEvents(members, hpSnapshot) {
   const memberById = new Map(members.map((member) => [member.id, member]));
-  const candidates = (hpSnapshot || [])
+  const hpSource = hpSnapshot?.length ? hpSnapshot : snapshotPartyHp(members);
+  const candidates = hpSource
     .filter((hp) => hp.hp > 0)
     .map((hp) => ({ member: memberById.get(hp.id), hp }))
     .filter(({ member }) => member);
