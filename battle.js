@@ -12,6 +12,38 @@ function pick(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+function pickWeightedMonster(area, rareWeight = 1) {
+  const options = area.monsters
+    .map((id) => MONSTERS[id])
+    .filter(Boolean)
+    .map((monster) => ({
+      monster,
+      weight: monster.rare ? rareWeight : 1,
+    }));
+  const total = options.reduce((sum, option) => sum + option.weight, 0);
+  let rollValue = Math.random() * total;
+  for (const option of options) {
+    rollValue -= option.weight;
+    if (rollValue <= 0) return option.monster;
+  }
+  return options.at(-1)?.monster || MONSTERS[pick(area.monsters)];
+}
+
+function tryMageMagicSense(members, monster, area) {
+  if (monster.boss || !area.monsters?.length) return { monster, events: [] };
+  const mages = livingMembers(members).filter((member) => member.job === "mage");
+  if (!mages.length || Math.random() >= 0.2) return { monster, events: [] };
+
+  const detector = pick(mages);
+  return {
+    monster: pickWeightedMonster(area, 3),
+    events: [
+      { kind: "voice", text: `${detector.name}<br>「……何か来ます」` },
+      { kind: "", text: "嫌な気配が近づいている。" },
+    ],
+  };
+}
+
 function createMember(template, level = 1) {
   const base = JOB_STATS[template.job];
   const maxHp = base.maxHp + (level - 1) * 5;
@@ -469,11 +501,13 @@ function performEnemyAction(enemy, party, events, speechState) {
 }
 
 function runEncounter(members, monster, area, speechState = {}) {
+  const magicSense = tryMageMagicSense(members, monster, area);
+  monster = magicSense.monster;
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
   const enemy = createEnemy(monster, area, highestLevel);
   const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
   const startMembersSnapshot = snapshotPartyHp(party);
-  const events = [];
+  const events = [...magicSense.events];
   let round = 1;
 
   events.push({
