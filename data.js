@@ -64,6 +64,39 @@ const EQUIPMENT_DROPS = [
   { id: "ashGrimoire", name: "灰の魔導書", slot: "accessory", rarity: "artifact", sellGold: 260 },
   { id: "namelessSignet", name: "名も無き聖印", slot: "accessory", rarity: "artifact", sellGold: 280 },
   { id: "blackKingRing", name: "黒王の指輪", slot: "accessory", rarity: "artifact", sellGold: 320 },
+{ id: "rustyAxe", name: "錆びた斧", slot: "weapon", rarity: "common", atk: 2, dex: -1, sellGold: 11 },
+
+{ id: "mercenarySword", name: "傭兵の剣", slot: "weapon", rarity: "uncommon", atk: 4, dex: 1, sellGold: 24 },
+
+{ id: "smolderingDagger", name: "燻る短剣", slot: "weapon", rarity: "uncommon", atk: 3, luc: 1, sellGold: 25 },
+
+{ id: "blackIronSword", name: "黒鉄の剣", slot: "weapon", rarity: "rare", atk: 6, def: 1, sellGold: 55 },
+
+{ id: "ashCoveredStaff", name: "灰かぶりの杖", slot: "weapon", rarity: "rare", atk: 5, luc: 2, sellGold: 60 },
+
+{ id: "emberRemnantBlade", name: "名残火の刃", slot: "weapon", rarity: "epic", atk: 8, maxHp: -3, sellGold: 120 },
+
+{ id: "gravekeeperGreatsword", name: "墓守の大剣", slot: "weapon", rarity: "legendary", atk: 10, def: 2, dex: -1, sellGold: 220 },
+
+{ id: "patchedCloak", name: "継ぎ布の外套", slot: "armor", rarity: "common", def: 1, maxHp: 2, sellGold: 10 },
+
+{ id: "blackLeatherArmor", name: "黒革の軽鎧", slot: "armor", rarity: "uncommon", def: 3, dex: 1, sellGold: 30 },
+
+{ id: "oldBreastplate", name: "古い胸当て", slot: "armor", rarity: "rare", def: 5, maxHp: 4, dex: -1, sellGold: 65 },
+
+{ id: "sootRobe", name: "煤けた法衣", slot: "armor", rarity: "rare", def: 3, luc: 3, sellGold: 60 },
+
+{ id: "fallenKingMail", name: "亡国の鎖帷子", slot: "armor", rarity: "epic", def: 7, maxHp: 6, sellGold: 130 },
+
+{ id: "ashKingCloak", name: "灰王の外套", slot: "armor", rarity: "legendary", def: 6, maxHp: 10, luc: 2, sellGold: 240 },
+
+{ id: "dryHolyMark", name: "乾いた聖印", slot: "accessory", rarity: "common", luc: 1, sellGold: 10 },
+
+{ id: "rustedEarring", name: "赤錆の耳飾り", slot: "accessory", rarity: "uncommon", dex: 1, luc: 1, sellGold: 20 },
+
+{ id: "pilgrimShoes", name: "巡礼者の靴", slot: "accessory", rarity: "uncommon", dex: 2, sellGold: 24 },
+
+{ id: "thiefGloves", name: "盗賊の手袋", slot: "accessory", rarity: "rare", dex: 3, luc: 1, sellGold: 60 },
 ];
 
 const PARTY_TEMPLATES = {
