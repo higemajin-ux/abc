@@ -430,6 +430,8 @@ function canPartyReviveDownedMember(party, downedMember) {
 function pickFinalDownSpeaker(party) {
   const downed = party.filter((member) => member.hp <= 0 && member.pendingDownConfirm);
   if (!downed.length) return null;
+  const downedPriest = downed.find((member) => member.job === "priest");
+  if (downedPriest) return downedPriest;
   return downed.sort((a, b) => (b.downOrder || 0) - (a.downOrder || 0))[0];
 }
 
