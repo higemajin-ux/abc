@@ -427,6 +427,8 @@ h1 {
 }
 
 .equip-choice-btn {
+  display: grid;
+  gap: 3px;
   min-height: 30px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -435,11 +437,32 @@ h1 {
   padding: 4px 9px;
   font-size: 0.82rem;
   font-weight: 700;
+  text-align: left;
 }
 
 .equip-choice-btn:hover {
   border-color: var(--line-bright);
   background: rgba(214, 168, 79, 0.08);
+}
+
+.equip-choice-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.equip-choice-head span {
+  color: var(--muted-on-dark);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.equip-choice-meta,
+.storage-effect {
+  color: var(--muted-on-dark);
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .equipment-empty {
@@ -594,8 +617,13 @@ h1 {
 }
 
 .storage-info {
+  display: grid;
+  gap: 3px;
+}
+
+.storage-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
   flex-wrap: wrap;
 }
