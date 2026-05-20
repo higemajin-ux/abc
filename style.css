@@ -542,6 +542,10 @@ h1 {
   color: #e7a64c;
 }
 
+.rarity-artifact {
+  color: var(--red);
+}
+
 .world-meter {
   height: 10px;
   overflow: hidden;
