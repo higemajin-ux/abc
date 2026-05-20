@@ -17,6 +17,23 @@ const JOB_STATS = {
   scout: { maxHp: 30, atk: 9, def: 2, dex: 11, luc: 9 },
 };
 
+const EQUIPMENT_ITEMS = {
+  ironSword: { id: "ironSword", name: "鉄の剣", slot: "weapon", atk: 2 },
+  oakStaff: { id: "oakStaff", name: "樫の杖", slot: "weapon", atk: 1, luc: 1 },
+  apprenticeWand: { id: "apprenticeWand", name: "見習いの杖", slot: "weapon", atk: 2 },
+  huntingDagger: { id: "huntingDagger", name: "狩人の短剣", slot: "weapon", atk: 1, dex: 1 },
+  leatherArmor: { id: "leatherArmor", name: "革の鎧", slot: "armor", def: 1, maxHp: 2 },
+  travelRobe: { id: "travelRobe", name: "旅のローブ", slot: "armor", def: 1, luc: 1 },
+  scoutCloak: { id: "scoutCloak", name: "斥候の外套", slot: "armor", def: 1, dex: 1 },
+};
+
+const DEFAULT_EQUIPMENT_BY_JOB = {
+  warrior: { weapon: "ironSword", armor: "leatherArmor" },
+  priest: { weapon: "oakStaff", armor: "travelRobe" },
+  mage: { weapon: "apprenticeWand", armor: "travelRobe" },
+  scout: { weapon: "huntingDagger", armor: "scoutCloak" },
+};
+
 const PARTY_TEMPLATES = {
   pt1: [
     { id: "pt1-allen", name: "アレン", job: "warrior", formation: "前衛" },
