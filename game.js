@@ -816,6 +816,9 @@ function memberDetails(party) {
           <div class="member-stat-row"><span>DEX</span><strong>${memberStatValue(m.dex)}</strong></div>
           <div class="member-stat-row"><span>LUC</span><strong>${memberStatValue(m.luc)}</strong></div>
         </div>
+        <div class="member-equipment">${Object.values(ensureCharacterEquipment(m))
+          .map((itemId) => formatEquipmentLine(EQUIPMENT_ITEMS[itemId]))
+          .join(" / ")}</div>
       </div>`
     )
     .join("");
