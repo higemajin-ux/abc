@@ -788,6 +788,7 @@ function memberDetails(party) {
         <div class="member-detail-head">
           <strong>${m.name}</strong>
           <span>${JOB_LABELS[m.job] || m.job}</span>
+          <span>Lv${m.level || 1}</span>
           <span class="member-formation">【${memberFormation(m)}】</span>
         </div>
         <div class="member-stat-grid">
