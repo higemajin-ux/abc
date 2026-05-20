@@ -224,6 +224,7 @@ h1 {
   color: var(--blue);
   font-size: 0.9rem;
   margin-top: 8px;
+  min-height: 22px;
 }
 
 .member-list {
