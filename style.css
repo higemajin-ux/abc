@@ -513,6 +513,14 @@ h1 {
   padding: 8px 10px;
 }
 
+.storage-info,
+.storage-equip-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .storage-item {
   font-weight: 700;
 }
@@ -520,6 +528,32 @@ h1 {
 .storage-meta {
   color: var(--muted-on-dark);
   font-size: 0.76rem;
+}
+
+.storage-member-select {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-on-dark);
+  padding: 4px 7px;
+  font-size: 0.82rem;
+}
+
+.storage-equip-btn {
+  min-height: 30px;
+  border: 1px solid var(--line-bright);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px 9px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.storage-equip-btn:hover {
+  background: rgba(214, 168, 79, 0.08);
 }
 
 .rarity-common {
