@@ -185,7 +185,7 @@ function hpLabel(unit) {
   const statuses = statusLabels(unit);
   const statusText = statuses.length ? `<span class="status-tags">【${statuses.join(" ")}】</span>` : "";
   const tempText = unit.tempHp > 0 ? `<span class="temp-hp">+${unit.tempHp}</span>` : "";
-  return `<span class="hp-text ${hpClass(unit)}"><span class="hp-name">${unit.name}</span><span class="hp-value">${unit.hp}${tempText}/${unit.maxHp}</span>${statusText}</span>`;
+  return `<span class="hp-text ${hpClass(unit)}"><span class="hp-name">${unit.name}</span>（<span class="hp-value">${unit.hp}${tempText}/${unit.maxHp}</span>）${statusText}</span>`;
 }
 
 function pushHp(events, unit, kind = "") {
