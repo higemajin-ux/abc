@@ -714,6 +714,11 @@ h1 {
   color: var(--accent);
 }
 
+.battle-detail .enemy-action {
+  color: #927f67;
+  padding-left: 0;
+}
+
 .battle-detail .down,
 .battle-detail .boss {
   color: var(--red);
@@ -728,7 +733,7 @@ h1 {
 }
 
 .battle-detail .action-break {
-  min-height: 0.85rem;
+  min-height: 0.65rem;
 }
 
 .dispatch-group {
