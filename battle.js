@@ -1221,6 +1221,6 @@ function runEncounter(members, monster, area, speechState = {}) {
     membersSnapshot: snapshotPartyHp(party),
     kills: victory ? 1 : 0,
     xp: victory ? enemy.xp : Math.floor(enemy.xp * 0.35),
-    gold: victory ? enemy.gold + (shouldAutoSellDrop(equipmentDrop) ? equipmentDrop.sellGold || 0 : 0) : Math.floor(enemy.gold * 0.25),
+    gold: victory ? enemy.gold + (equipmentDrop && shouldAutoSellDrop(equipmentDrop) ? equipmentDrop.sellGold || 0 : 0) : Math.floor(enemy.gold * 0.25),
   };
 }
