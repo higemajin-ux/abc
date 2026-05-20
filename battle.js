@@ -48,24 +48,39 @@ function tryMageMagicSense(members, monster, area) {
 }
 
 function createMember(template, level = 1) {
+  const equipment = ensureCharacterEquipment(template);
+  const bonus = getEquipmentBonus(template);
   const base = JOB_STATS[template.job];
-  const maxHp = base.maxHp + (level - 1) * 5;
+  const maxHp = base.maxHp + (level - 1) * 5 + bonus.maxHp;
+  const baseDex = template.baseDex ?? template.dex ?? base.dex;
+  const baseLuc = template.baseLuc ?? template.luc ?? base.luc;
   return {
     ...template,
+    equipment: { ...equipment },
     level,
     xp: template.xp || 0,
     xpToNext: template.xpToNext || 40,
     maxHp,
     hp: template.hp == null ? maxHp : clamp(template.hp, 0, maxHp),
-    atk: base.atk + Math.floor((level - 1) * 1.5),
-    def: base.def + Math.floor((level - 1) * 0.8),
-    dex: template.dex ?? base.dex,
-    luc: template.luc ?? base.luc,
+    atk: base.atk + Math.floor((level - 1) * 1.5) + bonus.atk,
+    def: base.def + Math.floor((level - 1) * 0.8) + bonus.def,
+    baseDex,
+    baseLuc,
+    dex: baseDex + bonus.dex,
+    luc: baseLuc + bonus.luc,
   };
 }
 
 function normalizeMember(member) {
-  const template = { id: member.id, name: member.name, job: member.job || "warrior", dex: member.dex, luc: member.luc };
+  const currentBonus = member.equipment ? getEquipmentBonus(member) : { dex: 0, luc: 0 };
+  const template = {
+    id: member.id,
+    name: member.name,
+    job: member.job || "warrior",
+    equipment: member.equipment,
+    baseDex: member.baseDex ?? (member.dex == null ? undefined : member.dex - currentBonus.dex),
+    baseLuc: member.baseLuc ?? (member.luc == null ? undefined : member.luc - currentBonus.luc),
+  };
   const normalized = createMember(template, member.level || 1);
   normalized.xp = member.xp || 0;
   normalized.xpToNext = member.xpToNext || 40;
