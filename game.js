@@ -679,6 +679,7 @@ function battleEventClass(event, prevEvent = null) {
   const kind = event.kind || "";
   const classes = kind.split(/\s+/).filter(Boolean);
   if (kind === "turn-separator" || kind === "action-break") return kind;
+  if (kind === "intro") return kind;
   if (classes.includes("initial-hp")) return kind;
   if ((event.text || "").includes("hp-text")) {
     const prevClasses = (prevEvent?.kind || "").split(/\s+/);
