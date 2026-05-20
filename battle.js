@@ -170,12 +170,29 @@ function hpClass(unit) {
   return "hp-safe";
 }
 
+function statusLabels(unit) {
+  const labels = [];
+  if (unit.poisonTurns > 0 && unit.poisonTier !== "venom") labels.push("毒");
+  if (unit.poisonTurns > 0 && unit.poisonTier === "venom") labels.push("猛毒");
+  if (unit.burnTurns > 0) labels.push("火傷");
+  if (unit.paralyzeTurns > 0) labels.push("麻痺");
+  if (unit.blindTurns > 0) labels.push("盲目");
+  if (unit.slowTurns > 0) labels.push("スロー");
+  return labels;
+}
+
 function hpLabel(unit) {
-  return `<span class="hp-text ${hpClass(unit)}">${unit.name}（HP ${unit.hp}/${unit.maxHp}）</span>`;
+  const statuses = statusLabels(unit);
+  const statusText = statuses.length ? `<br><span class="status-tags">【${statuses.join(" ")}】</span>` : "";
+  return `<span class="hp-text ${hpClass(unit)}"><span class="hp-name">${unit.name}</span><br><span class="hp-value">${unit.hp}/${unit.maxHp}</span>${statusText}</span>`;
 }
 
 function pushHp(events, unit, kind = "") {
   events.push({ kind, text: hpLabel(unit) });
+}
+
+function pushActionBreak(events) {
+  events.push({ kind: "action-break", text: "" });
 }
 
 function pushPartyHp(events, party) {
@@ -896,6 +913,7 @@ function performEnemyAction(enemy, party, events, speechState) {
   if (enemy.blindTurns > 0 && Math.random() < 0.4) {
     events.push({ kind: "", text: `${enemy.name}の攻撃は外れた。` });
     tickEnemyTurnStatuses(enemy);
+    pushActionBreak(events);
     return;
   }
 
@@ -936,6 +954,7 @@ function performEnemyAction(enemy, party, events, speechState) {
   }
   maybeCounterAttack(target, enemy, events);
   tickEnemyTurnStatuses(enemy);
+  pushActionBreak(events);
 }
 
 function runEncounter(members, monster, area, speechState = {}) {
@@ -965,7 +984,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   pushPartyHp(events, party);
 
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
-    events.push({ kind: "", text: `${round}ターン目` });
+    events.push({ kind: "turn-separator", text: `──── Turn ${round} ────` });
     tickEnemyDots(enemy, events);
     if (enemy.hp <= 0) break;
     tickTaunts(party);
