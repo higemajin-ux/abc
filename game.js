@@ -647,7 +647,7 @@ function startMission(partyId) {
   revealDueEntries(party);
 
   saveGame();
-  renderParties();
+  renderPartyCard(party);
   renderReports();
   renderLogs();
   ensureTick();
@@ -675,7 +675,14 @@ function completeMission(party) {
   party.mission = null;
 
   saveGame();
-  renderAll();
+  renderPartyCard(party);
+  renderReports();
+  renderStages();
+  renderWorldSituation();
+  storageRenderCount = -1;
+  renderStorage();
+  renderStats();
+  renderLogs();
 }
 
 function processMissions() {
@@ -697,7 +704,7 @@ function processMissions() {
   }
 
   updateProgressBars();
-  if (partyDirty) renderParties();
+  if (partyDirty) updatePartyCards();
   if (dirty) renderLogs();
   if (!state.parties.some((p) => p.mission)) stopTick();
 }
@@ -979,17 +986,26 @@ function areaOptions(selected) {
   }).join("");
 }
 
-function renderParties() {
-  const root = $("parties-root");
-  root.innerHTML = "";
-
-  for (const party of state.parties) {
-    const on = !!party.mission;
-    const area = on ? getArea(party.mission.areaId) : getArea(party.selectedArea);
+function updatePartyCards() {
+  document.querySelectorAll("[data-party-card]").forEach((card) => {
+    const party = getParty(card.dataset.partyCard);
+    if (!party) return;
     const leader = party.members[0];
-    const card = document.createElement("div");
-    card.className = "party-card" + (on ? " on-mission-card" : "");
-    card.innerHTML = `
+    const leaderHp = card.querySelector(".leader-hp");
+    if (leaderHp) leaderHp.textContent = `HP ${leader.hp}/${leader.maxHp}`;
+    const memberList = card.querySelector(".member-list");
+    if (memberList) memberList.innerHTML = memberChips(party);
+  });
+}
+
+function createPartyCard(party) {
+  const on = !!party.mission;
+  const area = on ? getArea(party.mission.areaId) : getArea(party.selectedArea);
+  const leader = party.members[0];
+  const card = document.createElement("div");
+  card.className = "party-card" + (on ? " on-mission-card" : "");
+  card.dataset.partyCard = party.id;
+  card.innerHTML = `
       <div class="party-card-head">
         <h3>${party.name}</h3>
         <button type="button" class="detail-toggle" aria-expanded="false">詳細</button>
@@ -997,7 +1013,7 @@ function renderParties() {
       <div class="row"><span>隊長 ${leader.name}</span><span class="muted">Lv.${leader.level}</span></div>
       <div class="row">
         <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で戦闘中` : "派遣待機中"}</span>
-        <span class="muted">HP ${leader.hp}/${leader.maxHp}</span>
+        <span class="muted leader-hp">HP ${leader.hp}/${leader.maxHp}</span>
       </div>
       <div class="member-list">${memberChips(party)}</div>
       <div class="member-details" hidden>${memberDetails(party)}</div>
@@ -1012,46 +1028,61 @@ function renderParties() {
       </div>
     `;
 
-    if (!on) {
-      card.querySelector(".area-select").addEventListener("change", (e) => {
-        party.selectedArea = e.target.value;
-        saveGame();
-      });
-    }
-    const detailToggle = card.querySelector(".detail-toggle");
-    const memberDetailsRoot = card.querySelector(".member-details");
-    if (openDetailPartyIds.has(party.id)) {
-      memberDetailsRoot.removeAttribute("hidden");
-      detailToggle.setAttribute("aria-expanded", "true");
-      detailToggle.textContent = "閉じる";
-    }
-    detailToggle.addEventListener("click", () => {
-      const open = memberDetailsRoot.hasAttribute("hidden");
-      memberDetailsRoot.toggleAttribute("hidden", !open);
-      detailToggle.setAttribute("aria-expanded", String(open));
-      detailToggle.textContent = open ? "閉じる" : "詳細";
-      if (open) openDetailPartyIds.add(party.id);
-      else openDetailPartyIds.delete(party.id);
+  if (!on) {
+    card.querySelector(".area-select").addEventListener("change", (e) => {
+      party.selectedArea = e.target.value;
+      saveGame();
     });
-    card.querySelectorAll(".equip-slot-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        const slotRoot = button.closest(".member-equipment-slot");
-        const candidates = slotRoot?.querySelector(".equipment-candidates");
-        if (!candidates) return;
-        const open = candidates.hasAttribute("hidden");
-        card.querySelectorAll(".equipment-candidates").forEach((list) => {
-          if (list !== candidates) list.setAttribute("hidden", "");
-        });
-        candidates.toggleAttribute("hidden", !open);
+  }
+  const detailToggle = card.querySelector(".detail-toggle");
+  const memberDetailsRoot = card.querySelector(".member-details");
+  if (openDetailPartyIds.has(party.id)) {
+    memberDetailsRoot.removeAttribute("hidden");
+    detailToggle.setAttribute("aria-expanded", "true");
+    detailToggle.textContent = "閉じる";
+  }
+  detailToggle.addEventListener("click", () => {
+    const open = memberDetailsRoot.hasAttribute("hidden");
+    memberDetailsRoot.toggleAttribute("hidden", !open);
+    detailToggle.setAttribute("aria-expanded", String(open));
+    detailToggle.textContent = open ? "閉じる" : "詳細";
+    if (open) openDetailPartyIds.add(party.id);
+    else openDetailPartyIds.delete(party.id);
+  });
+  card.querySelectorAll(".equip-slot-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const slotRoot = button.closest(".member-equipment-slot");
+      const candidates = slotRoot?.querySelector(".equipment-candidates");
+      if (!candidates) return;
+      const open = candidates.hasAttribute("hidden");
+      card.querySelectorAll(".equipment-candidates").forEach((list) => {
+        if (list !== candidates) list.setAttribute("hidden", "");
       });
+      candidates.toggleAttribute("hidden", !open);
     });
-    card.querySelectorAll(".equip-choice-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
-      });
+  });
+  card.querySelectorAll(".equip-choice-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
     });
-    card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
-    root.appendChild(card);
+  });
+  card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
+  return card;
+}
+
+function renderPartyCard(party) {
+  const current = document.querySelector(`[data-party-card="${party.id}"]`);
+  const next = createPartyCard(party);
+  if (current) current.replaceWith(next);
+  else $("parties-root").appendChild(next);
+}
+
+function renderParties() {
+  const root = $("parties-root");
+  root.innerHTML = "";
+
+  for (const party of state.parties) {
+    root.appendChild(createPartyCard(party));
   }
 }
 
@@ -1305,7 +1336,6 @@ $("reset-btn").addEventListener("click", resetGame);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     processMissions();
-    renderParties();
     updateProgressBars();
   }
 });
