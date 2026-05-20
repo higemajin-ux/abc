@@ -674,12 +674,13 @@ function performMageAction(actor, enemy, events) {
       const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
       target.hp = clamp(target.hp - damage, 0, target.maxHp);
       events.push({ kind: "spell", text: `${target.name}に${damage}ダメージ。` });
-      pushHp(events, target, target.hp <= 0 ? "down" : "");
 
       if (target.hp > 0 && !target.slowTurns && Math.random() < 0.3) {
         applyEnemySlow(target);
         events.push({ kind: "spell", text: `${target.name}の動きが鈍った。` });
         pushHp(events, target);
+      } else {
+        pushHp(events, target, target.hp <= 0 ? "down" : "");
       }
     }
     return;
@@ -979,8 +980,8 @@ function performEnemyAction(enemy, party, events, speechState) {
   target = maybeCoverTarget(party, target, events);
 
   if (enemy.blindTurns > 0 && Math.random() < 0.4) {
-    events.push({ kind: "", text: `${enemy.name}の攻撃` });
-    events.push({ kind: "", text: "ミス！攻撃は外れた。" });
+    events.push({ kind: "enemy-action", text: `${enemy.name}の攻撃` });
+    events.push({ kind: "enemy-action", text: "ミス！攻撃は外れた。" });
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
     pushActionBreak(events);
@@ -1009,9 +1010,9 @@ function performEnemyAction(enemy, party, events, speechState) {
     !party.priestBlessingUsed &&
     target.hp > 0;
   applyDamageToMember(target, damage);
-  events.push({ kind: "", text: `${enemy.name}の攻撃。` });
+  events.push({ kind: "enemy-action", text: `${enemy.name}の攻撃。` });
   if (target.hp <= 0) {
-    events.push({ kind: "", text: `${damageResultText(target, damage, hit.critical)}。` });
+    events.push({ kind: "enemy-action", text: `${damageResultText(target, damage, hit.critical)}。` });
     if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
       reactToHpDrop(target, beforeHp, events, speechState);
     } else {
@@ -1019,7 +1020,7 @@ function performEnemyAction(enemy, party, events, speechState) {
       confirmMemberDown(target, events, speechState);
     }
   } else {
-    events.push({ kind: "", text: `${damageResultText(target, damage, hit.critical)}。` });
+    events.push({ kind: "enemy-action", text: `${damageResultText(target, damage, hit.critical)}。` });
     pushHp(events, target);
     reactToHpDrop(target, beforeHp, events, speechState);
   }
