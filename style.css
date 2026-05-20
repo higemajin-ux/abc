@@ -718,14 +718,14 @@ h1 {
   margin-left: 1.15rem;
   padding: 1px 6px;
   border-radius: 3px;
-  background: rgba(56, 86, 113, 0.22);
+  background: rgba(69, 101, 130, 0.27);
 }
 
 .battle-detail .enemy-action {
   margin-left: 0;
   padding: 1px 6px;
   border-radius: 3px;
-  background: rgba(113, 58, 50, 0.3);
+  background: rgba(130, 70, 60, 0.35);
 }
 
 .battle-detail .enemy-hp {
