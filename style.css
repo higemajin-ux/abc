@@ -714,9 +714,12 @@ h1 {
   color: var(--accent);
 }
 
+.battle-detail .ally-action {
+  margin-left: 1.15rem;
+}
+
 .battle-detail .enemy-action {
-  color: #927f67;
-  padding-left: 0;
+  margin-left: 0;
 }
 
 .battle-detail .down,
