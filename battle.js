@@ -101,7 +101,7 @@ function livingMembers(party) {
 }
 
 function livingScouts(party) {
-  return livingMembers(party).filter((member) => member.job === "scout");
+  return livingMembers(party).filter((member) => member.job === "scout" || member.job === "rogue");
 }
 
 function formationTargetWeight(member) {
@@ -938,10 +938,7 @@ function pickAmbushScout(party) {
 function pushScoutAmbushEvents(scout, events) {
   if (!scout || scout.hp <= 0) return;
   events.push({ kind: "voice", text: `${scout.name}は奇襲を使った。` });
-  events.push({ kind: "voice", text: "奇襲成功。" });
-  if (Math.random() < 0.15) {
-    events.push({ kind: "voice", text: `${scout.name}<br>「先に行く」` });
-  }
+  events.push({ kind: "voice", text: `${scout.name}が最初に行動。` });
 }
 
 function actionOrderForRound(party, round, ambushScout) {
