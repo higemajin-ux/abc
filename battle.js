@@ -394,19 +394,43 @@ function trySurviveFatalDamage(member, events, party = null, canUsePriestBlessin
   return false;
 }
 
+function canPartyReviveDownedMember(party, downedMember) {
+  return party.some(
+    (member) => member.job === "priest" && member.hp > 0 && member.id !== downedMember.id
+  );
+}
+
+function pickFinalDownSpeaker(party) {
+  const downed = party.filter((member) => member.hp <= 0 && member.pendingDownConfirm);
+  if (!downed.length) return null;
+  return downed.find((member) => member.job === "priest") || downed[0];
+}
+
 function confirmMemberDown(member, events, speechState) {
   member.guard = false;
   member.ironWall = false;
   member.actionConsumed = false;
   member.desperateVulnerable = false;
+  if (!member.pendingDownConfirm) {
+    events.push({ kind: "down", text: `${member.name}は戦闘不能になった。` });
+  }
   member.pendingDownConfirm = true;
 }
 
-function confirmRemainingDownMembers(party, events, speechState) {
+function confirmRemainingDownMembers(party, events, speechState, allowFinalLine = true) {
+  const finalSpeaker = pickFinalDownSpeaker(party);
+  if (
+    allowFinalLine &&
+    finalSpeaker &&
+    !canPartyReviveDownedMember(party, finalSpeaker) &&
+    !speechState.finalDownLineSpoken
+  ) {
+    pushMemberLine(finalSpeaker, "down", events, speechState, 1);
+    speechState.finalDownLineSpoken = true;
+  }
+
   for (const member of party) {
     if (member.hp > 0 || !member.pendingDownConfirm) continue;
-    events.push({ kind: "down", text: `${member.name}は戦闘不能になった。` });
-    pushMemberLine(member, "down", events, speechState, 1);
     member.pendingDownConfirm = false;
   }
 }
@@ -1004,9 +1028,9 @@ function runEncounter(members, monster, area, speechState = {}) {
     round += 1;
   }
 
-  confirmRemainingDownMembers(party, events, speechState);
-
   const victory = enemy.hp <= 0;
+  confirmRemainingDownMembers(party, events, speechState, !(victory && enemy.boss));
+
   if (victory) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
   } else {
