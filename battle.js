@@ -403,7 +403,7 @@ function canPartyReviveDownedMember(party, downedMember) {
 function pickFinalDownSpeaker(party) {
   const downed = party.filter((member) => member.hp <= 0 && member.pendingDownConfirm);
   if (!downed.length) return null;
-  return downed.find((member) => member.job === "priest") || downed[0];
+  return downed.sort((a, b) => (b.downOrder || 0) - (a.downOrder || 0))[0];
 }
 
 function confirmMemberDown(member, events, speechState) {
@@ -413,6 +413,8 @@ function confirmMemberDown(member, events, speechState) {
   member.desperateVulnerable = false;
   if (!member.pendingDownConfirm) {
     events.push({ kind: "down", text: `${member.name}は戦闘不能になった。` });
+    speechState.downOrderCounter = (speechState.downOrderCounter || 0) + 1;
+    member.downOrder = speechState.downOrderCounter;
   }
   member.pendingDownConfirm = true;
 }
