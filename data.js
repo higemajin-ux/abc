@@ -11,10 +11,10 @@ const JOB_LABELS = {
 };
 
 const JOB_STATS = {
-  warrior: { maxHp: 42, atk: 12, def: 5, dex: 6, luc: 4 },
-  priest: { maxHp: 32, atk: 7, def: 3, dex: 7, luc: 8 },
-  mage: { maxHp: 28, atk: 8, def: 2, dex: 8, luc: 6 },
-  scout: { maxHp: 34, atk: 9, def: 3, dex: 10, luc: 7 },
+  warrior: { maxHp: 44, atk: 11, def: 6, dex: 5, luc: 4 },
+  priest: { maxHp: 34, atk: 7, def: 4, dex: 7, luc: 9 },
+  mage: { maxHp: 28, atk: 12, def: 2, dex: 7, luc: 6 },
+  scout: { maxHp: 30, atk: 9, def: 2, dex: 11, luc: 9 },
 };
 
 const PARTY_TEMPLATES = {
