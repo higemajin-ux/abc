@@ -372,8 +372,8 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
 
   const returnTime = rewards.forcedReturn ? forcedReturnAt : endsAt;
   const returnMembersSnapshot = rewards.encounters.at(-1)?.membersSnapshot;
-  const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot);
   const mvpLine = buildMvpLine(party, rewards);
+  const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot, mvpLine);
   const reportAuthor = reportAuthorName(party, mvpLine, returnEvents);
   returnEvents.forEach((event, eventIndex) => {
     entries.push({
