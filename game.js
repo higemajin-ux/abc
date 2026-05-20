@@ -141,11 +141,11 @@ function buildMvpLine(party, rewards) {
 
       if (text.includes("を討伐") && actorName) addScore(actorName, 8);
       if (text.includes("かばった") && starter) addScore(starter, 5);
-      if (text.includes("敵を先に見つけた") && starter) addScore(starter, 4);
+      if (text.includes("奇襲を使った") && starter) addScore(starter, 4);
       if (/(魔力障壁|集中|挑発|鉄壁|盾を構え|状態が安定|応急手当|リバイブ|リザレクト)/.test(text) && starter) {
         addScore(starter, 3);
       }
-      if (/(毒に侵された|猛毒化|燃えている|動きが鈍った)/.test(text) && actorName) {
+      if (/(毒に侵された|猛毒化|火傷を負った|動きが鈍った)/.test(text) && actorName) {
         addScore(actorName, 4);
       }
     }
