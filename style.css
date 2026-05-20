@@ -638,6 +638,45 @@ h1 {
   font-size: 0.76rem;
 }
 
+.storage-lock-label {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.storage-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.storage-sell-btn,
+.storage-lock-btn {
+  flex: 0 0 auto;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted-on-dark);
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.storage-sell-btn:hover,
+.storage-lock-btn:hover {
+  border-color: var(--line-bright);
+  color: var(--accent);
+  background: rgba(214, 168, 79, 0.06);
+}
+
+.storage-sell-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .rarity-common {
   color: var(--ink-on-dark);
 }
