@@ -716,10 +716,16 @@ h1 {
 
 .battle-detail .ally-action {
   margin-left: 1.15rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(42, 71, 98, 0.18);
 }
 
 .battle-detail .enemy-action {
   margin-left: 0;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(98, 48, 42, 0.18);
 }
 
 .battle-detail .down,
