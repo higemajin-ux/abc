@@ -689,6 +689,10 @@ function performMageAction(actor, enemy, events) {
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
+    if (enemy.hp > 0 && actor.name === "ガルド" && !enemy.paralyzeTurns && Math.random() < 0.25) {
+      enemy.paralyzeTurns = 2;
+      events.push({ kind: "spell", text: `${enemy.name}の体がしびれた。` });
+    }
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     return;
   }
@@ -1000,6 +1004,12 @@ function buildScoutExplorationEvents(party) {
 function performEnemyAction(enemy, party, events, speechState, round = 1) {
   if (enemy.hp <= 0) {
     tickEnemyTurnStatuses(enemy);
+    return;
+  }
+  if (shouldSkipParalyzedAction(enemy, events)) {
+    tickEnemyDots(enemy, events);
+    tickEnemyTurnStatuses(enemy);
+    pushActionBreak(events);
     return;
   }
   let target = pickEnemyTarget(party);
