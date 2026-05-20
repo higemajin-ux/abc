@@ -18,20 +18,28 @@ const JOB_STATS = {
 };
 
 const EQUIPMENT_ITEMS = {
-  ironSword: { id: "ironSword", name: "鉄の剣", slot: "weapon", atk: 2 },
-  oakStaff: { id: "oakStaff", name: "樫の杖", slot: "weapon", atk: 1, luc: 1 },
-  apprenticeWand: { id: "apprenticeWand", name: "見習いの杖", slot: "weapon", atk: 2 },
-  huntingDagger: { id: "huntingDagger", name: "狩人の短剣", slot: "weapon", atk: 1, dex: 1 },
-  leatherArmor: { id: "leatherArmor", name: "革の鎧", slot: "armor", def: 1, maxHp: 2 },
-  travelRobe: { id: "travelRobe", name: "旅のローブ", slot: "armor", def: 1, luc: 1 },
-  scoutCloak: { id: "scoutCloak", name: "斥候の外套", slot: "armor", def: 1, dex: 1 },
+  oldSword: { id: "oldSword", name: "古びた剣", slot: "weapon", atk: 2 },
+  tinStaff: { id: "tinStaff", name: "錫杖", slot: "weapon", atk: 1, luc: 1 },
+  dagger: { id: "dagger", name: "短剣", slot: "weapon", atk: 1, dex: 1 },
+  scorchedStaff: { id: "scorchedStaff", name: "焦げた杖", slot: "weapon", atk: 2 },
+  leatherArmor: { id: "leatherArmor", name: "革鎧", slot: "armor", def: 1, maxHp: 2 },
+  monkRobe: { id: "monkRobe", name: "修道服", slot: "armor", def: 1, luc: 1 },
+  lightLeatherArmor: { id: "lightLeatherArmor", name: "軽革鎧", slot: "armor", def: 1, dex: 1 },
+  travelWear: { id: "travelWear", name: "旅装束", slot: "armor", def: 1 },
+};
+
+const DEFAULT_EQUIPMENT_BY_MEMBER = {
+  "pt1-allen": { weapon: "oldSword", armor: "leatherArmor", accessory1: null, accessory2: null },
+  "pt1-mina": { weapon: "tinStaff", armor: "monkRobe", accessory1: null, accessory2: null },
+  "pt1-nil": { weapon: "dagger", armor: "lightLeatherArmor", accessory1: null, accessory2: null },
+  "pt1-gald": { weapon: "scorchedStaff", armor: "travelWear", accessory1: null, accessory2: null },
 };
 
 const DEFAULT_EQUIPMENT_BY_JOB = {
-  warrior: { weapon: "ironSword", armor: "leatherArmor" },
-  priest: { weapon: "oakStaff", armor: "travelRobe" },
-  mage: { weapon: "apprenticeWand", armor: "travelRobe" },
-  scout: { weapon: "huntingDagger", armor: "scoutCloak" },
+  warrior: { weapon: "oldSword", armor: "leatherArmor", accessory1: null, accessory2: null },
+  priest: { weapon: "tinStaff", armor: "monkRobe", accessory1: null, accessory2: null },
+  mage: { weapon: "scorchedStaff", armor: "travelWear", accessory1: null, accessory2: null },
+  scout: { weapon: "dagger", armor: "lightLeatherArmor", accessory1: null, accessory2: null },
 };
 
 const PARTY_TEMPLATES = {
