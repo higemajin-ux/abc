@@ -1048,6 +1048,10 @@ function shouldAutoSellDrop(item) {
   return (item?.rarity || "common") === "common";
 }
 
+function dropNameHtml(item) {
+  return `<span class="rarity-${item.rarity || "common"}">${item.name}</span>`;
+}
+
 function performEnemyAction(enemy, party, events, speechState, round = 1) {
   if (enemy.hp <= 0) {
     tickEnemyTurnStatuses(enemy);
@@ -1200,9 +1204,10 @@ function runEncounter(members, monster, area, speechState = {}) {
   if (victory) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
     if (equipmentDrop) {
-      events.push({ kind: "voice", text: `${equipmentDrop.finderName}が${equipmentDrop.name}を見つけた。` });
+      const dropName = dropNameHtml(equipmentDrop);
+      events.push({ kind: "voice", text: `${equipmentDrop.finderName}が${dropName}を見つけた。` });
       if (shouldAutoSellDrop(equipmentDrop)) {
-        events.push({ kind: "voice", text: `${equipmentDrop.name}を売却した（${equipmentDrop.sellGold || 0}G）。` });
+        events.push({ kind: "voice", text: `${dropName}を売却した（${equipmentDrop.sellGold || 0}G）。` });
       }
     }
   } else {
