@@ -4,6 +4,7 @@ let nextId = 1;
 let tickId = null;
 let worldTickId = null;
 let storageRenderCount = -1;
+registerDropEquipmentItems();
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
   areaClears: {},
@@ -28,6 +29,39 @@ function formatClock(ts) {
 
 function defaultStats() {
   return { gold: 0, kills: 0, missionsStarted: 0, missionsCleared: 0 };
+}
+
+function registerEquipmentItem(item) {
+  if (!item?.id) return null;
+  const base = EQUIPMENT_ITEMS[item.id] || EQUIPMENT_DROPS.find((drop) => drop.id === item.id) || {};
+  const normalized = {
+    ...base,
+    ...item,
+    rarity: normalizeRarity(item.rarity || base.rarity),
+    sellGold: item.sellGold || base.sellGold || 0,
+  };
+  EQUIPMENT_ITEMS[normalized.id] = normalized;
+  return normalized;
+}
+
+function registerDropEquipmentItems() {
+  (EQUIPMENT_DROPS || []).forEach(registerEquipmentItem);
+}
+
+function storageItemFromEquipment(item) {
+  const normalized = registerEquipmentItem(item);
+  if (!normalized) return null;
+  return {
+    ...normalized,
+    rarity: normalizeRarity(normalized.rarity),
+    sellGold: normalized.sellGold || 0,
+    storedAt: Date.now(),
+  };
+}
+
+function storageItemFromEquipmentId(itemId) {
+  if (!itemId) return null;
+  return storageItemFromEquipment(EQUIPMENT_ITEMS[itemId] || EQUIPMENT_DROPS.find((drop) => drop.id === itemId));
 }
 
 function defaultParty(id, name) {
@@ -479,17 +513,60 @@ function storeEquipmentDrops(rewards) {
   if (!state.storage) state.storage = [];
   for (const encounter of rewards.encounters || []) {
     const item = encounter.equipmentDrop;
-    if (!item || (item.rarity || "common") === "common") continue;
-    state.storage.push({
-      id: item.id,
-      name: item.name,
-      slot: item.slot,
-      rarity: item.rarity || "common",
-      sellGold: item.sellGold || 0,
-      foundBy: item.finderName || "",
-      storedAt: Date.now(),
-    });
+    const storedItem = storageItemFromEquipment(item);
+    const rarity = normalizeRarity(storedItem?.rarity);
+    if (!item || rarity === "common") continue;
+    state.storage.push({ ...storedItem, foundBy: item.finderName || "" });
   }
+}
+
+function storageMemberOptions() {
+  return state.parties
+    .flatMap((party) => party.members.map((member) => ({ partyName: party.name, member })))
+    .map(({ partyName, member }) => `<option value="${member.id}">${partyName} ${member.name}</option>`)
+    .join("");
+}
+
+function storageEquipButtons(item, index) {
+  if (item.slot === "weapon" || item.slot === "armor") {
+    return `<button type="button" class="storage-equip-btn" data-storage-index="${index}" data-slot="${item.slot}">装備</button>`;
+  }
+  if (item.slot === "accessory") {
+    return `
+      <button type="button" class="storage-equip-btn" data-storage-index="${index}" data-slot="accessory1">アクセ1</button>
+      <button type="button" class="storage-equip-btn" data-storage-index="${index}" data-slot="accessory2">アクセ2</button>
+    `;
+  }
+  return '<span class="storage-meta">装備不可</span>';
+}
+
+function findMemberById(memberId) {
+  for (const party of state.parties) {
+    const member = party.members.find((m) => m.id === memberId);
+    if (member) return member;
+  }
+  return null;
+}
+
+function equipStorageItem(index, memberId, targetSlot) {
+  if (!state.storage?.length) return;
+  const storedItem = storageItemFromEquipment(state.storage[index]);
+  const member = findMemberById(memberId);
+  if (!storedItem || !member) return;
+
+  const slot = storedItem.slot === "accessory" ? targetSlot : storedItem.slot;
+  if (!["weapon", "armor", "accessory1", "accessory2"].includes(slot)) return;
+  if (storedItem.slot !== "accessory" && slot !== storedItem.slot) return;
+
+  const equipment = ensureCharacterEquipment(member);
+  const previousItem = storageItemFromEquipmentId(equipment[slot]);
+  state.storage.splice(index, 1);
+  equipment[slot] = storedItem.id;
+  if (previousItem) state.storage.push(previousItem);
+  syncMemberStats(member);
+  storageRenderCount = -1;
+  saveGame();
+  renderAll();
 }
 
 function missionProgress(party) {
@@ -947,13 +1024,32 @@ function renderStorage() {
   root.innerHTML = `
     <ul class="storage-list">
       ${items
-        .map(
-          (item) =>
-            `<li><span class="storage-item rarity-${item.rarity || "common"}">${item.name}</span><span class="storage-meta">${item.rarity || "common"}</span></li>`
-        )
+        .map((rawItem, index) => {
+          const item = storageItemFromEquipment(rawItem);
+          const rarity = normalizeRarity(item?.rarity);
+          const name = item?.name || "名称不明の装備";
+          return `<li>
+            <div class="storage-info">
+              <span class="storage-item ${rarityClassName(rarity)}">${name}</span>
+              <span class="storage-meta">${rarity}</span>
+            </div>
+            <div class="storage-equip-controls">
+              <select class="storage-member-select" data-storage-index="${index}">${storageMemberOptions()}</select>
+              ${item ? storageEquipButtons(item, index) : '<span class="storage-meta">装備不可</span>'}
+            </div>
+          </li>`;
+        })
         .join("")}
     </ul>
   `;
+
+  root.querySelectorAll(".storage-equip-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.storageIndex);
+      const select = root.querySelector(`.storage-member-select[data-storage-index="${index}"]`);
+      equipStorageItem(index, select?.value, button.dataset.slot);
+    });
+  });
 }
 
 function renderStages() {
