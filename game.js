@@ -6,6 +6,7 @@ let worldTickId = null;
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
   areaClears: {},
+  storage: [],
 };
 
 function $(id) {
@@ -454,6 +455,7 @@ function applyRewards(party, area, rewards) {
   s.gold += rewards.gold;
   s.kills += rewards.kills;
   s.missionsCleared += 1;
+  storeEquipmentDrops(rewards);
 
   const levelUps = [];
   const xpEach = Math.max(1, Math.floor(rewards.xp / party.members.length));
@@ -470,6 +472,23 @@ function applyRewards(party, area, rewards) {
     ...rewards,
     levelUps,
   };
+}
+
+function storeEquipmentDrops(rewards) {
+  if (!state.storage) state.storage = [];
+  for (const encounter of rewards.encounters || []) {
+    const item = encounter.equipmentDrop;
+    if (!item || (item.rarity || "common") === "common") continue;
+    state.storage.push({
+      id: item.id,
+      name: item.name,
+      slot: item.slot,
+      rarity: item.rarity || "common",
+      sellGold: item.sellGold || 0,
+      foundBy: item.finderName || "",
+      storedAt: Date.now(),
+    });
+  }
 }
 
 function missionProgress(party) {
@@ -913,6 +932,27 @@ function renderStats() {
     .join("");
 }
 
+function renderStorage() {
+  const root = $("storage-root");
+  if (!root) return;
+  const items = state.storage || [];
+  if (!items.length) {
+    root.innerHTML = '<p class="log-empty">保管中の装備はありません</p>';
+    return;
+  }
+
+  root.innerHTML = `
+    <ul class="storage-list">
+      ${items
+        .map(
+          (item) =>
+            `<li><span class="storage-item rarity-${item.rarity || "common"}">${item.name}</span><span class="storage-meta">${item.rarity || "common"}</span></li>`
+        )
+        .join("")}
+    </ul>
+  `;
+}
+
 function renderStages() {
   $("stages-root").innerHTML = AREA_ORDER.map((id) => {
     const a = AREAS[id];
@@ -975,6 +1015,7 @@ function renderAll() {
   renderReports();
   renderStages();
   renderWorldSituation();
+  renderStorage();
   renderStats();
   renderLogs();
 }
@@ -1006,6 +1047,7 @@ function ensurePartyShape(party) {
 
 function migrate(data) {
   if (!data.parties) return data;
+  if (!data.storage) data.storage = [];
 
   for (const p of data.parties) {
     ensurePartyShape(p);
@@ -1054,7 +1096,7 @@ function loadGame() {
     if (!raw) return;
     const data = migrate(JSON.parse(raw));
     if (data.parties) {
-      state = { parties: data.parties, areaClears: data.areaClears || {} };
+      state = { parties: data.parties, areaClears: data.areaClears || {}, storage: data.storage || [] };
       state.parties.forEach(trimDispatches);
     }
   } catch (e) {
@@ -1070,6 +1112,7 @@ function resetGame() {
   state = {
     parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
     areaClears: {},
+    storage: [],
   };
   nextId = 1;
   stopTick();
