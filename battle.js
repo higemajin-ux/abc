@@ -1052,7 +1052,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   let round = 1;
 
   events.push({
-    kind: enemy.boss ? "boss" : "",
+    kind: "intro",
     text: enemy.boss ? `${enemy.name}が姿を現した。隊列に緊張が走る。` : `${enemy.name}と遭遇。`,
   });
   if (magicSense.foundRare && magicSense.detector) {
