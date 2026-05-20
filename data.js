@@ -42,6 +42,12 @@ const DEFAULT_EQUIPMENT_BY_JOB = {
   scout: { weapon: "dagger", armor: "lightLeatherArmor", accessory1: null, accessory2: null },
 };
 
+const EQUIPMENT_DROPS = [
+  { id: "chippedSword", name: "欠けた剣", slot: "weapon", atk: 1, sellGold: 10 },
+  { id: "oldCharm", name: "古い護符", slot: "accessory", luc: 1, sellGold: 12 },
+  { id: "crackedRing", name: "ひび割れた指輪", slot: "accessory", dex: 1, sellGold: 9 },
+];
+
 const PARTY_TEMPLATES = {
   pt1: [
     { id: "pt1-allen", name: "アレン", job: "warrior", formation: "前衛" },
