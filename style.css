@@ -666,7 +666,20 @@ h1 {
 }
 
 .battle-detail .hp-text {
+  display: inline-block;
   font-weight: 700;
+  line-height: 1.45;
+}
+
+.battle-detail .hp-name,
+.battle-detail .hp-value,
+.battle-detail .status-tags {
+  display: inline-block;
+}
+
+.battle-detail .status-tags {
+  color: var(--accent);
+  font-size: 0.72rem;
 }
 
 .battle-detail .hp-text.hp-safe {
@@ -701,6 +714,16 @@ h1 {
 .battle-detail .boss {
   color: var(--red);
   font-weight: 700;
+}
+
+.battle-detail .turn-separator {
+  margin: 8px 0 5px;
+  color: var(--paper-light);
+  font-weight: 700;
+}
+
+.battle-detail .action-break {
+  min-height: 0.85rem;
 }
 
 .dispatch-group {
