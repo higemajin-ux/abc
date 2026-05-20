@@ -49,9 +49,9 @@ const DROP_RATES = {
 };
 
 const DROP_RARITY_WEIGHTS = {
-  normal: { common: 60, uncommon: 30, rare: 9, epic: 0.9, legendary: 0.1 },
-  rare: { common: 35, uncommon: 40, rare: 20, epic: 4, legendary: 1 },
-  boss: { common: 0, uncommon: 50, rare: 35, epic: 13, legendary: 2 },
+  normal: { common: 60, uncommon: 30, rare: 9, epic: 0.9, legendary: 0.1, artifact: 0.01 },
+  rare: { common: 35, uncommon: 40, rare: 20, epic: 4, legendary: 1, artifact: 0.1 },
+  boss: { common: 0, uncommon: 50, rare: 35, epic: 13, legendary: 2, artifact: 0.25 },
 };
 
 const EQUIPMENT_DROPS = [
@@ -61,6 +61,9 @@ const EQUIPMENT_DROPS = [
   { id: "silverBuckle", name: "銀留めの帯具", slot: "accessory", rarity: "rare", def: 1, luc: 1, sellGold: 28 },
   { id: "emberPendant", name: "燠火の首飾り", slot: "accessory", rarity: "epic", atk: 2, luc: 1, sellGold: 70 },
   { id: "saintFragment", name: "聖片の護符", slot: "accessory", rarity: "legendary", maxHp: 4, luc: 2, sellGold: 180 },
+  { id: "ashGrimoire", name: "灰の魔導書", slot: "accessory", rarity: "artifact", sellGold: 260 },
+  { id: "namelessSignet", name: "名も無き聖印", slot: "accessory", rarity: "artifact", sellGold: 280 },
+  { id: "blackKingRing", name: "黒王の指輪", slot: "accessory", rarity: "artifact", sellGold: 320 },
 ];
 
 const PARTY_TEMPLATES = {
