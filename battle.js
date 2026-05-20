@@ -1001,9 +1001,45 @@ function buildScoutExplorationEvents(party) {
   return events;
 }
 
-function rollEquipmentDrop(party) {
-  if (!EQUIPMENT_DROPS?.length || Math.random() >= 0.12) return null;
-  const item = pick(EQUIPMENT_DROPS);
+function dropKindForMonster(monster) {
+  if (monster?.boss) return "boss";
+  if (monster?.rare) return "rare";
+  return "normal";
+}
+
+function pickWeightedKey(weights) {
+  const entries = Object.entries(weights || {}).filter(([, weight]) => weight > 0);
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  let rollValue = Math.random() * total;
+  for (const [key, weight] of entries) {
+    rollValue -= weight;
+    if (rollValue <= 0) return key;
+  }
+  return entries.at(-1)?.[0] || "common";
+}
+
+function resolveDropCandidate(candidate) {
+  if (typeof candidate === "string") {
+    return EQUIPMENT_DROPS.find((item) => item.id === candidate) || null;
+  }
+  if (!candidate?.id) return candidate || null;
+  const base = EQUIPMENT_DROPS.find((item) => item.id === candidate.id);
+  return base ? { ...base, ...candidate } : candidate;
+}
+
+function pickDropFromPool(pool, rarity) {
+  const matching = pool.filter((item) => (item.rarity || "common") === rarity);
+  return pick(matching.length ? matching : pool);
+}
+
+function rollEquipmentDrop(party, monster) {
+  const kind = dropKindForMonster(monster);
+  if (!EQUIPMENT_DROPS?.length || Math.random() >= (DROP_RATES[kind] ?? DROP_RATES.normal)) return null;
+
+  const specificDrops = (monster?.drops || monster?.dropTable || []).map(resolveDropCandidate).filter(Boolean);
+  const pool = specificDrops.length ? specificDrops : EQUIPMENT_DROPS;
+  const rarity = pickWeightedKey(DROP_RARITY_WEIGHTS[kind] || DROP_RARITY_WEIGHTS.normal);
+  const item = pickDropFromPool(pool, rarity);
   const finder = livingScouts(party)[0] || livingMembers(party)[0] || party[0];
   return { ...item, finderName: finder?.name || "隊員" };
 }
@@ -1155,7 +1191,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   const victory = enemy.hp <= 0;
   confirmRemainingDownMembers(party, events, speechState, !(victory && enemy.boss));
   clearTempHp(party);
-  const equipmentDrop = victory ? rollEquipmentDrop(party) : null;
+  const equipmentDrop = victory ? rollEquipmentDrop(party, monster) : null;
 
   if (victory) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
