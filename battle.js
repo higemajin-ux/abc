@@ -965,7 +965,7 @@ function buildScoutExplorationEvents(party) {
   return events;
 }
 
-function performEnemyAction(enemy, party, events, speechState) {
+function performEnemyAction(enemy, party, events, speechState, round = 1) {
   if (enemy.hp <= 0) {
     tickEnemyTurnStatuses(enemy);
     return;
@@ -987,8 +987,12 @@ function performEnemyAction(enemy, party, events, speechState) {
     return;
   }
 
+  const bossHeavyAttack = enemy.boss && round % 3 === 0;
   const hit = rollPhysicalHit(damageFor(enemy.atk, target.def), enemy);
   let damage = hit.damage;
+  if (bossHeavyAttack) {
+    damage = Math.max(1, Math.floor(damage * 1.5));
+  }
   if (target.ironWall) {
     damage = Math.max(1, Math.floor(damage * 0.25));
   } else if (target.guard) {
@@ -1009,7 +1013,10 @@ function performEnemyAction(enemy, party, events, speechState) {
     !party.priestBlessingUsed &&
     target.hp > 0;
   applyDamageToMember(target, damage);
-  events.push({ kind: "enemy-action", text: `${enemy.name}の攻撃。` });
+  events.push({
+    kind: "enemy-action",
+    text: bossHeavyAttack ? `${enemy.name}の重い一撃。` : `${enemy.name}の攻撃。`,
+  });
   if (cover.coverer) {
     if (Math.random() < 0.15) {
       events.push({ kind: "enemy-action", text: `${cover.coverer.name}「下がれ！」` });
@@ -1080,7 +1087,7 @@ function runEncounter(members, monster, area, speechState = {}) {
       if (member.hp <= 0) confirmMemberDown(member, events, speechState);
       if (enemy.hp <= 0) break;
     }
-    performEnemyAction(enemy, party, events, speechState);
+    performEnemyAction(enemy, party, events, speechState, round);
     round += 1;
   }
 
