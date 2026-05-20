@@ -56,6 +56,7 @@ function storageItemFromEquipment(item) {
     ...normalized,
     rarity: normalizeRarity(normalized.rarity),
     sellGold: normalized.sellGold || 0,
+    locked: !!item.locked,
     storedAt: Date.now(),
   };
 }
@@ -566,6 +567,28 @@ function equipStorageItem(index, memberId, targetSlot) {
   syncMemberStats(member);
   storageRenderCount = -1;
   if (found.party) openDetailPartyIds.add(found.party.id);
+  saveGame();
+  renderAll();
+}
+
+function sellStorageItem(index) {
+  if (!state.storage?.length) return;
+  const storedItem = storageItemFromEquipment(state.storage[index]);
+  if (!storedItem || storedItem.locked) return;
+
+  const sellGold = Number(storedItem.sellGold) || 0;
+  const stats = state.parties[0]?.stats;
+  if (stats) stats.gold += sellGold;
+  state.storage.splice(index, 1);
+  storageRenderCount = -1;
+  saveGame();
+  renderAll();
+}
+
+function toggleStorageLock(index) {
+  if (!state.storage?.length || !state.storage[index]) return;
+  state.storage[index].locked = !state.storage[index].locked;
+  storageRenderCount = -1;
   saveGame();
   renderAll();
 }
@@ -1128,23 +1151,40 @@ function renderStorage() {
   root.innerHTML = `
     <ul class="storage-list">
       ${items
-        .map((rawItem) => {
+        .map((rawItem, index) => {
           const item = storageItemFromEquipment(rawItem);
           const rarity = normalizeRarity(item?.rarity);
           const name = item?.name || "名称不明の装備";
+          const locked = !!item?.locked;
           return `<li>
             <div class="storage-info">
               <div class="storage-head">
                 <span class="storage-item ${rarityClassName(rarity)}">${name}</span>
                 <span class="storage-meta">${rarity}</span>
+                ${locked ? '<span class="storage-lock-label">★ 保護中</span>' : ""}
               </div>
               <div class="storage-effect">${equipmentStorageLine(item)}</div>
+            </div>
+            <div class="storage-actions">
+              <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
+              <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${locked ? "disabled" : ""}>売却</button>
             </div>
           </li>`;
         })
         .join("")}
     </ul>
   `;
+
+  root.querySelectorAll(".storage-sell-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      sellStorageItem(Number(button.dataset.storageIndex));
+    });
+  });
+  root.querySelectorAll(".storage-lock-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      toggleStorageLock(Number(button.dataset.storageIndex));
+    });
+  });
 }
 
 function renderStages() {
