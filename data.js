@@ -43,8 +43,8 @@ const DEFAULT_EQUIPMENT_BY_JOB = {
 };
 
 const DROP_RATES = {
-  normal: 0.4,
-  rare: 0.7,
+  normal: 0.6,
+  rare: 0.85,
   boss: 1,
 };
 
