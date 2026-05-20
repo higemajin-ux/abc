@@ -725,7 +725,15 @@ h1 {
   margin-left: 0;
   padding: 1px 6px;
   border-radius: 3px;
-  background: rgba(98, 48, 42, 0.18);
+  background: rgba(98, 48, 42, 0.26);
+}
+
+.battle-detail .enemy-hp {
+  margin-left: 0;
+}
+
+.battle-detail .ally-hp {
+  margin-left: 1.15rem;
 }
 
 .battle-detail .down,
