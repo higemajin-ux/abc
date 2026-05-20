@@ -682,6 +682,10 @@ h1 {
   font-size: 0.72rem;
 }
 
+.battle-detail .temp-hp {
+  color: #6ec8e5;
+}
+
 .battle-detail .hp-text.hp-safe {
   color: var(--ink-on-dark);
 }
@@ -720,6 +724,7 @@ h1 {
   margin: 8px 0 5px;
   color: var(--paper-light);
   font-weight: 700;
+  text-align: center;
 }
 
 .battle-detail .action-break {
