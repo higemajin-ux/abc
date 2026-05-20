@@ -941,7 +941,7 @@ function pushScoutAmbushEvents(scout, events) {
 }
 
 function actionOrderForRound(party, round, ambushScout) {
-  const ordered = [...party].sort((a, b) => effectiveDex(b) - effectiveDex(a));
+  const ordered = livingMembers(party).sort((a, b) => effectiveDex(b) - effectiveDex(a));
   if (round !== 1 || !ambushScout || ambushScout.hp <= 0) return ordered;
   return [ambushScout, ...ordered.filter((member) => member.id !== ambushScout.id)];
 }
