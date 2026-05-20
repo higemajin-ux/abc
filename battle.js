@@ -1001,6 +1001,13 @@ function buildScoutExplorationEvents(party) {
   return events;
 }
 
+function rollEquipmentDrop(party) {
+  if (!EQUIPMENT_DROPS?.length || Math.random() >= 0.12) return null;
+  const item = pick(EQUIPMENT_DROPS);
+  const finder = livingScouts(party)[0] || livingMembers(party)[0] || party[0];
+  return { ...item, finderName: finder?.name || "隊員" };
+}
+
 function performEnemyAction(enemy, party, events, speechState, round = 1) {
   if (enemy.hp <= 0) {
     tickEnemyTurnStatuses(enemy);
@@ -1148,9 +1155,14 @@ function runEncounter(members, monster, area, speechState = {}) {
   const victory = enemy.hp <= 0;
   confirmRemainingDownMembers(party, events, speechState, !(victory && enemy.boss));
   clearTempHp(party);
+  const equipmentDrop = victory ? rollEquipmentDrop(party) : null;
 
   if (victory) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
+    if (equipmentDrop) {
+      events.push({ kind: "voice", text: `${equipmentDrop.finderName}が${equipmentDrop.name}を見つけた。` });
+      events.push({ kind: "voice", text: `${equipmentDrop.name}を売却した（${equipmentDrop.sellGold}G）。` });
+    }
   } else {
     events.push({ kind: "down", text: `${enemy.name}を退けきれず、隊は煙幕で撤退した。` });
   }
@@ -1166,6 +1178,6 @@ function runEncounter(members, monster, area, speechState = {}) {
     membersSnapshot: snapshotPartyHp(party),
     kills: victory ? 1 : 0,
     xp: victory ? enemy.xp : Math.floor(enemy.xp * 0.35),
-    gold: victory ? enemy.gold : Math.floor(enemy.gold * 0.25),
+    gold: victory ? enemy.gold + (equipmentDrop?.sellGold || 0) : Math.floor(enemy.gold * 0.25),
   };
 }
