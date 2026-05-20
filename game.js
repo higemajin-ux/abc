@@ -3,6 +3,7 @@
 let nextId = 1;
 let tickId = null;
 let worldTickId = null;
+let storageRenderCount = -1;
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
   areaClears: {},
@@ -936,6 +937,8 @@ function renderStorage() {
   const root = $("storage-root");
   if (!root) return;
   const items = state.storage || [];
+  if (items.length === storageRenderCount) return;
+  storageRenderCount = items.length;
   if (!items.length) {
     root.innerHTML = '<p class="log-empty">保管中の装備はありません</p>';
     return;
@@ -1115,6 +1118,7 @@ function resetGame() {
     storage: [],
   };
   nextId = 1;
+  storageRenderCount = -1;
   stopTick();
   saveGame();
   renderAll();
