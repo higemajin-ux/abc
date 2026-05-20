@@ -680,7 +680,9 @@ function battleEventClass(event, prevEvent = null) {
   if (kind === "turn-separator" || kind === "action-break") return kind;
   if (kind === "enemy-action") return kind;
   if ((event.text || "").includes("hp-text")) {
-    return prevEvent?.kind === "enemy-action" ? `${kind} enemy-hp`.trim() : `${kind} ally-hp`.trim();
+    return prevEvent?.kind === "enemy-action"
+      ? `${kind} enemy-action enemy-hp`.trim()
+      : `${kind} ally-action ally-hp`.trim();
   }
   return `${kind} ally-action`.trim();
 }
