@@ -1017,7 +1017,7 @@ function createPartyCard(party) {
       </div>
       <div class="member-list">${memberChips(party)}</div>
       <div class="member-details" hidden>${memberDetails(party)}</div>
-      ${on ? `<div class="eta">${formatClock(party.mission.endsAt)} に帰還予定</div>` : ""}
+      <div class="eta">帰還予定：${on ? formatClock(party.mission.endsAt) : "--"}</div>
       <label class="field-label">派遣先</label>
       <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
       <div class="dispatch-wrap" data-progress="${party.id}">
