@@ -64,6 +64,20 @@ function storageItemFromEquipmentId(itemId) {
   return storageItemFromEquipment(EQUIPMENT_ITEMS[itemId] || EQUIPMENT_DROPS.find((drop) => drop.id === itemId));
 }
 
+function equipmentStatLine(item) {
+  if (!item) return "";
+  const labels = { maxHp: "HP", atk: "ATK", def: "DEF", dex: "DEX", luc: "LUC" };
+  const parts = ["maxHp", "atk", "def", "dex", "luc"]
+    .filter((key) => item[key])
+    .map((key) => `${labels[key]}+${item[key]}`);
+  return parts.length ? parts.join(" / ") : "性能なし";
+}
+
+function equipmentStorageLine(item) {
+  const sellGold = item?.sellGold || 0;
+  return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
+}
+
 function defaultParty(id, name) {
   const members = (PARTY_TEMPLATES[id] || PARTY_TEMPLATES.pt1).map((m) => createMember(m));
   return {
@@ -903,7 +917,8 @@ function equipmentCandidateList(member, slot) {
     .map(({ item, index }) => {
       const rarity = normalizeRarity(item.rarity);
       return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
-        ${item.name}
+        <span class="equip-choice-head"><strong>${item.name}</strong><span>${rarity}</span></span>
+        <span class="equip-choice-meta">${equipmentStorageLine(item)}</span>
       </button>`;
     })
     .join("");
@@ -1068,14 +1083,17 @@ function renderStorage() {
   root.innerHTML = `
     <ul class="storage-list">
       ${items
-        .map((rawItem, index) => {
+        .map((rawItem) => {
           const item = storageItemFromEquipment(rawItem);
           const rarity = normalizeRarity(item?.rarity);
           const name = item?.name || "名称不明の装備";
           return `<li>
             <div class="storage-info">
-              <span class="storage-item ${rarityClassName(rarity)}">${name}</span>
-              <span class="storage-meta">${rarity}</span>
+              <div class="storage-head">
+                <span class="storage-item ${rarityClassName(rarity)}">${name}</span>
+                <span class="storage-meta">${rarity}</span>
+              </div>
+              <div class="storage-effect">${equipmentStorageLine(item)}</div>
             </div>
           </li>`;
         })
