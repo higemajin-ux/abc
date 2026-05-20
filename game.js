@@ -520,26 +520,6 @@ function storeEquipmentDrops(rewards) {
   }
 }
 
-function storageMemberOptions() {
-  return state.parties
-    .flatMap((party) => party.members.map((member) => ({ partyName: party.name, member })))
-    .map(({ partyName, member }) => `<option value="${member.id}">${partyName} ${member.name}</option>`)
-    .join("");
-}
-
-function storageEquipButtons(item, index) {
-  if (item.slot === "weapon" || item.slot === "armor") {
-    return `<button type="button" class="storage-equip-btn" data-storage-index="${index}" data-slot="${item.slot}">装備</button>`;
-  }
-  if (item.slot === "accessory") {
-    return `
-      <button type="button" class="storage-equip-btn" data-storage-index="${index}" data-slot="accessory1">アクセ1</button>
-      <button type="button" class="storage-equip-btn" data-storage-index="${index}" data-slot="accessory2">アクセ2</button>
-    `;
-  }
-  return '<span class="storage-meta">装備不可</span>';
-}
-
 function findMemberById(memberId) {
   for (const party of state.parties) {
     const member = party.members.find((m) => m.id === memberId);
@@ -896,6 +876,53 @@ function memberFormation(member) {
   return member.formation || "中衛";
 }
 
+function equipmentSlotLabel(slot) {
+  return {
+    weapon: "武器",
+    armor: "防具",
+    accessory1: "装飾1",
+    accessory2: "装飾2",
+  }[slot] || slot;
+}
+
+function equipmentSlotKind(slot) {
+  return slot === "accessory1" || slot === "accessory2" ? "accessory" : slot;
+}
+
+function equipmentCandidateList(member, slot) {
+  const kind = equipmentSlotKind(slot);
+  const candidates = (state.storage || [])
+    .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index }))
+    .filter(({ item }) => item?.slot === kind);
+
+  if (!candidates.length) {
+    return '<p class="equipment-empty">保管庫に候補はありません</p>';
+  }
+
+  return candidates
+    .map(({ item, index }) => {
+      const rarity = normalizeRarity(item.rarity);
+      return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
+        ${item.name}
+      </button>`;
+    })
+    .join("");
+}
+
+function equipmentSlotHtml(member, slot) {
+  const equipment = ensureCharacterEquipment(member);
+  const item = EQUIPMENT_ITEMS[equipment[slot]];
+  const rarity = normalizeRarity(item?.rarity);
+  const name = item ? formatEquipmentLine(item) : "なし";
+  return `<div class="member-equipment-slot">
+    <button type="button" class="equip-slot-btn" data-member-id="${member.id}" data-slot="${slot}">
+      <span>${equipmentSlotLabel(slot)}</span>
+      <strong class="${rarityClassName(rarity)}">${name}</strong>
+    </button>
+    <div class="equipment-candidates" hidden>${equipmentCandidateList(member, slot)}</div>
+  </div>`;
+}
+
 function memberDetails(party) {
   return party.members
     .map(
@@ -914,8 +941,8 @@ function memberDetails(party) {
           <div class="member-stat-row"><span>LUC</span><strong>${memberStatValue(m.luc)}</strong></div>
         </div>
         <div class="member-equipment">${["weapon", "armor", "accessory1", "accessory2"]
-          .map((slot) => formatEquipmentLine(EQUIPMENT_ITEMS[ensureCharacterEquipment(m)[slot]]))
-          .join(" / ")}</div>
+          .map((slot) => equipmentSlotHtml(m, slot))
+          .join("")}</div>
       </div>`
     )
     .join("");
@@ -977,6 +1004,23 @@ function renderParties() {
       detailToggle.setAttribute("aria-expanded", String(open));
       detailToggle.textContent = open ? "閉じる" : "詳細";
     });
+    card.querySelectorAll(".equip-slot-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const slotRoot = button.closest(".member-equipment-slot");
+        const candidates = slotRoot?.querySelector(".equipment-candidates");
+        if (!candidates) return;
+        const open = candidates.hasAttribute("hidden");
+        card.querySelectorAll(".equipment-candidates").forEach((list) => {
+          if (list !== candidates) list.setAttribute("hidden", "");
+        });
+        candidates.toggleAttribute("hidden", !open);
+      });
+    });
+    card.querySelectorAll(".equip-choice-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
+      });
+    });
     card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
     root.appendChild(card);
   }
@@ -1033,23 +1077,11 @@ function renderStorage() {
               <span class="storage-item ${rarityClassName(rarity)}">${name}</span>
               <span class="storage-meta">${rarity}</span>
             </div>
-            <div class="storage-equip-controls">
-              <select class="storage-member-select" data-storage-index="${index}">${storageMemberOptions()}</select>
-              ${item ? storageEquipButtons(item, index) : '<span class="storage-meta">装備不可</span>'}
-            </div>
           </li>`;
         })
         .join("")}
     </ul>
   `;
-
-  root.querySelectorAll(".storage-equip-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      const index = Number(button.dataset.storageIndex);
-      const select = root.querySelector(`.storage-member-select[data-storage-index="${index}"]`);
-      equipStorageItem(index, select?.value, button.dataset.slot);
-    });
-  });
 }
 
 function renderStages() {
