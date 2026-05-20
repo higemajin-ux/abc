@@ -35,8 +35,11 @@ function tryMageMagicSense(members, monster, area) {
   if (!mages.length || Math.random() >= 0.2) return { monster, explorationEvents: [] };
 
   const detector = pick(mages);
+  const detectedMonster = pickWeightedMonster(area, 3);
   return {
-    monster: pickWeightedMonster(area, 3),
+    monster: detectedMonster,
+    detector,
+    foundRare: detectedMonster.rare && !detectedMonster.boss,
     explorationEvents: [
       { kind: "spell", text: `${detector.name}は魔力探知を使った。` },
       { kind: "voice", text: `${detector.name}<br>「……珍しいやつがいるな」` },
@@ -513,7 +516,7 @@ function applyEnemyPoison(enemy, events) {
 
 function applyEnemyBurn(enemy, events) {
   enemy.burnTurns = 2;
-  events.push({ kind: "spell", text: `${enemy.name}は燃えている。` });
+  events.push({ kind: "spell", text: `${enemy.name}は火傷を負った。` });
 }
 
 function tickEnemyDots(enemy, events) {
@@ -537,7 +540,7 @@ function tickEnemyDots(enemy, events) {
   if (enemy.burnTurns > 0) {
     const damage = Math.max(4, Math.floor(enemy.maxHp * 0.06));
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-    events.push({ kind: "spell", text: `${enemy.name}は燃焼で${damage}ダメージ。` });
+    events.push({ kind: "spell", text: `${enemy.name}は火傷で${damage}ダメージ。` });
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     enemy.burnTurns -= 1;
     if (enemy.burnTurns <= 0) enemy.burnTurns = 0;
@@ -846,7 +849,7 @@ function pickAmbushScout(party) {
 
 function pushScoutAmbushEvents(scout, events) {
   if (!scout || scout.hp <= 0) return;
-  events.push({ kind: "voice", text: `${scout.name}が敵を先に見つけた。` });
+  events.push({ kind: "voice", text: `${scout.name}は奇襲を使った。` });
   events.push({ kind: "voice", text: "奇襲成功。" });
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${scout.name}<br>「先に行く」` });
@@ -914,8 +917,9 @@ function performEnemyAction(enemy, party, events, speechState) {
   const beforeHp = target.hp;
   const canUsePriestBlessing =
     beforeHp > 0 &&
+    target.job === "priest" &&
     !party.priestBlessingUsed &&
-    party.some((member) => member.job === "priest" && member.hp > 0);
+    target.hp > 0;
   target.hp = clamp(target.hp - damage, 0, target.maxHp);
   events.push({ kind: "", text: `${enemy.name}の攻撃。` });
   if (target.hp <= 0) {
@@ -954,6 +958,9 @@ function runEncounter(members, monster, area, speechState = {}) {
     kind: enemy.boss ? "boss" : "",
     text: enemy.boss ? `${enemy.name}が姿を現した。隊列に緊張が走る。` : `${enemy.name}と遭遇。`,
   });
+  if (magicSense.foundRare && magicSense.detector) {
+    events.push({ kind: "spell", text: `${magicSense.detector.name}の魔力探知で見つけ出した。` });
+  }
   pushHp(events, enemy, enemy.boss ? "boss" : "");
   pushPartyHp(events, party);
 
