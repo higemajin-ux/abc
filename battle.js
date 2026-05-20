@@ -1040,16 +1040,28 @@ function rollEquipmentDrop(party, monster) {
   const pool = specificDrops.length ? specificDrops : EQUIPMENT_DROPS;
   const rarity = pickWeightedKey(DROP_RARITY_WEIGHTS[kind] || DROP_RARITY_WEIGHTS.normal);
   const item = pickDropFromPool(pool, rarity);
+  if (!item) return null;
   const finder = livingScouts(party)[0] || livingMembers(party)[0] || party[0];
   return { ...item, finderName: finder?.name || "隊員" };
 }
 
+const RARITY_NAMES = new Set(["common", "uncommon", "rare", "epic", "legendary", "artifact"]);
+
+function normalizeRarity(rarity) {
+  return RARITY_NAMES.has(rarity) ? rarity : "common";
+}
+
+function rarityClassName(rarity) {
+  return `rarity-${normalizeRarity(rarity)}`;
+}
+
 function shouldAutoSellDrop(item) {
-  return (item?.rarity || "common") === "common";
+  return normalizeRarity(item?.rarity) === "common";
 }
 
 function dropNameHtml(item) {
-  return `<span class="rarity-${item.rarity || "common"}">${item.name}</span>`;
+  if (!item?.name) return "";
+  return `<span class="${rarityClassName(item.rarity)}">${item.name}</span>`;
 }
 
 function performEnemyAction(enemy, party, events, speechState, round = 1) {
