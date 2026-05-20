@@ -677,13 +677,16 @@ function renderLogEntry(entry) {
 
 function battleEventClass(event, prevEvent = null) {
   const kind = event.kind || "";
+  const classes = kind.split(/\s+/).filter(Boolean);
   if (kind === "turn-separator" || kind === "action-break") return kind;
-  if (kind === "enemy-action") return kind;
+  if (classes.includes("initial-hp")) return kind;
   if ((event.text || "").includes("hp-text")) {
-    return prevEvent?.kind === "enemy-action"
+    const prevClasses = (prevEvent?.kind || "").split(/\s+/);
+    return classes.includes("enemy-action") || prevClasses.includes("enemy-action")
       ? `${kind} enemy-action enemy-hp`.trim()
       : `${kind} ally-action ally-hp`.trim();
   }
+  if (classes.includes("enemy-action")) return kind;
   return `${kind} ally-action`.trim();
 }
 
