@@ -4,6 +4,7 @@ let nextId = 1;
 let tickId = null;
 let worldTickId = null;
 let storageRenderCount = -1;
+const openDetailPartyIds = new Set();
 registerDropEquipmentItems();
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
@@ -535,9 +536,13 @@ function storeEquipmentDrops(rewards) {
 }
 
 function findMemberById(memberId) {
+  return findPartyMemberById(memberId)?.member || null;
+}
+
+function findPartyMemberById(memberId) {
   for (const party of state.parties) {
     const member = party.members.find((m) => m.id === memberId);
-    if (member) return member;
+    if (member) return { party, member };
   }
   return null;
 }
@@ -545,7 +550,8 @@ function findMemberById(memberId) {
 function equipStorageItem(index, memberId, targetSlot) {
   if (!state.storage?.length) return;
   const storedItem = storageItemFromEquipment(state.storage[index]);
-  const member = findMemberById(memberId);
+  const found = findPartyMemberById(memberId);
+  const member = found?.member;
   if (!storedItem || !member) return;
 
   const slot = storedItem.slot === "accessory" ? targetSlot : storedItem.slot;
@@ -559,6 +565,7 @@ function equipStorageItem(index, memberId, targetSlot) {
   if (previousItem) state.storage.push(previousItem);
   syncMemberStats(member);
   storageRenderCount = -1;
+  if (found.party) openDetailPartyIds.add(found.party.id);
   saveGame();
   renderAll();
 }
@@ -1013,11 +1020,18 @@ function renderParties() {
     }
     const detailToggle = card.querySelector(".detail-toggle");
     const memberDetailsRoot = card.querySelector(".member-details");
+    if (openDetailPartyIds.has(party.id)) {
+      memberDetailsRoot.removeAttribute("hidden");
+      detailToggle.setAttribute("aria-expanded", "true");
+      detailToggle.textContent = "閉じる";
+    }
     detailToggle.addEventListener("click", () => {
       const open = memberDetailsRoot.hasAttribute("hidden");
       memberDetailsRoot.toggleAttribute("hidden", !open);
       detailToggle.setAttribute("aria-expanded", String(open));
       detailToggle.textContent = open ? "閉じる" : "詳細";
+      if (open) openDetailPartyIds.add(party.id);
+      else openDetailPartyIds.delete(party.id);
     });
     card.querySelectorAll(".equip-slot-btn").forEach((button) => {
       button.addEventListener("click", () => {
