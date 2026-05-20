@@ -192,13 +192,17 @@ function pushHp(events, unit, kind = "") {
   events.push({ kind, text: hpLabel(unit) });
 }
 
+function pushInitialHp(events, unit, kind = "") {
+  events.push({ kind: `initial-hp ${kind}`.trim(), text: hpLabel(unit) });
+}
+
 function pushActionBreak(events) {
   events.push({ kind: "action-break", text: "" });
 }
 
 function pushPartyHp(events, party) {
   for (const member of party) {
-    pushHp(events, member, member.hp <= 0 ? "down" : "");
+    pushInitialHp(events, member, member.hp <= 0 ? "down" : "");
   }
 }
 
@@ -441,7 +445,7 @@ function confirmMemberDown(member, events, speechState) {
   member.actionConsumed = false;
   member.desperateVulnerable = false;
   if (!member.pendingDownConfirm) {
-    events.push({ kind: "down", text: `${member.name}は戦闘不能になった。` });
+    events.push({ kind: "enemy-action down", text: `${member.name}は戦闘不能になった。` });
     speechState.downOrderCounter = (speechState.downOrderCounter || 0) + 1;
     member.downOrder = speechState.downOrderCounter;
   }
@@ -595,20 +599,20 @@ function applyEnemyBurn(enemy, events) {
   events.push({ kind: "spell", text: `${enemy.name}は火傷を負った。` });
 }
 
-function tickEnemyDots(enemy, events) {
+function tickEnemyDots(enemy, events, kind = "enemy-action") {
   if (enemy.hp <= 0) return;
 
   if (enemy.poisonTurns > 0) {
     const baseDamage = Math.max(3, Math.floor(enemy.maxHp * 0.05));
     const damage = enemy.poisonTier === "venom" ? baseDamage * 2 : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-    events.push({ kind: "spell", text: `${enemy.name}は毒で${damage}ダメージ。` });
+    events.push({ kind, text: `${enemy.name}は毒で${damage}ダメージ。` });
     enemy.poisonTurns -= 1;
     if (enemy.poisonTurns <= 0) {
       enemy.poisonTurns = 0;
       enemy.poisonTier = null;
     }
-    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    pushHp(events, enemy, enemy.hp <= 0 ? `${kind} down` : kind);
   }
 
   if (enemy.hp <= 0) return;
@@ -616,10 +620,10 @@ function tickEnemyDots(enemy, events) {
   if (enemy.burnTurns > 0) {
     const damage = Math.max(4, Math.floor(enemy.maxHp * 0.06));
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-    events.push({ kind: "spell", text: `${enemy.name}は火傷で${damage}ダメージ。` });
+    events.push({ kind, text: `${enemy.name}は火傷で${damage}ダメージ。` });
     enemy.burnTurns -= 1;
     if (enemy.burnTurns <= 0) enemy.burnTurns = 0;
-    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    pushHp(events, enemy, enemy.hp <= 0 ? `${kind} down` : kind);
   }
 }
 
@@ -901,16 +905,10 @@ function pickCoverWarrior(party, target) {
   return candidates.length ? pick(candidates) : null;
 }
 
-function maybeCoverTarget(party, target, events) {
+function maybeCoverTarget(party, target) {
   // Passive cover can redirect an enemy attack without consuming an action.
   const coverer = pickCoverWarrior(party, target);
-  if (!coverer) return target;
-
-  if (Math.random() < 0.15) {
-    events.push({ kind: "voice", text: `${coverer.name}「下がれ！」` });
-  }
-  events.push({ kind: "guard", text: `${coverer.name}が${target.name}をかばった。` });
-  return coverer;
+  return coverer ? { target: coverer, covered: target, coverer } : { target, covered: null, coverer: null };
 }
 
 function maybeCounterAttack(actor, enemy, events) {
@@ -977,7 +975,8 @@ function performEnemyAction(enemy, party, events, speechState) {
     tickEnemyTurnStatuses(enemy);
     return;
   }
-  target = maybeCoverTarget(party, target, events);
+  const cover = maybeCoverTarget(party, target);
+  target = cover.target;
 
   if (enemy.blindTurns > 0 && Math.random() < 0.4) {
     events.push({ kind: "enemy-action", text: `${enemy.name}の攻撃` });
@@ -1011,12 +1010,18 @@ function performEnemyAction(enemy, party, events, speechState) {
     target.hp > 0;
   applyDamageToMember(target, damage);
   events.push({ kind: "enemy-action", text: `${enemy.name}の攻撃。` });
+  if (cover.coverer) {
+    if (Math.random() < 0.15) {
+      events.push({ kind: "enemy-action", text: `${cover.coverer.name}「下がれ！」` });
+    }
+    events.push({ kind: "enemy-action", text: `${cover.coverer.name}が${cover.covered.name}をかばった。` });
+  }
   if (target.hp <= 0) {
     events.push({ kind: "enemy-action", text: `${damageResultText(target, damage, hit.critical)}。` });
     if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
       reactToHpDrop(target, beforeHp, events, speechState);
     } else {
-      pushHp(events, target, "down");
+      pushHp(events, target, "enemy-action down");
       confirmMemberDown(target, events, speechState);
     }
   } else {
@@ -1053,7 +1058,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   if (magicSense.foundRare && magicSense.detector) {
     events.push({ kind: "spell", text: `${magicSense.detector.name}の魔力探知で見つけ出した。` });
   }
-  pushHp(events, enemy, enemy.boss ? "boss" : "");
+  pushInitialHp(events, enemy, enemy.boss ? "boss" : "");
   pushPartyHp(events, party);
 
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
@@ -1063,7 +1068,7 @@ function runEncounter(members, monster, area, speechState = {}) {
     if (round === 1 && actionOrder[0]?.id === ambushScout?.id) {
       pushScoutAmbushEvents(ambushScout, events);
       performMemberAction(ambushScout, party, enemy, events);
-      tickEnemyDots(ambushScout, events);
+      tickEnemyDots(ambushScout, events, "ally-action");
       if (ambushScout.hp <= 0) confirmMemberDown(ambushScout, events, speechState);
       if (enemy.hp <= 0) break;
     }
@@ -1071,7 +1076,7 @@ function runEncounter(members, monster, area, speechState = {}) {
     for (const member of actionOrder) {
       if (round === 1 && member.id === ambushScout?.id) continue;
       performMemberAction(member, party, enemy, events);
-      tickEnemyDots(member, events);
+      tickEnemyDots(member, events, "ally-action");
       if (member.hp <= 0) confirmMemberDown(member, events, speechState);
       if (enemy.hp <= 0) break;
     }
