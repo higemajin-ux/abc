@@ -596,6 +596,22 @@ function tickEnemyTurnStatuses(enemy) {
   tickEnemyBlind(enemy);
 }
 
+function tickParalyze(member) {
+  if (!member.paralyzeTurns) return;
+  member.paralyzeTurns -= 1;
+  if (member.paralyzeTurns <= 0) member.paralyzeTurns = 0;
+}
+
+function shouldSkipParalyzedAction(member, events) {
+  if (!member.paralyzeTurns) return false;
+  const skip = Math.random() < 0.5;
+  if (skip) {
+    events.push({ kind: "voice", text: `${member.name}は体がしびれて動けない。` });
+  }
+  tickParalyze(member);
+  return skip;
+}
+
 function applyEnemyPoison(enemy, events) {
   if (enemy.poisonTurns > 0) {
     enemy.poisonTier = "venom";
@@ -891,6 +907,7 @@ function performWarriorAction(actor, party, enemy, events) {
 function performMemberAction(actor, party, enemy, events) {
   if (actor.hp <= 0 || enemy.hp <= 0) return;
   if (actor.actionConsumed) return;
+  if (shouldSkipParalyzedAction(actor, events)) return;
   if (actor.job === "priest") performPriestAction(actor, party, enemy, events);
   else if (actor.job === "mage") performMageAction(actor, enemy, events);
   else if (actor.job === "scout") performScoutAction(actor, party, enemy, events);
