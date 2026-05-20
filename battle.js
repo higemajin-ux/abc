@@ -252,7 +252,7 @@ function buildBossPreludeEvents(members, hpSnapshot) {
     .filter(Boolean);
 }
 
-function buildReturnEvents(members, hpSnapshot) {
+function buildReturnEvents(members, hpSnapshot, mvpLine = null) {
   const memberById = new Map(members.map((member) => [member.id, member]));
   const hpSource = hpSnapshot?.length ? hpSnapshot : snapshotPartyHp(members);
   const candidates = hpSource
@@ -261,14 +261,18 @@ function buildReturnEvents(members, hpSnapshot) {
     .filter(({ member }) => member);
   if (!candidates.length) return [];
 
-  const count = Math.min(candidates.length, roll(1, 2));
-  return candidates
-    .sort(() => Math.random() - 0.5)
-    .slice(0, count)
-    .map(({ member, hp }) => ({
+  const mvpName = mvpLine?.match(/^今回もっとも活躍したのは(.+)だったようだ。$/)?.[1];
+  if (!mvpName) return [];
+
+  const mvp = candidates.find(({ member }) => member.name === mvpName);
+  if (!mvp) return [];
+
+  return [
+    {
       kind: "voice",
-      text: `${member.name}「${pickReturnLine(member, hp)}」`,
-    }));
+      text: `${mvp.member.name}「${pickReturnLine(mvp.member, mvp.hp)}」`,
+    },
+  ];
 }
 
 function memberBattleLines(member) {
@@ -919,7 +923,8 @@ function maybeCounterAttack(actor, enemy, events) {
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${actor.name}「こちらも返す」` });
   }
-  events.push({ kind: "guard", text: `${actor.name}の反撃！${damageResultText(enemy, damage, hit.critical)}。` });
+  events.push({ kind: "guard", text: `${actor.name}の反撃！` });
+  events.push({ kind: "guard", text: `${damageResultText(enemy, damage, hit.critical)}。` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
@@ -977,6 +982,7 @@ function performEnemyAction(enemy, party, events, speechState) {
   if (enemy.blindTurns > 0 && Math.random() < 0.4) {
     events.push({ kind: "", text: `${enemy.name}の攻撃` });
     events.push({ kind: "", text: "ミス！攻撃は外れた。" });
+    tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
     pushActionBreak(events);
     return;
@@ -1010,6 +1016,7 @@ function performEnemyAction(enemy, party, events, speechState) {
     if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
       reactToHpDrop(target, beforeHp, events, speechState);
     } else {
+      pushHp(events, target, "down");
       confirmMemberDown(target, events, speechState);
     }
   } else {
@@ -1018,6 +1025,7 @@ function performEnemyAction(enemy, party, events, speechState) {
     reactToHpDrop(target, beforeHp, events, speechState);
   }
   maybeCounterAttack(target, enemy, events);
+  tickEnemyDots(enemy, events);
   tickEnemyTurnStatuses(enemy);
   pushActionBreak(events);
 }
@@ -1050,19 +1058,21 @@ function runEncounter(members, monster, area, speechState = {}) {
 
   while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
     events.push({ kind: "turn-separator", text: `──── Turn ${round} ────` });
-    tickEnemyDots(enemy, events);
-    if (enemy.hp <= 0) break;
     tickTaunts(party);
     const actionOrder = actionOrderForRound(party, round, ambushScout);
     if (round === 1 && actionOrder[0]?.id === ambushScout?.id) {
       pushScoutAmbushEvents(ambushScout, events);
       performMemberAction(ambushScout, party, enemy, events);
+      tickEnemyDots(ambushScout, events);
+      if (ambushScout.hp <= 0) confirmMemberDown(ambushScout, events, speechState);
       if (enemy.hp <= 0) break;
     }
     performTurnStartSkillChecks(party, enemy, events);
     for (const member of actionOrder) {
       if (round === 1 && member.id === ambushScout?.id) continue;
       performMemberAction(member, party, enemy, events);
+      tickEnemyDots(member, events);
+      if (member.hp <= 0) confirmMemberDown(member, events, speechState);
       if (enemy.hp <= 0) break;
     }
     performEnemyAction(enemy, party, events, speechState);
