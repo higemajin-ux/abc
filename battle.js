@@ -975,6 +975,17 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     tickEnemyTurnStatuses(enemy);
     return;
   }
+
+  if (enemy.boss && !enemy.heavyAttackReady && round % 3 === 2) {
+    enemy.heavyAttackReady = true;
+    events.push({ kind: "enemy-action", text: `${enemy.name}が剣を構えた。` });
+    events.push({ kind: "enemy-action", text: "次の攻撃は危険だ。" });
+    tickEnemyDots(enemy, events);
+    tickEnemyTurnStatuses(enemy);
+    pushActionBreak(events);
+    return;
+  }
+
   const cover = maybeCoverTarget(party, target);
   target = cover.target;
 
@@ -987,7 +998,8 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     return;
   }
 
-  const bossHeavyAttack = enemy.boss && round % 3 === 0;
+  const bossHeavyAttack = enemy.boss && enemy.heavyAttackReady;
+  enemy.heavyAttackReady = false;
   const hit = rollPhysicalHit(damageFor(enemy.atk, target.def), enemy);
   let damage = hit.damage;
   if (bossHeavyAttack) {
