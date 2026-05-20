@@ -1044,6 +1044,10 @@ function rollEquipmentDrop(party, monster) {
   return { ...item, finderName: finder?.name || "隊員" };
 }
 
+function shouldAutoSellDrop(item) {
+  return (item?.rarity || "common") === "common";
+}
+
 function performEnemyAction(enemy, party, events, speechState, round = 1) {
   if (enemy.hp <= 0) {
     tickEnemyTurnStatuses(enemy);
@@ -1197,7 +1201,9 @@ function runEncounter(members, monster, area, speechState = {}) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
     if (equipmentDrop) {
       events.push({ kind: "voice", text: `${equipmentDrop.finderName}が${equipmentDrop.name}を見つけた。` });
-      events.push({ kind: "voice", text: `${equipmentDrop.name}を売却した（${equipmentDrop.sellGold || 0}G）。` });
+      if (shouldAutoSellDrop(equipmentDrop)) {
+        events.push({ kind: "voice", text: `${equipmentDrop.name}を売却した（${equipmentDrop.sellGold || 0}G）。` });
+      }
     }
   } else {
     events.push({ kind: "down", text: `${enemy.name}を退けきれず、隊は煙幕で撤退した。` });
@@ -1209,11 +1215,12 @@ function runEncounter(members, monster, area, speechState = {}) {
     victory,
     events,
     explorationEvents,
+    equipmentDrop,
     startMembersSnapshot,
     bossPreludeEvents: enemy.boss ? buildBossPreludeEvents(party, startMembersSnapshot) : [],
     membersSnapshot: snapshotPartyHp(party),
     kills: victory ? 1 : 0,
     xp: victory ? enemy.xp : Math.floor(enemy.xp * 0.35),
-    gold: victory ? enemy.gold + (equipmentDrop?.sellGold || 0) : Math.floor(enemy.gold * 0.25),
+    gold: victory ? enemy.gold + (shouldAutoSellDrop(equipmentDrop) ? equipmentDrop.sellGold || 0 : 0) : Math.floor(enemy.gold * 0.25),
   };
 }
