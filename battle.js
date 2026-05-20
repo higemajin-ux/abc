@@ -172,19 +172,20 @@ function hpClass(unit) {
 
 function statusLabels(unit) {
   const labels = [];
-  if (unit.poisonTurns > 0 && unit.poisonTier !== "venom") labels.push("毒");
-  if (unit.poisonTurns > 0 && unit.poisonTier === "venom") labels.push("猛毒");
-  if (unit.burnTurns > 0) labels.push("火傷");
-  if (unit.paralyzeTurns > 0) labels.push("麻痺");
-  if (unit.blindTurns > 0) labels.push("盲目");
-  if (unit.slowTurns > 0) labels.push("スロー");
+  if (unit.poisonTurns > 0 && unit.poisonTier !== "venom") labels.push(`毒${unit.poisonTurns}`);
+  if (unit.poisonTurns > 0 && unit.poisonTier === "venom") labels.push(`猛毒${unit.poisonTurns}`);
+  if (unit.burnTurns > 0) labels.push(`火傷${unit.burnTurns}`);
+  if (unit.paralyzeTurns > 0) labels.push(`麻痺${unit.paralyzeTurns}`);
+  if (unit.blindTurns > 0) labels.push(`盲目${unit.blindTurns}`);
+  if (unit.slowTurns > 0) labels.push(`スロー${unit.slowTurns}`);
   return labels;
 }
 
 function hpLabel(unit) {
   const statuses = statusLabels(unit);
-  const statusText = statuses.length ? `<br><span class="status-tags">【${statuses.join(" ")}】</span>` : "";
-  return `<span class="hp-text ${hpClass(unit)}"><span class="hp-name">${unit.name}</span><br><span class="hp-value">${unit.hp}/${unit.maxHp}</span>${statusText}</span>`;
+  const statusText = statuses.length ? `<span class="status-tags">【${statuses.join(" ")}】</span>` : "";
+  const tempText = unit.tempHp > 0 ? `<span class="temp-hp">+${unit.tempHp}</span>` : "";
+  return `<span class="hp-text ${hpClass(unit)}"><span class="hp-name">${unit.name}</span><span class="hp-value">${unit.hp}${tempText}/${unit.maxHp}</span>${statusText}</span>`;
 }
 
 function pushHp(events, unit, kind = "") {
@@ -323,6 +324,28 @@ function recoverHp(target, amount) {
   return target.hp - before;
 }
 
+function healingAmount(actor, min, max, levelScale) {
+  return roll(min, max) + Math.floor(actor.level * levelScale);
+}
+
+function grantTempHp(target, amount) {
+  target.tempHp = (target.tempHp || 0) + amount;
+  return amount;
+}
+
+function applyDamageToMember(target, damage) {
+  const absorbed = Math.min(target.tempHp || 0, damage);
+  if (absorbed > 0) target.tempHp -= absorbed;
+  const hpDamage = damage - absorbed;
+  target.hp = clamp(target.hp - hpDamage, 0, target.maxHp);
+}
+
+function clearTempHp(party) {
+  party.forEach((member) => {
+    member.tempHp = 0;
+  });
+}
+
 function hasBadStatus(member) {
   return (
     member.poisonTurns > 0 ||
@@ -442,10 +465,12 @@ function performPriestAction(actor, party, enemy, events) {
   if (fallen.length) {
     const target = pick(fallen);
     const sureRevive = !actor.sureReviveUsed;
-    events.push({ kind: "heal", text: `${actor.name}は${sureRevive ? "リバイブ" : "リザレクト"}を唱えた。` });
+    events.push({ kind: "heal", text: `${actor.name}は${sureRevive ? "リザレクト" : "リザラ"}を唱えた。` });
     if (sureRevive || Math.random() < 0.5) {
       actor.sureReviveUsed = actor.sureReviveUsed || sureRevive;
       target.hp = Math.max(1, Math.floor(target.maxHp * (sureRevive ? 0.35 : 0.25)));
+      target.tempHp = 0;
+      clearBadStatus(target);
       target.pendingDownConfirm = false;
       events.push({ kind: "heal", text: sureRevive ? `${target.name}は再び立ち上がった。` : `${target.name}が立ち上がった。` });
       pushHp(events, target, "heal");
@@ -465,10 +490,10 @@ function performPriestAction(actor, party, enemy, events) {
 
   const lowest = lowestHpLivingMember(party);
   if (lowest && hpRate(lowest) <= 0.3) {
-    const amount = roll(15, 22) + Math.floor(actor.level * 2);
-    recoverHp(lowest, amount);
-    events.push({ kind: "heal", text: `${actor.name}はミドルヒールを唱えた。` });
-    events.push({ kind: "heal", text: `${lowest.name}の傷が癒えた。` });
+    const amount = healingAmount(actor, 15, 22, 2);
+    const healed = recoverHp(lowest, amount);
+    events.push({ kind: "heal", text: `${actor.name}のミドルヒール！` });
+    events.push({ kind: "heal", text: `${lowest.name}のHPが${healed}回復した。` });
     pushHp(events, lowest, "heal");
     return;
   }
@@ -478,19 +503,21 @@ function performPriestAction(actor, party, enemy, events) {
     .sort((a, b) => hpRate(a) - hpRate(b))[0];
 
   if (wounded) {
-    const amount = roll(8, 13) + Math.floor(actor.level * 1.4);
+    const amount = healingAmount(actor, 8, 13, 1.4);
     const healed = recoverHp(wounded, amount);
-    events.push({ kind: "heal", text: `${actor.name}のヒール。${wounded.name}のHPが${healed}回復した。` });
+    events.push({ kind: "heal", text: `${actor.name}のヒール！` });
+    events.push({ kind: "heal", text: `${wounded.name}のHPが${healed}回復した。` });
     pushHp(events, wounded, "heal");
     return;
   }
 
   const groupTargets = livingMembers(party).filter((m) => hpRate(m) <= 0.75 && m.hp < m.maxHp);
   if (groupTargets.length >= 2) {
-    events.push({ kind: "heal", text: `${actor.name}はヒールレインを唱えた。` });
-    events.push({ kind: "heal", text: "味方全員の傷が少し癒えた。" });
+    const amount = healingAmount(actor, 5, 8, 0.8);
+    events.push({ kind: "heal", text: `${actor.name}のヒールレイン！` });
+    events.push({ kind: "heal", text: `全員のHPが${amount}回復した。` });
     for (const target of livingMembers(party)) {
-      recoverHp(target, roll(5, 8) + Math.floor(actor.level * 0.8));
+      recoverHp(target, amount);
       pushHp(events, target, "heal");
     }
     return;
@@ -570,12 +597,12 @@ function tickEnemyDots(enemy, events) {
     const damage = enemy.poisonTier === "venom" ? baseDamage * 2 : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${enemy.name}は毒で${damage}ダメージ。` });
-    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     enemy.poisonTurns -= 1;
     if (enemy.poisonTurns <= 0) {
       enemy.poisonTurns = 0;
       enemy.poisonTier = null;
     }
+    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
   }
 
   if (enemy.hp <= 0) return;
@@ -584,9 +611,9 @@ function tickEnemyDots(enemy, events) {
     const damage = Math.max(4, Math.floor(enemy.maxHp * 0.06));
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${enemy.name}は火傷で${damage}ダメージ。` });
-    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
     enemy.burnTurns -= 1;
     if (enemy.burnTurns <= 0) enemy.burnTurns = 0;
+    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
   }
 }
 
@@ -597,9 +624,14 @@ function performMageAction(actor, enemy, events) {
     const baseDamage = damageFor(Math.floor(actor.atk * 0.5) + Math.floor(actor.level / 2), Math.floor(enemy.def * 0.2));
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
-    events.push({ kind: "spell", text: `${actor.name}のアシッドミスト。${enemy.name}に${damage}ダメージ。` });
-    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
-    if (enemy.hp > 0) applyEnemyPoison(enemy, events);
+    events.push({ kind: "spell", text: `${actor.name}のアシッドミスト！` });
+    events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
+    if (enemy.hp > 0) {
+      applyEnemyPoison(enemy, events);
+      pushHp(events, enemy);
+    } else {
+      pushHp(events, enemy, "down");
+    }
     return;
   }
 
@@ -641,6 +673,7 @@ function performMageAction(actor, enemy, events) {
       if (target.hp > 0 && !target.slowTurns && Math.random() < 0.3) {
         applyEnemySlow(target);
         events.push({ kind: "spell", text: `${target.name}の動きが鈍った。` });
+        pushHp(events, target);
       }
     }
     return;
@@ -653,8 +686,12 @@ function performMageAction(actor, enemy, events) {
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${actor.name}の火球。${enemy.name}に${damage}ダメージ。` });
-    pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
-    if (enemy.hp > 0 && Math.random() < 0.3) applyEnemyBurn(enemy, events);
+    if (enemy.hp > 0 && Math.random() < 0.3) {
+      applyEnemyBurn(enemy, events);
+      pushHp(events, enemy);
+    } else {
+      pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
+    }
     return;
   }
 
@@ -674,9 +711,9 @@ function performScoutAction(actor, party, enemy, events) {
     .sort((a, b) => hpRate(a) - hpRate(b))[0];
   if (criticalAlly && Math.random() < 0.55) {
     const amount = roll(5, 9) + Math.floor(actor.level * 0.7);
-    const healed = recoverHp(criticalAlly, amount);
+    const guarded = grantTempHp(criticalAlly, amount);
     events.push({ kind: "heal", text: `${actor.name}は応急手当をした。` });
-    events.push({ kind: "heal", text: `${criticalAlly.name}のHPが${healed}回復した。` });
+    events.push({ kind: "heal", text: `${criticalAlly.name}に一時HP${guarded}を付与した。` });
     pushHp(events, criticalAlly, "heal");
     return;
   }
@@ -685,6 +722,7 @@ function performScoutAction(actor, party, enemy, events) {
     if (applyEnemyBlind(enemy)) {
       events.push({ kind: "voice", text: `${actor.name}は目つぶしを使った。` });
       events.push({ kind: "voice", text: `${enemy.name}の視界を奪った。` });
+      pushHp(events, enemy);
       return;
     }
   }
@@ -937,7 +975,8 @@ function performEnemyAction(enemy, party, events, speechState) {
   target = maybeCoverTarget(party, target, events);
 
   if (enemy.blindTurns > 0 && Math.random() < 0.4) {
-    events.push({ kind: "", text: `${enemy.name}の攻撃は外れた。` });
+    events.push({ kind: "", text: `${enemy.name}の攻撃` });
+    events.push({ kind: "", text: "ミス！攻撃は外れた。" });
     tickEnemyTurnStatuses(enemy);
     pushActionBreak(events);
     return;
@@ -964,7 +1003,7 @@ function performEnemyAction(enemy, party, events, speechState) {
     target.job === "priest" &&
     !party.priestBlessingUsed &&
     target.hp > 0;
-  target.hp = clamp(target.hp - damage, 0, target.maxHp);
+  applyDamageToMember(target, damage);
   events.push({ kind: "", text: `${enemy.name}の攻撃。` });
   if (target.hp <= 0) {
     events.push({ kind: "", text: `${damageResultText(target, damage, hit.critical)}。` });
@@ -1032,6 +1071,7 @@ function runEncounter(members, monster, area, speechState = {}) {
 
   const victory = enemy.hp <= 0;
   confirmRemainingDownMembers(party, events, speechState, !(victory && enemy.boss));
+  clearTempHp(party);
 
   if (victory) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
