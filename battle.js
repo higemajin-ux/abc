@@ -1197,7 +1197,7 @@ function runEncounter(members, monster, area, speechState = {}) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
     if (equipmentDrop) {
       events.push({ kind: "voice", text: `${equipmentDrop.finderName}が${equipmentDrop.name}を見つけた。` });
-      events.push({ kind: "voice", text: `${equipmentDrop.name}を売却した（${equipmentDrop.sellGold}G）。` });
+      events.push({ kind: "voice", text: `${equipmentDrop.name}を売却した（${equipmentDrop.sellGold || 0}G）。` });
     }
   } else {
     events.push({ kind: "down", text: `${enemy.name}を退けきれず、隊は煙幕で撤退した。` });
