@@ -656,7 +656,7 @@ function renderLogEntry(entry) {
     detail.innerHTML = entry.type === "return" && entry.reportAuthor
       ? `<p>${entry.reportAuthor}からの報告</p>`
       : "";
-    detail.innerHTML += entry.battleDetail.map((ev) => `<p class="${ev.kind || ""}">${ev.text}</p>`).join("");
+    detail.innerHTML += entry.battleDetail.map((ev) => `<p class="${battleEventClass(ev)}">${ev.text}</p>`).join("");
     if (entry.summary && entry.type === "return") {
       detail.innerHTML += `<p><strong>合計:</strong> ${entry.summary}</p>`;
     }
@@ -671,6 +671,13 @@ function renderLogEntry(entry) {
   }
 
   return li;
+}
+
+function battleEventClass(event) {
+  const kind = event.kind || "";
+  if (kind === "turn-separator" || kind === "action-break") return kind;
+  if (kind === "enemy-action") return kind;
+  return `${kind} ally-action`.trim();
 }
 
 function appendEntriesToList(ul, entries) {
