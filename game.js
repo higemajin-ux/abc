@@ -6,11 +6,10 @@ let worldTickId = null;
 let storageRenderCount = -1;
 const openDetailPartyIds = new Set();
 registerDropEquipmentItems();
-const INITIAL_STORAGE_ITEM_IDS = ["kinglessSword", "blackKingRing"];
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
   areaClears: {},
-  storage: initialStorageItems(),
+  storage: [],
 };
 
 function $(id) {
@@ -65,10 +64,6 @@ function storageItemFromEquipment(item) {
 function storageItemFromEquipmentId(itemId) {
   if (!itemId) return null;
   return storageItemFromEquipment(EQUIPMENT_ITEMS[itemId] || EQUIPMENT_DROPS.find((drop) => drop.id === itemId));
-}
-
-function initialStorageItems() {
-  return INITIAL_STORAGE_ITEM_IDS.map(storageItemFromEquipmentId).filter(Boolean);
 }
 
 function equipmentStatLine(item) {
@@ -1382,7 +1377,7 @@ function resetGame() {
   state = {
     parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
     areaClears: {},
-    storage: initialStorageItems(),
+    storage: [],
   };
   nextId = 1;
   storageRenderCount = -1;
