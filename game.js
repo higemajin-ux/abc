@@ -1076,6 +1076,22 @@ function equipmentSlotHtml(member, slot) {
   </div>`;
 }
 
+function memberSkillListHtml(member) {
+  const skills = JOB_SKILLS?.[member.job] || [];
+  if (!skills.length) return "";
+  return `<div class="member-skills">
+    <div class="member-skills-title">スキル：</div>
+    <ul>
+      ${skills
+        .map(
+          (skill) =>
+            `<li data-skill-id="${skill.id}"><strong>${skill.name}</strong>：${skill.description}</li>`
+        )
+        .join("")}
+    </ul>
+  </div>`;
+}
+
 function memberDetails(party) {
   return party.members
     .map(
@@ -1093,6 +1109,7 @@ function memberDetails(party) {
           <div class="member-stat-row"><span>DEX</span><strong>${memberStatValue(m.dex)}</strong></div>
           <div class="member-stat-row"><span>LUC</span><strong>${memberStatValue(m.luc)}</strong></div>
         </div>
+        ${memberSkillListHtml(m)}
         <div class="member-equipment">${EQUIPMENT_SLOTS
           .map(({ key }) => equipmentSlotHtml(m, key))
           .join("")}</div>
@@ -1126,32 +1143,10 @@ function updatePartyCards() {
 function createPartyCard(party) {
   const on = !!party.mission;
   const area = on ? getArea(party.mission.areaId) : getArea(party.selectedArea);
-  const leader = party.members[0];
   const card = document.createElement("div");
   card.className = "party-card" + (on ? " on-mission-card" : "");
   card.dataset.partyCard = party.id;
-  card.innerHTML = `
-      <div class="party-card-head">
-        <h3>${party.name}</h3>
-        <button type="button" class="detail-toggle" aria-expanded="false">詳細</button>
-      </div>
-      <div class="row"><span>隊長 ${leader.name}</span><span class="muted">Lv.${leader.level}</span></div>
-      <div class="row">
-        <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で戦闘中` : "派遣待機中"}</span>
-        <span class="muted leader-hp">HP ${leader.hp}/${leader.maxHp}</span>
-      </div>
-      <div class="member-list">${memberChips(party)}</div>
-      <div class="member-details" hidden>${memberDetails(party)}</div>
-      <div class="eta">帰還予定：${on ? formatClock(party.mission.endsAt) : "--"}</div>
-      <label class="field-label">派遣先</label>
-      <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
-      <div class="dispatch-wrap" data-progress="${party.id}">
-        <button type="button" class="primary dispatch-btn ${on ? "on-mission" : ""}" ${on ? "disabled" : ""}>
-          <span class="btn-progress ${on ? `progress-${progressStage(missionProgress(party)).key}` : ""}" style="width:${on ? missionProgress(party) : 0}%"></span>
-          <span class="btn-label">${progressLabel(party)}</span>
-        </button>
-      </div>
-    `;
+  card.innerHTML = renderPartyCardContent(party, on, area);
 
   if (!on) {
     card.querySelector(".area-select").addEventListener("change", (e) => {
@@ -1161,12 +1156,13 @@ function createPartyCard(party) {
   }
   const detailToggle = card.querySelector(".detail-toggle");
   const memberDetailsRoot = card.querySelector(".member-details");
-  if (openDetailPartyIds.has(party.id)) {
+  if (detailToggle && memberDetailsRoot && openDetailPartyIds.has(party.id)) {
     memberDetailsRoot.removeAttribute("hidden");
     detailToggle.setAttribute("aria-expanded", "true");
     detailToggle.textContent = "閉じる";
   }
-  detailToggle.addEventListener("click", () => {
+  detailToggle?.addEventListener("click", () => {
+    if (!memberDetailsRoot) return;
     const open = memberDetailsRoot.hasAttribute("hidden");
     memberDetailsRoot.toggleAttribute("hidden", !open);
     detailToggle.setAttribute("aria-expanded", String(open));
@@ -1195,8 +1191,52 @@ function createPartyCard(party) {
       equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
     });
   });
-  card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
+  card.querySelector(".dispatch-btn")?.addEventListener("click", () => startMission(party.id));
   return card;
+}
+
+function renderPartyCardContent(party, on, area) {
+  return `
+      ${renderPartySummarySection(party, on, area)}
+      ${renderMemberSection(party)}
+      ${renderExpeditionSection(party, on, area)}
+    `;
+}
+
+function renderPartySummarySection(party, on, area) {
+  const leader = party.members?.[0] || party.hero || {};
+  return `
+      <div class="party-card-head">
+        <h3>${party.name}</h3>
+        <button type="button" class="detail-toggle" aria-expanded="false">詳細</button>
+      </div>
+      <div class="row"><span>隊長 ${leader.name || "-"}</span><span class="muted">Lv.${leader.level || 1}</span></div>
+      <div class="row">
+        <span class="${on ? "status-mission" : "status-idle"}">${on ? `${area.name}で戦闘中` : "派遣待機中"}</span>
+        <span class="muted leader-hp">HP ${leader.hp ?? "-"}/${leader.maxHp ?? "-"}</span>
+      </div>
+    `;
+}
+
+function renderMemberSection(party) {
+  return `
+      <div class="member-list">${memberChips(party)}</div>
+      <div class="member-details" hidden>${memberDetails(party)}</div>
+    `;
+}
+
+function renderExpeditionSection(party, on, area) {
+  return `
+      <div class="eta">帰還予定：${on ? formatClock(party.mission.endsAt) : "--"}</div>
+      <label class="field-label">派遣先</label>
+      <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
+      <div class="dispatch-wrap" data-progress="${party.id}">
+        <button type="button" class="primary dispatch-btn ${on ? "on-mission" : ""}" ${on ? "disabled" : ""}>
+          <span class="btn-progress ${on ? `progress-${progressStage(missionProgress(party)).key}` : ""}" style="width:${on ? missionProgress(party) : 0}%"></span>
+          <span class="btn-label">${progressLabel(party)}</span>
+        </button>
+      </div>
+    `;
 }
 
 function renderPartyCard(party) {
@@ -1208,6 +1248,7 @@ function renderPartyCard(party) {
 
 function renderParties() {
   const root = $("parties-root");
+  if (!root) return;
   root.innerHTML = "";
 
   for (const party of state.parties) {
@@ -1215,8 +1256,14 @@ function renderParties() {
   }
 }
 
+function renderPartySection() {
+  renderParties();
+}
+
 function renderReports() {
-  $("reports-root").innerHTML = state.parties
+  const root = $("reports-root");
+  if (!root) return;
+  root.innerHTML = state.parties
     .map((p) => {
       const r = p.lastReport;
       const body = r
@@ -1228,8 +1275,14 @@ function renderReports() {
     .join("");
 }
 
+function renderReportSection() {
+  renderReports();
+}
+
 function renderStats() {
-  $("stats-root").innerHTML = state.parties
+  const root = $("stats-root");
+  if (!root) return;
+  root.innerHTML = state.parties
     .map((p) => {
       const s = p.stats;
       return `<div class="sub-panel"><h3>${p.name}</h3>
@@ -1241,6 +1294,10 @@ function renderStats() {
         </div></div>`;
     })
     .join("");
+}
+
+function renderStatsSection() {
+  renderStats();
 }
 
 function storageGroupKey(item, fallback) {
@@ -1531,6 +1588,10 @@ function renderStorage() {
   bindStorageEvents(root);
 }
 
+function renderItemSection() {
+  renderStorage();
+}
+
 function equipmentRecordHtml(item) {
   const rarity = normalizeRarity(item?.rarity);
   const slot = item?.slot || "unknown";
@@ -1567,8 +1628,14 @@ function renderRecords() {
   `;
 }
 
+function renderRecordsSection() {
+  renderRecords();
+}
+
 function renderStages() {
-  $("stages-root").innerHTML = AREA_ORDER.map((id) => {
+  const root = $("stages-root");
+  if (!root) return;
+  root.innerHTML = AREA_ORDER.map((id) => {
     const a = AREAS[id];
     const unlocked = isAreaUnlocked(id);
     const clears = state.areaClears[id] || 0;
@@ -1585,7 +1652,9 @@ function renderWorldSituation() {
   const totalClears = Object.values(state.areaClears).reduce((sum, v) => sum + v, 0);
   const progress = clamp(totalClears * 12, 4, 100);
   const bossAreas = AREA_ORDER.map((id) => AREAS[id]).filter((a) => isAreaUnlocked(a.id) && shouldBossAppear(a));
-  $("world-root").innerHTML = `
+  const root = $("world-root");
+  if (!root) return;
+  root.innerHTML = `
     <p>${totalClears ? `ギルドの街道安全度は ${progress}% まで回復。` : "街道にはまだ魔物の気配が濃い。"}</p>
     <div class="world-meter"><span style="width:${progress}%"></span></div>
     ${
@@ -1598,6 +1667,7 @@ function renderWorldSituation() {
 
 function renderLogs() {
   const root = $("logs-root");
+  if (!root) return;
   root.innerHTML = "";
   for (const party of state.parties) {
     const panel = document.createElement("div");
@@ -1620,19 +1690,27 @@ function renderLogs() {
   }
 }
 
+function renderExpeditionOverviewSection() {
+  renderStages();
+  renderWorldSituation();
+}
+
+function renderInboxSection() {
+  renderLogs();
+}
+
 function renderAll() {
   state.parties.forEach((p) => {
     ensurePartyShape(p);
     ensureValidSelectedArea(p);
   });
-  renderParties();
-  renderReports();
-  renderStages();
-  renderWorldSituation();
-  renderStorage();
-  renderRecords();
-  renderStats();
-  renderLogs();
+  renderPartySection();
+  renderReportSection();
+  renderExpeditionOverviewSection();
+  renderItemSection();
+  renderRecordsSection();
+  renderStatsSection();
+  renderInboxSection();
 }
 
 function ensurePartyShape(party) {
