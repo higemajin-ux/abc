@@ -1441,7 +1441,7 @@ function storageGroupHtml(group) {
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
-      ${equippedEntry ? `<button type="button" class="storage-unequip-btn" data-member-id="${equippedEntry.equippedMemberId}" data-slot="${equippedEntry.equippedSlot}">解除</button>` : ""}
+      ${equippedEntry ? `<button type="button" class="storage-unequip-btn" data-member-id="${equippedEntry.equippedMemberId}" data-slot="${equippedEntry.equippedSlot}">装備解除</button>` : ""}
       <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
