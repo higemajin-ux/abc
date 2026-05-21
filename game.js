@@ -4,6 +4,8 @@ let nextId = 1;
 let tickId = null;
 let worldTickId = null;
 let storageRenderCount = -1;
+let storageSortMode = "new";
+const expandedStorageGroupIds = new Set();
 const openDetailPartyIds = new Set();
 registerDropEquipmentItems();
 let state = {
@@ -1172,7 +1174,47 @@ function renderStats() {
     .join("");
 }
 
-function renderStorage() {
+function storageGroupKey(item, fallback) {
+  return item?.id || `item-${fallback}`;
+}
+
+function rarityRank(rarity) {
+  return ["common", "uncommon", "rare", "epic", "legendary", "artifact"].indexOf(normalizeRarity(rarity));
+}
+
+function storageSlotRank(slot) {
+  return { weapon: 0, armor: 1, accessory: 2 }[slot] ?? 3;
+}
+
+function compareStorageGroups(a, b) {
+  if (storageSortMode === "rarity") {
+    return rarityRank(b.item.rarity) - rarityRank(a.item.rarity) || b.latestIndex - a.latestIndex;
+  }
+  if (storageSortMode === "type") {
+    return storageSlotRank(a.item.slot) - storageSlotRank(b.item.slot) || a.item.name.localeCompare(b.item.name, "ja");
+  }
+  if (storageSortMode === "name") {
+    return a.item.name.localeCompare(b.item.name, "ja") || b.latestIndex - a.latestIndex;
+  }
+  return b.latestIndex - a.latestIndex;
+}
+
+function storageEquipButtons(index, item) {
+  if (!item?.slot) return "";
+  return state.parties
+    .flatMap((party) =>
+      party.members.map((member) => {
+        if (item.slot === "accessory") {
+          return `<button type="button" class="storage-equip-btn" data-storage-index="${index}" data-member-id="${member.id}" data-slot="accessory1">${member.name} 1</button>
+            <button type="button" class="storage-equip-btn" data-storage-index="${index}" data-member-id="${member.id}" data-slot="accessory2">${member.name} 2</button>`;
+        }
+        return `<button type="button" class="storage-equip-btn" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${item.slot}">${member.name}</button>`;
+      })
+    )
+    .join("");
+}
+
+function renderStorageLegacy() {
   const root = $("storage-root");
   if (!root) return;
   const items = state.storage || [];
@@ -1234,6 +1276,132 @@ function renderStorage() {
       toggleStorageLock(Number(button.dataset.storageIndex));
     });
   });
+}
+
+function storageSortOptionsHtml() {
+  return `<div class="storage-controls">
+    <label>並び替え
+      <select class="storage-sort-select">
+        <option value="new" ${storageSortMode === "new" ? "selected" : ""}>新しい順</option>
+        <option value="rarity" ${storageSortMode === "rarity" ? "selected" : ""}>rarity順</option>
+        <option value="type" ${storageSortMode === "type" ? "selected" : ""}>種類順</option>
+        <option value="name" ${storageSortMode === "name" ? "selected" : ""}>名前順</option>
+      </select>
+    </label>
+  </div>`;
+}
+
+function storageGroups(items) {
+  const groups = [];
+  const groupByKey = new Map();
+  items.forEach((rawItem, index) => {
+    const item = storageItemFromEquipment(rawItem);
+    if (!item) return;
+    const key = storageGroupKey(item, index);
+    let group = groupByKey.get(key);
+    if (!group) {
+      group = { item, count: 0, entries: [], latestIndex: index };
+      groupByKey.set(key, group);
+      groups.push(group);
+    }
+    group.count += 1;
+    group.latestIndex = Math.max(group.latestIndex, index);
+    group.entries.push({ item, index, locked: !!item.locked });
+  });
+  return groups.sort(compareStorageGroups);
+}
+
+function storageStackRowHtml(entry, fallbackName) {
+  const { item, index, locked } = entry;
+  const rarity = normalizeRarity(item?.rarity);
+  return `<div class="storage-stack-row">
+    <div class="storage-info">
+      <div class="storage-head">
+        <span class="storage-item ${rarityClassName(rarity)}">${item?.name || fallbackName}</span>
+        ${locked ? '<span class="storage-lock-label">保護中</span>' : ""}
+      </div>
+      <div class="storage-effect">${equipmentStorageLine(item)}</div>
+    </div>
+    <div class="storage-actions">
+      <div class="storage-equip-actions">${storageEquipButtons(index, item)}</div>
+      <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
+      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${locked ? "disabled" : ""}>売却</button>
+    </div>
+  </div>`;
+}
+
+function storageGroupHtml(group) {
+  const { item, count, entries } = group;
+  const rarity = normalizeRarity(item?.rarity);
+  const name = item?.name || "名称不明の装備";
+  const key = storageGroupKey(item, entries[0]?.index);
+  const expanded = expandedStorageGroupIds.has(key);
+  const lockedCount = entries.filter((entry) => entry.locked).length;
+  return `<li>
+    <button type="button" class="storage-group-head" data-storage-group="${key}">
+      <div class="storage-info">
+        <div class="storage-head">
+          <span class="storage-item ${rarityClassName(rarity)}">${name}${count > 1 ? ` ×${count}` : ""}</span>
+          <span class="storage-meta">${rarity}</span>
+          ${lockedCount ? `<span class="storage-lock-label">保護 ${lockedCount}</span>` : ""}
+        </div>
+        <div class="storage-effect">${equipmentStorageLine(item)}</div>
+      </div>
+      <span class="storage-expand-mark">${expanded ? "▲" : "▼"}</span>
+    </button>
+    ${expanded ? `<div class="storage-stack-items">${entries.map((entry) => storageStackRowHtml(entry, name)).join("")}</div>` : ""}
+  </li>`;
+}
+
+function bindStorageEvents(root) {
+  root.querySelector(".storage-sort-select")?.addEventListener("change", (e) => {
+    storageSortMode = e.target.value;
+    storageRenderCount = -1;
+    renderStorage();
+  });
+  root.querySelectorAll(".storage-group-head").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.storageGroup;
+      if (expandedStorageGroupIds.has(key)) expandedStorageGroupIds.delete(key);
+      else expandedStorageGroupIds.add(key);
+      storageRenderCount = -1;
+      renderStorage();
+    });
+  });
+  root.querySelectorAll(".storage-equip-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
+    });
+  });
+  root.querySelectorAll(".storage-sell-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      sellStorageItem(Number(button.dataset.storageIndex));
+    });
+  });
+  root.querySelectorAll(".storage-lock-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      toggleStorageLock(Number(button.dataset.storageIndex));
+    });
+  });
+}
+
+function renderStorage() {
+  const root = $("storage-root");
+  if (!root) return;
+  const items = state.storage || [];
+  const renderKey = `${items.length}:${storageSortMode}:${[...expandedStorageGroupIds].sort().join("|")}`;
+  if (renderKey === storageRenderCount) return;
+  storageRenderCount = renderKey;
+
+  if (!items.length) {
+    root.innerHTML = `${storageSortOptionsHtml()}<p class="log-empty">保管中の装備はありません</p>`;
+    bindStorageEvents(root);
+    return;
+  }
+
+  root.innerHTML = `${storageSortOptionsHtml()}
+    <ul class="storage-list">${storageGroups(items).map(storageGroupHtml).join("")}</ul>`;
+  bindStorageEvents(root);
 }
 
 function renderStages() {
