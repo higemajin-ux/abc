@@ -3,10 +3,14 @@
 function ensureCharacterEquipment(character) {
   const defaults = DEFAULT_EQUIPMENT_BY_MEMBER[character.id] || DEFAULT_EQUIPMENT_BY_JOB[character.job] || {};
   if (!character.equipment) character.equipment = {};
-  character.equipment.weapon = EQUIPMENT_ITEMS[character.equipment.weapon] ? character.equipment.weapon : defaults.weapon || null;
-  character.equipment.armor = EQUIPMENT_ITEMS[character.equipment.armor] ? character.equipment.armor : defaults.armor || null;
-  character.equipment.accessory1 = EQUIPMENT_ITEMS[character.equipment.accessory1] ? character.equipment.accessory1 : defaults.accessory1 || null;
-  character.equipment.accessory2 = EQUIPMENT_ITEMS[character.equipment.accessory2] ? character.equipment.accessory2 : defaults.accessory2 || null;
+  for (const slot of ["weapon", "armor", "accessory1", "accessory2"]) {
+    const current = character.equipment[slot];
+    if (current == null && Object.prototype.hasOwnProperty.call(character.equipment, slot)) {
+      character.equipment[slot] = null;
+    } else {
+      character.equipment[slot] = EQUIPMENT_ITEMS[current] ? current : defaults[slot] || null;
+    }
+  }
   return character.equipment;
 }
 
