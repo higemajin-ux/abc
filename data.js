@@ -22,6 +22,7 @@ const EQUIPMENT_ITEMS = {
   tinStaff: { id: "tinStaff", name: "錫杖", slot: "weapon", atk: 1, luc: 1 },
   dagger: { id: "dagger", name: "短剣", slot: "weapon", atk: 1, dex: 1 },
   scorchedStaff: { id: "scorchedStaff", name: "焦げた杖", slot: "weapon", atk: 2 },
+  kinglessSword: { id: "kinglessSword", name: "王なき剣", slot: "weapon", rarity: "artifact", atk: 1, sellGold: 300 },
   leatherArmor: { id: "leatherArmor", name: "革鎧", slot: "armor", def: 1, maxHp: 2 },
   monkRobe: { id: "monkRobe", name: "修道服", slot: "armor", def: 1, luc: 1 },
   lightLeatherArmor: { id: "lightLeatherArmor", name: "軽革鎧", slot: "armor", def: 1, dex: 1 },
