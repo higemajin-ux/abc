@@ -1288,6 +1288,7 @@ function equippedStorageEntries() {
           item,
           storageIndex: `equipped-${member.id}-${slot}`,
           equippedBy: member.name,
+          equippedMemberId: member.id,
           equippedSlot: slot,
         });
       }
@@ -1405,7 +1406,7 @@ function storageHeaderHtml(items) {
 function storageGroups(entries) {
   const groups = [];
   const groupByKey = new Map();
-  entries.forEach(({ item, storageIndex, equippedBy, equippedSlot }) => {
+  entries.forEach(({ item, storageIndex, equippedBy, equippedMemberId, equippedSlot }) => {
     if (!item) return;
     const key = storageGroupKey(item, storageIndex);
     let group = groupByKey.get(key);
@@ -1416,7 +1417,7 @@ function storageGroups(entries) {
     }
     group.count += 1;
     if (typeof storageIndex === "number") group.latestIndex = Math.max(group.latestIndex, storageIndex);
-    group.entries.push({ item, index: storageIndex, locked: !!item.locked, equippedBy, equippedSlot });
+    group.entries.push({ item, index: storageIndex, locked: !!item.locked, equippedBy, equippedMemberId, equippedSlot });
   });
   return groups.sort(compareStorageGroups);
 }
@@ -1427,7 +1428,8 @@ function storageGroupHtml(group) {
   const name = item?.name || "名称不明の装備";
   const index = entries[0]?.index;
   const locked = !!entries[0]?.locked;
-  const equippedBy = entries.find((entry) => entry.equippedBy)?.equippedBy;
+  const equippedEntry = entries.find((entry) => entry.equippedBy);
+  const equippedBy = equippedEntry?.equippedBy;
   const canSell = typeof index === "number" && !equippedBy && !locked;
   return `<li>
     <div class="storage-info">
@@ -1439,6 +1441,7 @@ function storageGroupHtml(group) {
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
+      ${equippedEntry ? `<button type="button" class="storage-unequip-btn" data-member-id="${equippedEntry.equippedMemberId}" data-slot="${equippedEntry.equippedSlot}">解除</button>` : ""}
       <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
@@ -1480,6 +1483,11 @@ function bindStorageEvents(root) {
   root.querySelectorAll(".storage-sell-btn").forEach((button) => {
     button.addEventListener("click", () => {
       sellStorageItem(Number(button.dataset.storageIndex));
+    });
+  });
+  root.querySelectorAll(".storage-unequip-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      unequipMemberItem(button.dataset.memberId, button.dataset.slot);
     });
   });
   root.querySelectorAll(".storage-lock-btn").forEach((button) => {
