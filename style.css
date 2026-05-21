@@ -368,6 +368,31 @@ h1 {
   text-align: right;
 }
 
+.member-skills {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  color: var(--muted-on-dark);
+  font-size: 0.8rem;
+}
+
+.member-skills-title {
+  color: var(--ink-on-dark);
+  font-weight: 700;
+}
+
+.member-skills ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member-skills strong {
+  color: var(--ink-on-dark);
+}
+
 .member-equipment {
   display: grid;
   gap: 6px;
