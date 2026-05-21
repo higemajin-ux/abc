@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: dark;
   --bg-deep: #0b0705;
   --bg: #14100c;
@@ -635,45 +635,12 @@ h1 {
   padding: 5px 8px;
 }
 
-.storage-group-head,
-.storage-stack-row {
+.storage-list li {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  width: 100%;
   padding: 8px 10px;
-}
-
-.storage-group-head {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.storage-group-head:hover {
-  background: rgba(214, 168, 79, 0.06);
-}
-
-.storage-expand-mark {
-  color: var(--muted-on-dark);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.storage-stack-items {
-  display: grid;
-  border-top: 1px solid var(--line);
-}
-
-.storage-stack-row {
-  background: rgba(11, 7, 5, 0.28);
-}
-
-.storage-stack-row + .storage-stack-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .storage-info {
