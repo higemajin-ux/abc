@@ -97,14 +97,6 @@ function ensureAutoSellSettings(target = state) {
   return target.autoSell;
 }
 
-function shouldAutoSellDrop(item) {
-  const rarity = normalizeRarity(item?.rarity);
-  const settings = ensureAutoSellSettings();
-  const autoSold = rarity === "common" || rarity === "uncommon" ? !!settings[rarity] : false;
-  if (item && typeof item === "object") item.autoSold = autoSold;
-  return autoSold;
-}
-
 function wasAutoSoldDrop(item) {
   return item?.autoSold === true || (item?.autoSold == null && shouldAutoSellDrop(item));
 }
