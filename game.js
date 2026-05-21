@@ -6,6 +6,7 @@ let worldTickId = null;
 let storageRenderCount = -1;
 let storageSortMode = "new";
 let storageFilterMode = "all";
+let storageSettingsOpen = false;
 const openDetailPartyIds = new Set();
 registerDropEquipmentItems();
 let state = {
@@ -197,11 +198,11 @@ function buildRewardJournalEntries(rewards) {
   const names = (rewards?.encounters || [])
     .map((encounter) => encounter?.equipmentDrop)
     .filter(Boolean)
-    .filter((drop) => !wasAutoSoldDrop(drop))
     .map((drop) => {
       const item = storageItemFromEquipment(drop) || drop;
       const name = item?.name || "装備";
-      return `<span class="${rarityClassName(item?.rarity)}">${name}</span>`;
+      const suffix = wasAutoSoldDrop(drop) ? "（売却）" : "";
+      return `<span class="${rarityClassName(item?.rarity)}">${name}</span>${suffix}`;
     });
   if (!names.length) return [];
   return [{
@@ -1344,25 +1345,29 @@ function renderStorageLegacy() {
 function storageSortOptionsHtml() {
   const autoSell = ensureAutoSellSettings();
   return `<div class="storage-controls">
-    <div class="storage-filters">
-      ${storageFilterButton("all", "すべて")}
-      ${storageFilterButton("weapon", "武器")}
-      ${storageFilterButton("armor", "防具")}
-      ${storageFilterButton("accessory", "装飾")}
-      ${storageFilterButton("artifact", "artifact")}
+    <button type="button" class="storage-organize-btn" data-storage-settings-toggle aria-expanded="${storageSettingsOpen}">整理</button>
+    <div class="storage-settings" ${storageSettingsOpen ? "" : "hidden"}>
+      <div class="storage-auto-sell" aria-label="自動売却設定">
+        <span>自動売却</span>
+        <label><input type="checkbox" data-auto-sell="common" ${autoSell.common ? "checked" : ""}> common</label>
+        <label><input type="checkbox" data-auto-sell="uncommon" ${autoSell.uncommon ? "checked" : ""}> uncommon</label>
+      </div>
+      <label>並び替え
+        <select class="storage-sort-select">
+          <option value="new" ${storageSortMode === "new" ? "selected" : ""}>新しい順</option>
+          <option value="rarity" ${storageSortMode === "rarity" ? "selected" : ""}>rarity順</option>
+          <option value="type" ${storageSortMode === "type" ? "selected" : ""}>種類順</option>
+          <option value="name" ${storageSortMode === "name" ? "selected" : ""}>名前順</option>
+        </select>
+      </label>
+      <div class="storage-filters" aria-label="フィルター">
+        ${storageFilterButton("all", "すべて")}
+        ${storageFilterButton("weapon", "武器")}
+        ${storageFilterButton("armor", "防具")}
+        ${storageFilterButton("accessory", "装飾")}
+        ${storageFilterButton("artifact", "artifact")}
+      </div>
     </div>
-    <div class="storage-auto-sell" aria-label="自動売却設定">
-      <label><input type="checkbox" data-auto-sell="common" ${autoSell.common ? "checked" : ""}> common売却</label>
-      <label><input type="checkbox" data-auto-sell="uncommon" ${autoSell.uncommon ? "checked" : ""}> uncommon売却</label>
-    </div>
-    <label>並び替え
-      <select class="storage-sort-select">
-        <option value="new" ${storageSortMode === "new" ? "selected" : ""}>新しい順</option>
-        <option value="rarity" ${storageSortMode === "rarity" ? "selected" : ""}>rarity順</option>
-        <option value="type" ${storageSortMode === "type" ? "selected" : ""}>種類順</option>
-        <option value="name" ${storageSortMode === "name" ? "selected" : ""}>名前順</option>
-      </select>
-    </label>
   </div>`;
 }
 
@@ -1406,6 +1411,11 @@ function storageGroupHtml(group) {
 }
 
 function bindStorageEvents(root) {
+  root.querySelector("[data-storage-settings-toggle]")?.addEventListener("click", () => {
+    storageSettingsOpen = !storageSettingsOpen;
+    storageRenderCount = -1;
+    renderStorage();
+  });
   root.querySelectorAll(".storage-filter-btn").forEach((button) => {
     button.addEventListener("click", () => {
       storageFilterMode = button.dataset.storageFilter || "all";
@@ -1445,7 +1455,7 @@ function renderStorage() {
   if (!root) return;
   const items = state.storage || [];
   const autoSell = ensureAutoSellSettings();
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}`;
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageSettingsOpen}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
   const visibleEntries = filteredStorageEntries(items);
