@@ -995,6 +995,7 @@ function memberDetails(party) {
         <div class="member-equipment">${["weapon", "armor", "accessory1", "accessory2"]
           .map((slot) => equipmentSlotHtml(m, slot))
           .join("")}</div>
+        ${formatActiveSetBonuses(m)}
       </div>`
     )
     .join("");
