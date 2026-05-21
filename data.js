@@ -34,20 +34,21 @@ const EQUIPMENT_SLOTS = [
   { key: "armor", label: "防具", kind: "armor" },
   { key: "accessory1", label: "装飾1", kind: "accessory" },
   { key: "accessory2", label: "装飾2", kind: "accessory" },
+  { key: "relic", label: "遺物", kind: "relic" },
 ];
 
 const DEFAULT_EQUIPMENT_BY_MEMBER = {
-  "pt1-allen": { weapon: "oldSword", armor: "leatherArmor", accessory1: null, accessory2: null },
-  "pt1-mina": { weapon: "tinStaff", armor: "monkRobe", accessory1: null, accessory2: null },
-  "pt1-nil": { weapon: "dagger", armor: "lightLeatherArmor", accessory1: null, accessory2: null },
-  "pt1-gald": { weapon: "scorchedStaff", armor: "travelWear", accessory1: null, accessory2: null },
+  "pt1-allen": { weapon: "oldSword", armor: "leatherArmor", accessory1: null, accessory2: null, relic: null },
+  "pt1-mina": { weapon: "tinStaff", armor: "monkRobe", accessory1: null, accessory2: null, relic: null },
+  "pt1-nil": { weapon: "dagger", armor: "lightLeatherArmor", accessory1: null, accessory2: null, relic: null },
+  "pt1-gald": { weapon: "scorchedStaff", armor: "travelWear", accessory1: null, accessory2: null, relic: null },
 };
 
 const DEFAULT_EQUIPMENT_BY_JOB = {
-  warrior: { weapon: "oldSword", armor: "leatherArmor", accessory1: null, accessory2: null },
-  priest: { weapon: "tinStaff", armor: "monkRobe", accessory1: null, accessory2: null },
-  mage: { weapon: "scorchedStaff", armor: "travelWear", accessory1: null, accessory2: null },
-  scout: { weapon: "dagger", armor: "lightLeatherArmor", accessory1: null, accessory2: null },
+  warrior: { weapon: "oldSword", armor: "leatherArmor", accessory1: null, accessory2: null, relic: null },
+  priest: { weapon: "tinStaff", armor: "monkRobe", accessory1: null, accessory2: null, relic: null },
+  mage: { weapon: "scorchedStaff", armor: "travelWear", accessory1: null, accessory2: null, relic: null },
+  scout: { weapon: "dagger", armor: "lightLeatherArmor", accessory1: null, accessory2: null, relic: null },
 };
 
 const DROP_RATES = {
@@ -105,6 +106,9 @@ const EQUIPMENT_DROPS = [
 { id: "pilgrimShoes", name: "巡礼者の靴", slot: "accessory", rarity: "uncommon", dex: 2, sellGold: 24 },
 
 { id: "thiefGloves", name: "盗賊の手袋", slot: "accessory", rarity: "rare", dex: 3, luc: 1, sellGold: 60 },
+  { id: "blackPage", name: "黒い頁", slot: "relic", rarity: "epic", luc: 2, sellGold: 140 },
+  { id: "brokenStarMap", name: "割れた星図", slot: "relic", rarity: "legendary", dex: 2, luc: 3, sellGold: 240 },
+  { id: "namelessTablet", name: "名前の消えた記録板", slot: "relic", rarity: "artifact", luc: 5, maxHp: 5, sellGold: 500 },
 ];
 
 const PARTY_TEMPLATES = {
