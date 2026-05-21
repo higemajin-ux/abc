@@ -1312,7 +1312,7 @@ function storageGroupHtml(group) {
     </div>
     <div class="storage-actions">
       <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
-      ${locked ? "" : `<button type="button" class="storage-sell-btn" data-storage-index="${index}">売却</button>`}
+      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${locked ? "disabled" : ""}>売却</button>
     </div>
   </li>`;
 }
