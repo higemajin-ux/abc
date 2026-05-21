@@ -12,6 +12,7 @@ let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
   areaClears: {},
   storage: [],
+  autoSell: { common: true, uncommon: false },
 };
 
 function $(id) {
@@ -80,6 +81,30 @@ function equipmentStatLine(item) {
 function equipmentStorageLine(item) {
   const sellGold = item?.sellGold || 0;
   return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
+}
+
+function defaultAutoSellSettings() {
+  return { common: true, uncommon: false };
+}
+
+function ensureAutoSellSettings(target = state) {
+  const defaults = defaultAutoSellSettings();
+  target.autoSell = { ...defaults, ...(target.autoSell || {}) };
+  target.autoSell.common = !!target.autoSell.common;
+  target.autoSell.uncommon = !!target.autoSell.uncommon;
+  return target.autoSell;
+}
+
+function shouldAutoSellDrop(item) {
+  const rarity = normalizeRarity(item?.rarity);
+  const settings = ensureAutoSellSettings();
+  const autoSold = rarity === "common" || rarity === "uncommon" ? !!settings[rarity] : false;
+  if (item && typeof item === "object") item.autoSold = autoSold;
+  return autoSold;
+}
+
+function wasAutoSoldDrop(item) {
+  return item?.autoSold === true || (item?.autoSold == null && shouldAutoSellDrop(item));
 }
 
 function defaultParty(id, name) {
@@ -176,7 +201,7 @@ function buildRewardJournalEntries(rewards) {
       const item = storageItemFromEquipment(drop) || drop;
       const name = item?.name || "装備";
       const nameHtml = `<span class="${rarityClassName(item?.rarity)}">${name}</span>`;
-      const autoSold = typeof shouldAutoSellDrop === "function" && shouldAutoSellDrop(drop);
+      const autoSold = wasAutoSoldDrop(drop);
       const title = autoSold
         ? `${nameHtml}を売却（${drop.sellGold || 0}G）。`
         : `${drop.finderName || "隊員"}が${nameHtml}を持ち帰った。`;
@@ -562,8 +587,7 @@ function storeEquipmentDrops(rewards) {
   for (const encounter of rewards.encounters || []) {
     const item = encounter.equipmentDrop;
     const storedItem = storageItemFromEquipment(item);
-    const rarity = normalizeRarity(storedItem?.rarity);
-    if (!item || rarity === "common") continue;
+    if (!item || !storedItem || wasAutoSoldDrop(item)) continue;
     state.storage.push({ ...storedItem, foundBy: item.finderName || "" });
   }
 }
@@ -1320,6 +1344,7 @@ function renderStorageLegacy() {
 }
 
 function storageSortOptionsHtml() {
+  const autoSell = ensureAutoSellSettings();
   return `<div class="storage-controls">
     <div class="storage-filters">
       ${storageFilterButton("all", "すべて")}
@@ -1327,6 +1352,10 @@ function storageSortOptionsHtml() {
       ${storageFilterButton("armor", "防具")}
       ${storageFilterButton("accessory", "装飾")}
       ${storageFilterButton("artifact", "artifact")}
+    </div>
+    <div class="storage-auto-sell" aria-label="自動売却設定">
+      <label><input type="checkbox" data-auto-sell="common" ${autoSell.common ? "checked" : ""}> common売却</label>
+      <label><input type="checkbox" data-auto-sell="uncommon" ${autoSell.uncommon ? "checked" : ""}> uncommon売却</label>
     </div>
     <label>並び替え
       <select class="storage-sort-select">
@@ -1391,6 +1420,16 @@ function bindStorageEvents(root) {
     storageRenderCount = -1;
     renderStorage();
   });
+  root.querySelectorAll("[data-auto-sell]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const key = input.dataset.autoSell;
+      if (!["common", "uncommon"].includes(key)) return;
+      ensureAutoSellSettings()[key] = input.checked;
+      storageRenderCount = -1;
+      saveGame();
+      renderStorage();
+    });
+  });
   root.querySelectorAll(".storage-sell-btn").forEach((button) => {
     button.addEventListener("click", () => {
       sellStorageItem(Number(button.dataset.storageIndex));
@@ -1407,7 +1446,8 @@ function renderStorage() {
   const root = $("storage-root");
   if (!root) return;
   const items = state.storage || [];
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}`;
+  const autoSell = ensureAutoSellSettings();
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
   const visibleEntries = filteredStorageEntries(items);
@@ -1522,6 +1562,7 @@ function ensurePartyShape(party) {
 function migrate(data) {
   if (!data.parties) return data;
   if (!data.storage) data.storage = [];
+  ensureAutoSellSettings(data);
 
   for (const p of data.parties) {
     ensurePartyShape(p);
@@ -1570,7 +1611,13 @@ function loadGame() {
     if (!raw) return;
     const data = migrate(JSON.parse(raw));
     if (data.parties) {
-      state = { parties: data.parties, areaClears: data.areaClears || {}, storage: data.storage || [] };
+      state = {
+        parties: data.parties,
+        areaClears: data.areaClears || {},
+        storage: data.storage || [],
+        autoSell: data.autoSell || defaultAutoSellSettings(),
+      };
+      ensureAutoSellSettings();
       state.parties.forEach(trimDispatches);
     }
   } catch (e) {
@@ -1587,6 +1634,7 @@ function resetGame() {
     parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
     areaClears: {},
     storage: [],
+    autoSell: defaultAutoSellSettings(),
   };
   nextId = 1;
   storageRenderCount = -1;
