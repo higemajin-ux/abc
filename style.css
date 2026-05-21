@@ -393,6 +393,34 @@ h1 {
   color: var(--ink-on-dark);
 }
 
+.skill-toggle {
+  appearance: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0 6px 0 0;
+  border: 1px solid var(--line-bright);
+  border-radius: 3px;
+  background: var(--bg);
+  vertical-align: -2px;
+  cursor: pointer;
+}
+
+.skill-toggle:hover {
+  border-color: var(--accent-dark);
+  background: var(--surface);
+}
+
+.skill-toggle:checked {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--gold), var(--accent-dark));
+  box-shadow: inset 0 0 0 2px var(--bg);
+}
+
+.skill-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .member-equipment {
   display: grid;
   gap: 6px;
