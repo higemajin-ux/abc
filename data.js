@@ -7,7 +7,7 @@ const JOB_LABELS = {
   warrior: "戦士",
   priest: "神官",
   mage: "魔法使い",
-  scout: "斥候",
+  scout: "ローグ",
 };
 
 const JOB_SKILLS = {
