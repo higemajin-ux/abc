@@ -122,6 +122,17 @@ function recordEquipment(item, target = state) {
   return true;
 }
 
+function recordEquippedEquipment(party, target = state) {
+  for (const member of party?.members || []) {
+    const equipment = ensureCharacterEquipment(member);
+    for (const { key } of EQUIPMENT_SLOTS) {
+      const itemId = equipment?.[key];
+      if (!itemId || !EQUIPMENT_ITEMS[itemId]) continue;
+      recordEquipment(EQUIPMENT_ITEMS[itemId], target);
+    }
+  }
+}
+
 function recordEnemyKill(enemy, target = state) {
   if (!enemy?.id) return false;
   const records = ensureRecords(target);
@@ -1787,6 +1798,7 @@ function renderAll() {
   state.parties.forEach((p) => {
     ensurePartyShape(p);
     ensureValidSelectedArea(p);
+    recordEquippedEquipment(p);
   });
   renderPartySection();
   renderReportSection();
@@ -1834,6 +1846,7 @@ function migrate(data) {
 
   for (const p of data.parties) {
     ensurePartyShape(p);
+    recordEquippedEquipment(p, data);
     if (p.adventureLog?.length && !p.dispatches.length) {
       p.dispatches.push({
         id: uid("dispatch"),
