@@ -636,6 +636,12 @@ h1 {
   flex-wrap: wrap;
 }
 
+.storage-auto-sell {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .storage-filter-btn {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -661,6 +667,10 @@ h1 {
   color: var(--muted-on-dark);
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.storage-auto-sell input {
+  accent-color: var(--accent);
 }
 
 .storage-sort-select {
