@@ -742,6 +742,12 @@ h1 {
   font-weight: 700;
 }
 
+.storage-equipped-label {
+  color: var(--muted-on-dark);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .storage-actions {
   display: flex;
   align-items: center;
