@@ -194,24 +194,22 @@ function battleSummary(encounter) {
 }
 
 function buildRewardJournalEntries(rewards) {
-  return (rewards?.encounters || [])
+  const names = (rewards?.encounters || [])
     .map((encounter) => encounter?.equipmentDrop)
     .filter(Boolean)
+    .filter((drop) => !wasAutoSoldDrop(drop))
     .map((drop) => {
       const item = storageItemFromEquipment(drop) || drop;
       const name = item?.name || "装備";
-      const nameHtml = `<span class="${rarityClassName(item?.rarity)}">${name}</span>`;
-      const autoSold = wasAutoSoldDrop(drop);
-      const title = autoSold
-        ? `${nameHtml}を売却（${drop.sellGold || 0}G）。`
-        : `${drop.finderName || "隊員"}が${nameHtml}を持ち帰った。`;
-      return {
-        id: uid("entry"),
-        type: "flavor",
-        title,
-        shown: false,
-      };
+      return `<span class="${rarityClassName(item?.rarity)}">${name}</span>`;
     });
+  if (!names.length) return [];
+  return [{
+    id: uid("entry"),
+    type: "flavor",
+    title: `今回の冒険で装備を持ち帰った。<br>装備箱：<br>${names.map((name) => `・${name}`).join("<br>")}`,
+    shown: false,
+  }];
 }
 
 function buildMvpLine(party, rewards) {
