@@ -211,8 +211,9 @@ function buildDeliveryBoxHtml(rewards) {
 
 function ensureDeliveryBox(party) {
   if (!party?.mission?.rewards) return;
-  const deliveryBox = buildDeliveryBoxHtml(party.mission.rewards);
+  const deliveryBox = party.mission.deliveryBox || buildDeliveryBoxHtml(party.mission.rewards);
   if (!deliveryBox) return;
+  party.mission.deliveryBox = deliveryBox;
   const apply = (entries) => {
     for (const entry of entries || []) {
       if (entry?.type === "return" && !entry.deliveryBox) entry.deliveryBox = deliveryBox;
@@ -381,6 +382,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     battleDetail: rewards.encounters.flatMap((e) => e.events),
     summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     mvpLine: buildMvpLine(party, rewards),
+    deliveryBox: buildDeliveryBoxHtml(rewards),
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
@@ -742,6 +744,7 @@ function startMission(partyId) {
     endsAt,
     plannedEndsAt: endsAt,
     rewards,
+    deliveryBox: buildDeliveryBoxHtml(rewards),
     failed: false,
     startMembersSnapshot,
     journal: buildScheduledJournalV2(party, area, rewards, now, endsAt),
