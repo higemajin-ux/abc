@@ -1228,6 +1228,7 @@ function renderStats() {
 }
 
 function storageGroupKey(item, fallback) {
+  if (typeof fallback === "string" && fallback.startsWith("equipped-")) return fallback;
   if (item?.locked) return `locked-${fallback}`;
   return item?.id || `item-${fallback}`;
 }
@@ -1263,9 +1264,32 @@ function storageFilterMatches(item) {
 }
 
 function filteredStorageEntries(items) {
-  return items
-    .map((rawItem, index) => ({ rawItem, storageIndex: index, item: storageItemFromEquipment(rawItem) }))
-    .filter(({ item }) => item && storageFilterMatches(item));
+  return [
+    ...items
+      .map((rawItem, index) => ({ rawItem, storageIndex: index, item: storageItemFromEquipment(rawItem) }))
+      .filter(({ item }) => item && storageFilterMatches(item)),
+    ...equippedStorageEntries().filter(({ item }) => item && storageFilterMatches(item)),
+  ];
+}
+
+function equippedStorageEntries() {
+  const entries = [];
+  for (const party of state.parties || []) {
+    for (const member of party.members || []) {
+      const equipment = ensureCharacterEquipment(member);
+      for (const { key: slot } of EQUIPMENT_SLOTS) {
+        const item = storageItemFromEquipmentId(equipment?.[slot]);
+        if (!item) continue;
+        entries.push({
+          item,
+          storageIndex: `equipped-${member.id}-${slot}`,
+          equippedBy: member.name,
+          equippedSlot: slot,
+        });
+      }
+    }
+  }
+  return entries;
 }
 
 function storageCountHtml(items) {
@@ -1377,18 +1401,18 @@ function storageHeaderHtml(items) {
 function storageGroups(entries) {
   const groups = [];
   const groupByKey = new Map();
-  entries.forEach(({ item, storageIndex }) => {
+  entries.forEach(({ item, storageIndex, equippedBy, equippedSlot }) => {
     if (!item) return;
     const key = storageGroupKey(item, storageIndex);
     let group = groupByKey.get(key);
     if (!group) {
-      group = { item, count: 0, entries: [], latestIndex: storageIndex };
+      group = { item, count: 0, entries: [], latestIndex: typeof storageIndex === "number" ? storageIndex : -1 };
       groupByKey.set(key, group);
       groups.push(group);
     }
     group.count += 1;
-    group.latestIndex = Math.max(group.latestIndex, storageIndex);
-    group.entries.push({ item, index: storageIndex, locked: !!item.locked });
+    if (typeof storageIndex === "number") group.latestIndex = Math.max(group.latestIndex, storageIndex);
+    group.entries.push({ item, index: storageIndex, locked: !!item.locked, equippedBy, equippedSlot });
   });
   return groups.sort(compareStorageGroups);
 }
@@ -1399,16 +1423,19 @@ function storageGroupHtml(group) {
   const name = item?.name || "名称不明の装備";
   const index = entries[0]?.index;
   const locked = !!entries[0]?.locked;
+  const equippedBy = entries.find((entry) => entry.equippedBy)?.equippedBy;
+  const canSell = typeof index === "number" && !equippedBy && !locked;
   return `<li>
     <div class="storage-info">
       <div class="storage-head">
-        <span class="storage-item ${rarityClassName(rarity)}">${name}${locked ? " ★" : count > 1 ? ` ×${count}` : ""}</span>
+        <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : count > 1 ? ` ×${count}` : ""}</span>
+        ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
       </div>
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
     </div>
     <div class="storage-actions">
-      <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
-      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${locked ? "disabled" : ""}>売却</button>
+      ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
+      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
 }
@@ -1463,23 +1490,20 @@ function renderStorage() {
   if (!root) return;
   const items = state.storage || [];
   const autoSell = ensureAutoSellSettings();
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}`;
+  const equippedKey = equippedStorageEntries().map(({ storageIndex, item }) => `${storageIndex}:${item.id}`).join(",");
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
   const visibleEntries = filteredStorageEntries(items);
 
-  if (!items.length) {
-    root.innerHTML = `${storageHeaderHtml(items)}<p class="log-empty">保管中の装備はありません</p>`;
+  if (!visibleEntries.length) {
+    root.innerHTML = `${storageHeaderHtml(items)}<p class="log-empty">${items.length ? "条件に合う装備はありません" : "保管中の装備はありません"}</p>`;
     bindStorageEvents(root);
     return;
   }
 
   root.innerHTML = `${storageHeaderHtml(items)}
-    ${
-      visibleEntries.length
-        ? `<ul class="storage-list">${storageGroups(visibleEntries).map(storageGroupHtml).join("")}</ul>`
-        : '<p class="log-empty">条件に合う装備はありません</p>'
-    }`;
+    <ul class="storage-list">${storageGroups(visibleEntries).map(storageGroupHtml).join("")}</ul>`;
   bindStorageEvents(root);
 }
 
