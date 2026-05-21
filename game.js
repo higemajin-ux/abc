@@ -195,7 +195,7 @@ function battleSummary(encounter) {
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
-function buildDeliveryBoxHtml(rewards) {
+function buildRewardJournalEntries(rewards) {
   const names = (rewards?.encounters || [])
     .map((encounter) => encounter?.equipmentDrop)
     .filter(Boolean)
@@ -205,32 +205,13 @@ function buildDeliveryBoxHtml(rewards) {
       const suffix = wasAutoSoldDrop(drop) ? "（売却）" : "";
       return `<span class="${rarityClassName(item?.rarity)}">${name}</span>${suffix}`;
     });
-  if (!names.length) return "";
-  return `今回の冒険で装備を持ち帰った。<br>納品箱：<br>${names.map((name) => `・${name}`).join("<br>")}`;
-}
-
-function appendDeliveryBoxEvent(entry, deliveryBox) {
-  if (!entry || entry.type !== "return" || !deliveryBox) return;
-  if (!entry.battleDetail) entry.battleDetail = [];
-  if (entry.battleDetail.some((event) => event?.kind === "delivery-box")) return;
-  entry.battleDetail.push({ kind: "delivery-box", text: deliveryBox });
-}
-
-function ensureDeliveryBox(party) {
-  if (!party?.mission?.rewards) return;
-  const deliveryBox = party.mission.deliveryBox || buildDeliveryBoxHtml(party.mission.rewards);
-  if (!deliveryBox) return;
-  party.mission.deliveryBox = deliveryBox;
-  const apply = (entries) => {
-    for (const entry of entries || []) {
-      if (entry?.type !== "return") continue;
-      if (!entry.deliveryBox) entry.deliveryBox = deliveryBox;
-      appendDeliveryBoxEvent(entry, deliveryBox);
-    }
-  };
-  apply(party.mission.journal);
-  const dispatch = party.dispatches?.find((d) => d.id === party.mission.dispatchId);
-  apply(dispatch?.entries);
+  if (!names.length) return [];
+  return [{
+    id: uid("entry"),
+    type: "flavor",
+    title: `今回の冒険で装備を持ち帰った。<br>納品箱：<br>${names.map((name) => `・${name}`).join("<br>")}`,
+    shown: false,
+  }];
 }
 
 function buildMvpLine(party, rewards) {
@@ -383,17 +364,21 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     });
   });
 
+  buildRewardJournalEntries(rewards).forEach((entry, entryIndex) => {
+    entries.push({
+      ...entry,
+      timestamp: Math.max(startedAt, endsAt - entryIndex - 1),
+    });
+  });
+
   entries.push({
     id: uid("entry"),
     timestamp: endsAt,
     type: "return",
     title: `帰還報告（全戦闘記録▼）`,
-    battleDetail: rewards.encounters
-      .flatMap((e) => e.events)
-      .concat(buildDeliveryBoxHtml(rewards) ? [{ kind: "delivery-box", text: buildDeliveryBoxHtml(rewards) }] : []),
+    battleDetail: rewards.encounters.flatMap((e) => e.events),
     summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     mvpLine: buildMvpLine(party, rewards),
-    deliveryBox: buildDeliveryBoxHtml(rewards),
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
@@ -497,18 +482,23 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const returnMembersSnapshot = rewards.encounters.at(-1)?.membersSnapshot;
   const mvpLine = buildMvpLine(party, rewards);
   const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot, mvpLine);
-  const deliveryBox = buildDeliveryBoxHtml(rewards);
-  const returnBattleDetail = rewards.encounters.flatMap((e) => e.events);
-  if (deliveryBox) returnBattleDetail.push({ kind: "delivery-box", text: deliveryBox });
+  const rewardEntries = buildRewardJournalEntries(rewards);
   const reportAuthor = reportAuthorName(party, mvpLine, returnEvents);
   returnEvents.forEach((event, eventIndex) => {
     entries.push({
       id: uid("entry"),
-      timestamp: Math.max(startedAt, returnTime - returnEvents.length + eventIndex),
+      timestamp: Math.max(startedAt, returnTime - rewardEntries.length - returnEvents.length + eventIndex),
       type: "flavor",
       title: event.text,
       membersSnapshot: returnMembersSnapshot,
       shown: false,
+    });
+  });
+  rewardEntries.forEach((entry, entryIndex) => {
+    entries.push({
+      ...entry,
+      timestamp: Math.max(startedAt, returnTime - entryIndex - 1),
+      membersSnapshot: returnMembersSnapshot,
     });
   });
 
@@ -517,13 +507,12 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     timestamp: returnTime,
     type: "return",
     title: rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
-    battleDetail: returnBattleDetail,
+    battleDetail: rewards.encounters.flatMap((e) => e.events),
     reportAuthor,
     summary: rewards.forcedReturn
       ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
       : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     mvpLine,
-    deliveryBox,
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
@@ -545,7 +534,6 @@ function trimDispatches(party) {
 function revealDueEntries(party) {
   const dispatch = getActiveDispatch(party);
   if (!dispatch || !party.mission) return false;
-  ensureDeliveryBox(party);
 
   const now = Date.now();
   let changed = false;
@@ -757,7 +745,6 @@ function startMission(partyId) {
     endsAt,
     plannedEndsAt: endsAt,
     rewards,
-    deliveryBox: buildDeliveryBoxHtml(rewards),
     failed: false,
     startMembersSnapshot,
     journal: buildScheduledJournalV2(party, area, rewards, now, endsAt),
@@ -779,7 +766,6 @@ function completeMission(party) {
   const area = getArea(party.mission.areaId);
   const dispatch = party.dispatches.find((d) => d.id === party.mission.dispatchId);
   revealDueEntries(party);
-  ensureDeliveryBox(party);
 
   if (dispatch) {
     dispatch.status = "complete";
@@ -882,9 +868,7 @@ function renderLogEntry(entry) {
     detail.innerHTML = entry.type === "return" && entry.reportAuthor
       ? `<p>${entry.reportAuthor}からの報告</p>`
       : "";
-    const deliveryBox = entry.deliveryBox || entry.battleDetail.find((event) => event?.kind === "delivery-box")?.text;
-    const battleDetail = entry.battleDetail.filter((event) => event?.kind !== "delivery-box");
-    detail.innerHTML += battleDetail
+    detail.innerHTML += entry.battleDetail
       .map((ev, index, events) => `<p class="${battleEventClass(ev, events[index - 1])}">${ev.text}</p>`)
       .join("");
     if (entry.summary && entry.type === "return") {
@@ -892,9 +876,6 @@ function renderLogEntry(entry) {
     }
     if (entry.mvpLine && entry.type === "return") {
       detail.innerHTML += `<p>${entry.mvpLine}</p>`;
-    }
-    if (deliveryBox && entry.type === "return") {
-      detail.innerHTML += `<p class="delivery-box">${deliveryBox}</p>`;
     }
     li.appendChild(detail);
     btn.addEventListener("click", () => {
