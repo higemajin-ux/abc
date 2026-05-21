@@ -400,6 +400,24 @@ h1 {
   background: rgba(214, 168, 79, 0.06);
 }
 
+.unequip-btn {
+  justify-self: end;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted-on-dark);
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.unequip-btn:hover {
+  border-color: var(--line-bright);
+  color: var(--accent);
+}
+
 .equip-slot-btn span {
   flex: 0 0 44px;
   color: var(--muted-on-dark);
