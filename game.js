@@ -610,7 +610,7 @@ function equipStorageItem(index, memberId, targetSlot) {
   if (!storedItem || !member) return;
 
   const slot = storedItem.slot === "accessory" ? targetSlot : storedItem.slot;
-  if (!["weapon", "armor", "accessory1", "accessory2"].includes(slot)) return;
+  if (!isEquipmentSlot(slot)) return;
   if (storedItem.slot !== "accessory" && slot !== storedItem.slot) return;
 
   const equipment = ensureCharacterEquipment(member);
@@ -626,7 +626,7 @@ function equipStorageItem(index, memberId, targetSlot) {
 }
 
 function unequipMemberItem(memberId, slot) {
-  if (!["weapon", "armor", "accessory1", "accessory2"].includes(slot)) return;
+  if (!isEquipmentSlot(slot)) return;
   const found = findPartyMemberById(memberId);
   const member = found?.member;
   if (!member) return;
@@ -1003,16 +1003,15 @@ function memberFormation(member) {
 }
 
 function equipmentSlotLabel(slot) {
-  return {
-    weapon: "武器",
-    armor: "防具",
-    accessory1: "装飾1",
-    accessory2: "装飾2",
-  }[slot] || slot;
+  return EQUIPMENT_SLOTS.find(({ key }) => key === slot)?.label || slot;
 }
 
 function equipmentSlotKind(slot) {
-  return slot === "accessory1" || slot === "accessory2" ? "accessory" : slot;
+  return EQUIPMENT_SLOTS.find(({ key }) => key === slot)?.kind || slot;
+}
+
+function isEquipmentSlot(slot) {
+  return EQUIPMENT_SLOTS.some(({ key }) => key === slot);
 }
 
 function equipmentCandidateList(member, slot) {
@@ -1076,8 +1075,8 @@ function memberDetails(party) {
           <div class="member-stat-row"><span>DEX</span><strong>${memberStatValue(m.dex)}</strong></div>
           <div class="member-stat-row"><span>LUC</span><strong>${memberStatValue(m.luc)}</strong></div>
         </div>
-        <div class="member-equipment">${["weapon", "armor", "accessory1", "accessory2"]
-          .map((slot) => equipmentSlotHtml(m, slot))
+        <div class="member-equipment">${EQUIPMENT_SLOTS
+          .map(({ key }) => equipmentSlotHtml(m, key))
           .join("")}</div>
         ${formatActiveSetBonuses(m)}
       </div>`
@@ -1236,7 +1235,8 @@ function rarityRank(rarity) {
 }
 
 function storageSlotRank(slot) {
-  return { weapon: 0, armor: 1, accessory: 2 }[slot] ?? 3;
+  const index = EQUIPMENT_SLOTS.findIndex(({ key, kind }) => key === slot || kind === slot);
+  return index >= 0 ? index : EQUIPMENT_SLOTS.length;
 }
 
 function compareStorageGroups(a, b) {
