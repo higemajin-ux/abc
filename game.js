@@ -1175,6 +1175,7 @@ function renderStats() {
 }
 
 function storageGroupKey(item, fallback) {
+  if (item?.locked) return `locked-${fallback}`;
   return item?.id || `item-${fallback}`;
 }
 
