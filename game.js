@@ -1183,18 +1183,32 @@ function renderStorage() {
     return;
   }
 
+  const groups = [];
+  const groupByKey = new Map();
+  items.forEach((rawItem, index) => {
+    const item = storageItemFromEquipment(rawItem);
+    if (!item) return;
+    const locked = !!item.locked;
+    const key = `${item.id || index}:${locked ? "locked" : "free"}`;
+    let group = groupByKey.get(key);
+    if (!group) {
+      group = { item, index, count: 0, locked };
+      groupByKey.set(key, group);
+      groups.push(group);
+    }
+    group.count += 1;
+  });
+
   root.innerHTML = `
     <ul class="storage-list">
-      ${items
-        .map((rawItem, index) => {
-          const item = storageItemFromEquipment(rawItem);
+      ${groups
+        .map(({ item, index, count, locked }) => {
           const rarity = normalizeRarity(item?.rarity);
           const name = item?.name || "名称不明の装備";
-          const locked = !!item?.locked;
           return `<li>
             <div class="storage-info">
               <div class="storage-head">
-                <span class="storage-item ${rarityClassName(rarity)}">${name}</span>
+                <span class="storage-item ${rarityClassName(rarity)}">${name}${count > 1 ? ` ×${count}` : ""}</span>
                 <span class="storage-meta">${rarity}</span>
                 ${locked ? '<span class="storage-lock-label">★ 保護中</span>' : ""}
               </div>
