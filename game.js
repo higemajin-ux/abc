@@ -73,7 +73,7 @@ function equipmentStatLine(item) {
   const labels = { maxHp: "HP", atk: "ATK", def: "DEF", dex: "DEX", luc: "LUC" };
   const parts = ["maxHp", "atk", "def", "dex", "luc"]
     .filter((key) => item[key])
-    .map((key) => `${labels[key]}+${item[key]}`);
+    .map((key) => `${labels[key]}${item[key] > 0 ? "+" : ""}${item[key]}`);
   return parts.length ? parts.join(" / ") : "性能なし";
 }
 
@@ -167,6 +167,28 @@ function battleSummary(encounter) {
   const result = encounter.victory ? "討伐成功" : "撤退";
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
+
+function buildRewardJournalEntries(rewards) {
+  return (rewards?.encounters || [])
+    .map((encounter) => encounter?.equipmentDrop)
+    .filter(Boolean)
+    .map((drop) => {
+      const item = storageItemFromEquipment(drop) || drop;
+      const name = item?.name || "装備";
+      const nameHtml = `<span class="${rarityClassName(item?.rarity)}">${name}</span>`;
+      const autoSold = typeof shouldAutoSellDrop === "function" && shouldAutoSellDrop(drop);
+      const title = autoSold
+        ? `${nameHtml}を売却（${drop.sellGold || 0}G）。`
+        : `${drop.finderName || "隊員"}が${nameHtml}を持ち帰った。`;
+      return {
+        id: uid("entry"),
+        type: "flavor",
+        title,
+        shown: false,
+      };
+    });
+}
+
 function buildMvpLine(party, rewards) {
   const stats = new Map(
     party.members.map((member) => [member.name, { member, score: 0 }])
@@ -428,15 +450,23 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const returnMembersSnapshot = rewards.encounters.at(-1)?.membersSnapshot;
   const mvpLine = buildMvpLine(party, rewards);
   const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot, mvpLine);
+  const rewardEntries = buildRewardJournalEntries(rewards);
   const reportAuthor = reportAuthorName(party, mvpLine, returnEvents);
   returnEvents.forEach((event, eventIndex) => {
     entries.push({
       id: uid("entry"),
-      timestamp: Math.max(startedAt, returnTime - returnEvents.length + eventIndex),
+      timestamp: Math.max(startedAt, returnTime - rewardEntries.length - returnEvents.length + eventIndex),
       type: "flavor",
       title: event.text,
       membersSnapshot: returnMembersSnapshot,
       shown: false,
+    });
+  });
+  rewardEntries.forEach((entry, entryIndex) => {
+    entries.push({
+      ...entry,
+      timestamp: Math.max(startedAt, returnTime - entryIndex - 1),
+      membersSnapshot: returnMembersSnapshot,
     });
   });
 
@@ -1263,7 +1293,6 @@ function renderStorageLegacy() {
             <div class="storage-info">
               <div class="storage-head">
                 <span class="storage-item ${rarityClassName(rarity)}">${name}${count > 1 ? ` ×${count}` : ""}</span>
-                <span class="storage-meta">${rarity}</span>
                 ${locked ? '<span class="storage-lock-label">★ 保護中</span>' : ""}
               </div>
               <div class="storage-effect">${equipmentStorageLine(item)}</div>
@@ -1339,7 +1368,6 @@ function storageGroupHtml(group) {
     <div class="storage-info">
       <div class="storage-head">
         <span class="storage-item ${rarityClassName(rarity)}">${name}${locked ? " ★" : count > 1 ? ` ×${count}` : ""}</span>
-        <span class="storage-meta">${rarity}</span>
       </div>
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
     </div>
