@@ -209,6 +209,13 @@ function buildDeliveryBoxHtml(rewards) {
   return `今回の冒険で装備を持ち帰った。<br>納品箱：<br>${names.map((name) => `・${name}`).join("<br>")}`;
 }
 
+function appendDeliveryBoxEvent(entry, deliveryBox) {
+  if (!entry || entry.type !== "return" || !deliveryBox) return;
+  if (!entry.battleDetail) entry.battleDetail = [];
+  if (entry.battleDetail.some((event) => event?.kind === "delivery-box")) return;
+  entry.battleDetail.push({ kind: "delivery-box", text: deliveryBox });
+}
+
 function ensureDeliveryBox(party) {
   if (!party?.mission?.rewards) return;
   const deliveryBox = party.mission.deliveryBox || buildDeliveryBoxHtml(party.mission.rewards);
@@ -216,7 +223,9 @@ function ensureDeliveryBox(party) {
   party.mission.deliveryBox = deliveryBox;
   const apply = (entries) => {
     for (const entry of entries || []) {
-      if (entry?.type === "return" && !entry.deliveryBox) entry.deliveryBox = deliveryBox;
+      if (entry?.type !== "return") continue;
+      if (!entry.deliveryBox) entry.deliveryBox = deliveryBox;
+      appendDeliveryBoxEvent(entry, deliveryBox);
     }
   };
   apply(party.mission.journal);
@@ -379,7 +388,9 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     timestamp: endsAt,
     type: "return",
     title: `帰還報告（全戦闘記録▼）`,
-    battleDetail: rewards.encounters.flatMap((e) => e.events),
+    battleDetail: rewards.encounters
+      .flatMap((e) => e.events)
+      .concat(buildDeliveryBoxHtml(rewards) ? [{ kind: "delivery-box", text: buildDeliveryBoxHtml(rewards) }] : []),
     summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     mvpLine: buildMvpLine(party, rewards),
     deliveryBox: buildDeliveryBoxHtml(rewards),
@@ -487,6 +498,8 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const mvpLine = buildMvpLine(party, rewards);
   const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot, mvpLine);
   const deliveryBox = buildDeliveryBoxHtml(rewards);
+  const returnBattleDetail = rewards.encounters.flatMap((e) => e.events);
+  if (deliveryBox) returnBattleDetail.push({ kind: "delivery-box", text: deliveryBox });
   const reportAuthor = reportAuthorName(party, mvpLine, returnEvents);
   returnEvents.forEach((event, eventIndex) => {
     entries.push({
@@ -504,7 +517,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     timestamp: returnTime,
     type: "return",
     title: rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
-    battleDetail: rewards.encounters.flatMap((e) => e.events),
+    battleDetail: returnBattleDetail,
     reportAuthor,
     summary: rewards.forcedReturn
       ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
@@ -869,7 +882,9 @@ function renderLogEntry(entry) {
     detail.innerHTML = entry.type === "return" && entry.reportAuthor
       ? `<p>${entry.reportAuthor}からの報告</p>`
       : "";
-    detail.innerHTML += entry.battleDetail
+    const deliveryBox = entry.deliveryBox || entry.battleDetail.find((event) => event?.kind === "delivery-box")?.text;
+    const battleDetail = entry.battleDetail.filter((event) => event?.kind !== "delivery-box");
+    detail.innerHTML += battleDetail
       .map((ev, index, events) => `<p class="${battleEventClass(ev, events[index - 1])}">${ev.text}</p>`)
       .join("");
     if (entry.summary && entry.type === "return") {
@@ -878,8 +893,8 @@ function renderLogEntry(entry) {
     if (entry.mvpLine && entry.type === "return") {
       detail.innerHTML += `<p>${entry.mvpLine}</p>`;
     }
-    if (entry.deliveryBox && entry.type === "return") {
-      detail.innerHTML += `<p>${entry.deliveryBox}</p>`;
+    if (deliveryBox && entry.type === "return") {
+      detail.innerHTML += `<p class="delivery-box">${deliveryBox}</p>`;
     }
     li.appendChild(detail);
     btn.addEventListener("click", () => {
