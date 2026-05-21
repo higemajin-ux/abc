@@ -15,6 +15,7 @@ let state = {
   areaClears: {},
   storage: [],
   autoSell: { common: true, uncommon: false },
+  records: { equipment: [] },
 };
 
 function $(id) {
@@ -95,6 +96,24 @@ function ensureAutoSellSettings(target = state) {
   target.autoSell.common = !!target.autoSell.common;
   target.autoSell.uncommon = !!target.autoSell.uncommon;
   return target.autoSell;
+}
+
+function defaultRecords() {
+  return { equipment: [] };
+}
+
+function ensureRecords(target = state) {
+  target.records = { ...defaultRecords(), ...(target.records || {}) };
+  target.records.equipment = [...new Set((target.records.equipment || []).filter(Boolean))];
+  return target.records;
+}
+
+function recordEquipment(item, target = state) {
+  if (!item?.id) return false;
+  const records = ensureRecords(target);
+  if (records.equipment.includes(item.id)) return false;
+  records.equipment.push(item.id);
+  return true;
 }
 
 function wasAutoSoldDrop(item) {
@@ -569,6 +588,7 @@ function storeEquipmentDrops(rewards) {
   for (const encounter of rewards.encounters || []) {
     const item = encounter.equipmentDrop;
     const storedItem = storageItemFromEquipment(item);
+    recordEquipment(storedItem);
     if (!item || !storedItem || wasAutoSoldDrop(item)) continue;
     state.storage.push({ ...storedItem, foundBy: item.finderName || "" });
   }
@@ -1511,6 +1531,42 @@ function renderStorage() {
   bindStorageEvents(root);
 }
 
+function equipmentRecordHtml(item) {
+  const rarity = normalizeRarity(item?.rarity);
+  const slot = item?.slot || "unknown";
+  const slotLabel = EQUIPMENT_SLOTS.find(({ key, kind }) => key === slot || kind === slot)?.label || slot;
+  const flavor = item?.description || item?.flavor || "";
+  return `<li>
+    <div class="records-info">
+      <div class="records-head">
+        <span class="records-item ${rarityClassName(rarity)}">${item?.name || "名称不明の装備"}</span>
+        <span class="records-meta">${slotLabel}</span>
+      </div>
+      <div class="records-effect">${equipmentStorageLine(item)}</div>
+      ${flavor ? `<p class="records-flavor">${flavor}</p>` : ""}
+    </div>
+  </li>`;
+}
+
+function renderRecords() {
+  const root = $("records-root");
+  if (!root) return;
+  const records = ensureRecords();
+  const ids = records.equipment;
+  const total = Object.keys(EQUIPMENT_ITEMS || {}).length;
+  const items = ids.map((id) => EQUIPMENT_ITEMS[id]).filter(Boolean);
+
+  if (!items.length) {
+    root.innerHTML = `<p class="records-count">装備図録 0 / ${total}</p><p class="log-empty">記録された装備はありません</p>`;
+    return;
+  }
+
+  root.innerHTML = `
+    <p class="records-count">装備図録 ${items.length} / ${total}</p>
+    <ul class="records-list">${items.map(equipmentRecordHtml).join("")}</ul>
+  `;
+}
+
 function renderStages() {
   $("stages-root").innerHTML = AREA_ORDER.map((id) => {
     const a = AREAS[id];
@@ -1574,6 +1630,7 @@ function renderAll() {
   renderStages();
   renderWorldSituation();
   renderStorage();
+  renderRecords();
   renderStats();
   renderLogs();
 }
@@ -1607,6 +1664,11 @@ function migrate(data) {
   if (!data.parties) return data;
   if (!data.storage) data.storage = [];
   ensureAutoSellSettings(data);
+  ensureRecords(data);
+  for (const rawItem of data.storage || []) {
+    const item = storageItemFromEquipment(rawItem);
+    recordEquipment(item, data);
+  }
 
   for (const p of data.parties) {
     ensurePartyShape(p);
@@ -1660,8 +1722,10 @@ function loadGame() {
         areaClears: data.areaClears || {},
         storage: data.storage || [],
         autoSell: data.autoSell || defaultAutoSellSettings(),
+        records: data.records || defaultRecords(),
       };
       ensureAutoSellSettings();
+      ensureRecords();
       state.parties.forEach(trimDispatches);
     }
   } catch (e) {
@@ -1679,6 +1743,7 @@ function resetGame() {
     areaClears: {},
     storage: [],
     autoSell: defaultAutoSellSettings(),
+    records: defaultRecords(),
   };
   nextId = 1;
   storageRenderCount = -1;
