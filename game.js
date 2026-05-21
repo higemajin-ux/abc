@@ -1361,6 +1361,7 @@ function storageSortOptionsHtml() {
         </select>
       </label>
       <div class="storage-filters" aria-label="フィルター">
+        <span>フィルター</span>
         ${storageFilterButton("all", "すべて")}
         ${storageFilterButton("weapon", "武器")}
         ${storageFilterButton("armor", "防具")}
@@ -1369,6 +1370,10 @@ function storageSortOptionsHtml() {
       </div>
     </div>
   </div>`;
+}
+
+function storageHeaderHtml(items) {
+  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}</div>`;
 }
 
 function storageGroups(entries) {
@@ -1461,12 +1466,12 @@ function renderStorage() {
   const visibleEntries = filteredStorageEntries(items);
 
   if (!items.length) {
-    root.innerHTML = `${storageCountHtml(items)}${storageSortOptionsHtml()}<p class="log-empty">保管中の装備はありません</p>`;
+    root.innerHTML = `${storageHeaderHtml(items)}<p class="log-empty">保管中の装備はありません</p>`;
     bindStorageEvents(root);
     return;
   }
 
-  root.innerHTML = `${storageCountHtml(items)}${storageSortOptionsHtml()}
+  root.innerHTML = `${storageHeaderHtml(items)}
     ${
       visibleEntries.length
         ? `<ul class="storage-list">${storageGroups(visibleEntries).map(storageGroupHtml).join("")}</ul>`
