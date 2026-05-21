@@ -598,6 +598,60 @@ h1 {
   gap: 8px;
 }
 
+.records-root {
+  display: grid;
+  gap: 8px;
+}
+
+.records-count {
+  color: var(--muted-on-dark);
+  font-size: 0.86rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.records-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.records-list li {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  padding: 8px 10px;
+}
+
+.records-info {
+  display: grid;
+  gap: 3px;
+}
+
+.records-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.records-item {
+  font-weight: 700;
+}
+
+.records-meta,
+.records-effect,
+.records-flavor {
+  color: var(--muted-on-dark);
+  font-size: 0.76rem;
+}
+
+.records-flavor {
+  margin: 0;
+}
+
 .storage-list {
   list-style: none;
   margin: 0;
