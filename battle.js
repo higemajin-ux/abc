@@ -1221,7 +1221,7 @@ function runEncounter(members, monster, area, speechState = {}) {
   pushInitialHp(events, enemy, enemy.boss ? "boss" : "");
   pushPartyHp(events, party);
 
-  while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 12) {
+  while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 20) {
     events.push({ kind: "turn-separator", text: `──── Turn ${round} ────` });
     tickTaunts(party);
     const actionOrder = actionOrderForRound(party, round, ambushScout);
