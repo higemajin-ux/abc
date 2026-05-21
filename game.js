@@ -576,6 +576,27 @@ function equipStorageItem(index, memberId, targetSlot) {
   renderAll();
 }
 
+function unequipMemberItem(memberId, slot) {
+  if (!["weapon", "armor", "accessory1", "accessory2"].includes(slot)) return;
+  const found = findPartyMemberById(memberId);
+  const member = found?.member;
+  if (!member) return;
+
+  const equipment = ensureCharacterEquipment(member);
+  const itemId = equipment[slot];
+  const removedItem = storageItemFromEquipmentId(itemId);
+  if (!removedItem) return;
+
+  equipment[slot] = null;
+  if (!state.storage) state.storage = [];
+  state.storage.push(removedItem);
+  syncMemberStats(member);
+  storageRenderCount = -1;
+  if (found.party) openDetailPartyIds.add(found.party.id);
+  saveGame();
+  renderAll();
+}
+
 function sellStorageItem(index) {
   if (!state.storage?.length) return;
   const storedItem = storageItemFromEquipment(state.storage[index]);
@@ -970,12 +991,16 @@ function equipmentSlotHtml(member, slot) {
   const equipment = ensureCharacterEquipment(member);
   const item = EQUIPMENT_ITEMS[equipment[slot]];
   const rarity = normalizeRarity(item?.rarity);
+  const removeButton = item
+    ? `<button type="button" class="unequip-btn" data-member-id="${member.id}" data-slot="${slot}">外す</button>`
+    : "";
   const name = item ? formatEquipmentLine(item) : "なし";
   return `<div class="member-equipment-slot">
     <button type="button" class="equip-slot-btn" data-member-id="${member.id}" data-slot="${slot}">
       <span>${equipmentSlotLabel(slot)}</span>
       <strong class="${rarityClassName(rarity)}">${name}</strong>
     </button>
+    ${removeButton}
     <div class="equipment-candidates" hidden>${equipmentCandidateList(member, slot)}</div>
   </div>`;
 }
@@ -1093,6 +1118,11 @@ function createPartyCard(party) {
   card.querySelectorAll(".equip-choice-btn").forEach((button) => {
     button.addEventListener("click", () => {
       equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
+    });
+  });
+  card.querySelectorAll(".unequip-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      unequipMemberItem(button.dataset.memberId, button.dataset.slot);
     });
   });
   card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
