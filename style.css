@@ -621,6 +621,15 @@ h1 {
   flex-wrap: wrap;
 }
 
+.storage-settings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 .storage-counts {
   display: flex;
   gap: 12px;
@@ -638,10 +647,12 @@ h1 {
 
 .storage-auto-sell {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
+.storage-organize-btn,
 .storage-filter-btn {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -653,6 +664,7 @@ h1 {
   font-weight: 700;
 }
 
+.storage-organize-btn:hover,
 .storage-filter-btn.active,
 .storage-filter-btn:hover {
   border-color: var(--line-bright);
