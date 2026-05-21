@@ -656,6 +656,11 @@ h1 {
   gap: 8px;
 }
 
+.records-section {
+  display: grid;
+  gap: 7px;
+}
+
 .records-count {
   color: var(--muted-on-dark);
   font-size: 0.86rem;
