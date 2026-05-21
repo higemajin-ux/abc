@@ -941,6 +941,11 @@ function shouldCoverTarget(target) {
   return (target.hp / target.maxHp) * 100 <= 70;
 }
 
+function isLargeIncomingDamage(target, predictedDamage) {
+  if (!target || target.maxHp <= 0 || predictedDamage == null) return false;
+  return predictedDamage >= 8 || predictedDamage >= target.maxHp * 0.25;
+}
+
 function coverChanceFor(target) {
   const hpRate = target.maxHp > 0 ? (target.hp / target.maxHp) * 100 : 0;
   if (hpRate <= 25) return 1;
@@ -949,8 +954,9 @@ function coverChanceFor(target) {
   return 0;
 }
 
-function pickCoverWarrior(party, target) {
+function pickCoverWarrior(party, target, predictedDamage) {
   if (!shouldCoverTarget(target)) return null;
+  if (!isLargeIncomingDamage(target, predictedDamage)) return null;
   if (Math.random() >= coverChanceFor(target)) return null;
 
   const candidates = livingMembers(party).filter(
@@ -959,9 +965,9 @@ function pickCoverWarrior(party, target) {
   return candidates.length ? pick(candidates) : null;
 }
 
-function maybeCoverTarget(party, target) {
+function maybeCoverTarget(party, target, predictedDamage) {
   // Passive cover can redirect an enemy attack without consuming an action.
-  const coverer = pickCoverWarrior(party, target);
+  const coverer = pickCoverWarrior(party, target, predictedDamage);
   return coverer ? { target: coverer, covered: target, coverer } : { target, covered: null, coverer: null };
 }
 
@@ -1116,9 +1122,6 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     return;
   }
 
-  const cover = maybeCoverTarget(party, target);
-  target = cover.target;
-
   if (enemy.blindTurns > 0 && Math.random() < 0.4) {
     events.push({ kind: "enemy-action", text: `${enemy.name}の攻撃` });
     events.push({ kind: "enemy-action", text: "ミス！攻撃は外れた。" });
@@ -1129,6 +1132,13 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
   }
 
   const bossHeavyAttack = enemy.boss && enemy.heavyAttackReady;
+  const predictedDamage = Math.max(
+    1,
+    Math.floor(damageFor(enemy.atk, target.def) * (bossHeavyAttack ? 1.5 : 1))
+  );
+  const cover = maybeCoverTarget(party, target, predictedDamage);
+  target = cover.target;
+
   enemy.heavyAttackReady = false;
   const hit = rollPhysicalHit(damageFor(enemy.atk, target.def), enemy);
   let damage = hit.damage;
