@@ -863,10 +863,13 @@ function renderLogEntry(entry) {
     if (entry.mvpLine && entry.type === "return") {
       detail.innerHTML += `<p>${entry.mvpLine}</p>`;
     }
-    if (entry.deliveryBox && entry.type === "return") {
-      detail.innerHTML += `<p>${entry.deliveryBox}</p>`;
-    }
     li.appendChild(detail);
+    if (entry.deliveryBox && entry.type === "return") {
+      const delivery = document.createElement("div");
+      delivery.className = "delivery-box";
+      delivery.innerHTML = entry.deliveryBox;
+      li.appendChild(delivery);
+    }
     btn.addEventListener("click", () => {
       const open = detail.classList.toggle("open");
       btn.innerHTML = entryButtonHtml(entry, open);
