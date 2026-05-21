@@ -805,6 +805,7 @@ function completeMission(party) {
   renderWorldSituation();
   storageRenderCount = -1;
   renderStorage();
+  renderRecordsSection();
   renderStats();
   renderLogs();
 }
