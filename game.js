@@ -209,6 +209,20 @@ function buildDeliveryBoxHtml(rewards) {
   return `今回の冒険で装備を持ち帰った。<br>納品箱：<br>${names.map((name) => `・${name}`).join("<br>")}`;
 }
 
+function ensureDeliveryBox(party) {
+  if (!party?.mission?.rewards) return;
+  const deliveryBox = buildDeliveryBoxHtml(party.mission.rewards);
+  if (!deliveryBox) return;
+  const apply = (entries) => {
+    for (const entry of entries || []) {
+      if (entry?.type === "return" && !entry.deliveryBox) entry.deliveryBox = deliveryBox;
+    }
+  };
+  apply(party.mission.journal);
+  const dispatch = party.dispatches?.find((d) => d.id === party.mission.dispatchId);
+  apply(dispatch?.entries);
+}
+
 function buildMvpLine(party, rewards) {
   const stats = new Map(
     party.members.map((member) => [member.name, { member, score: 0 }])
@@ -516,6 +530,7 @@ function trimDispatches(party) {
 function revealDueEntries(party) {
   const dispatch = getActiveDispatch(party);
   if (!dispatch || !party.mission) return false;
+  ensureDeliveryBox(party);
 
   const now = Date.now();
   let changed = false;
@@ -748,6 +763,7 @@ function completeMission(party) {
   const area = getArea(party.mission.areaId);
   const dispatch = party.dispatches.find((d) => d.id === party.mission.dispatchId);
   revealDueEntries(party);
+  ensureDeliveryBox(party);
 
   if (dispatch) {
     dispatch.status = "complete";
