@@ -615,7 +615,43 @@ h1 {
 
 .storage-controls {
   display: flex;
+  align-items: center;
+  gap: 10px;
   justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.storage-counts {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  color: var(--muted-on-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.storage-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.storage-filter-btn {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted-on-dark);
+  cursor: pointer;
+  padding: 5px 9px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.storage-filter-btn.active,
+.storage-filter-btn:hover {
+  border-color: var(--line-bright);
+  color: var(--accent);
+  background: rgba(214, 168, 79, 0.06);
 }
 
 .storage-controls label {
