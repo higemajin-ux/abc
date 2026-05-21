@@ -3,7 +3,7 @@
 function ensureCharacterEquipment(character) {
   const defaults = DEFAULT_EQUIPMENT_BY_MEMBER[character.id] || DEFAULT_EQUIPMENT_BY_JOB[character.job] || {};
   if (!character.equipment) character.equipment = {};
-  for (const slot of ["weapon", "armor", "accessory1", "accessory2"]) {
+  for (const { key: slot } of EQUIPMENT_SLOTS) {
     const current = character.equipment[slot];
     if (current == null && Object.prototype.hasOwnProperty.call(character.equipment, slot)) {
       character.equipment[slot] = null;
@@ -63,12 +63,7 @@ function emptyEquipmentBonus() {
 
 function equipmentIds(character) {
   const equipment = ensureCharacterEquipment(character || {});
-  return [
-    equipment.weapon,
-    equipment.armor,
-    equipment.accessory1,
-    equipment.accessory2,
-  ].filter(Boolean);
+  return EQUIPMENT_SLOTS.map(({ key }) => equipment[key]).filter(Boolean);
 }
 
 function getActiveSetBonuses(character) {
