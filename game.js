@@ -1199,21 +1199,6 @@ function compareStorageGroups(a, b) {
   return b.latestIndex - a.latestIndex;
 }
 
-function storageEquipButtons(index, item) {
-  if (!item?.slot) return "";
-  return state.parties
-    .flatMap((party) =>
-      party.members.map((member) => {
-        if (item.slot === "accessory") {
-          return `<button type="button" class="storage-equip-btn" data-storage-index="${index}" data-member-id="${member.id}" data-slot="accessory1">${member.name} 1</button>
-            <button type="button" class="storage-equip-btn" data-storage-index="${index}" data-member-id="${member.id}" data-slot="accessory2">${member.name} 2</button>`;
-        }
-        return `<button type="button" class="storage-equip-btn" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${item.slot}">${member.name}</button>`;
-      })
-    )
-    .join("");
-}
-
 function renderStorageLegacy() {
   const root = $("storage-root");
   if (!root) return;
@@ -1323,7 +1308,6 @@ function storageStackRowHtml(entry, fallbackName) {
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
     </div>
     <div class="storage-actions">
-      <div class="storage-equip-actions">${storageEquipButtons(index, item)}</div>
       <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
       <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${locked ? "disabled" : ""}>売却</button>
     </div>
@@ -1366,11 +1350,6 @@ function bindStorageEvents(root) {
       else expandedStorageGroupIds.add(key);
       storageRenderCount = -1;
       renderStorage();
-    });
-  });
-  root.querySelectorAll(".storage-equip-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
     });
   });
   root.querySelectorAll(".storage-sell-btn").forEach((button) => {
