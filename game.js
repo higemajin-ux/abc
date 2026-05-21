@@ -15,7 +15,7 @@ let state = {
   areaClears: {},
   storage: [],
   autoSell: { common: true, uncommon: false },
-  records: { equipment: [] },
+  records: defaultRecords(),
 };
 
 function $(id) {
@@ -99,12 +99,18 @@ function ensureAutoSellSettings(target = state) {
 }
 
 function defaultRecords() {
-  return { equipment: [] };
+  return { equipment: [], enemies: {} };
 }
 
 function ensureRecords(target = state) {
   target.records = { ...defaultRecords(), ...(target.records || {}) };
-  target.records.equipment = [...new Set((target.records.equipment || []).filter(Boolean))];
+  const equipment = Array.isArray(target.records.equipment) ? target.records.equipment : [];
+  target.records.equipment = [...new Set(equipment.filter(Boolean))];
+  target.records.enemies = Object.fromEntries(
+    Object.entries(target.records.enemies || {})
+      .filter(([enemyId]) => !!enemyId)
+      .map(([enemyId, record]) => [enemyId, { kills: Math.max(0, Number(record?.kills) || 0) }])
+  );
   return target.records;
 }
 
@@ -113,6 +119,14 @@ function recordEquipment(item, target = state) {
   const records = ensureRecords(target);
   if (records.equipment.includes(item.id)) return false;
   records.equipment.push(item.id);
+  return true;
+}
+
+function recordEnemyKill(enemy, target = state) {
+  if (!enemy?.id) return false;
+  const records = ensureRecords(target);
+  const current = records.enemies[enemy.id]?.kills || 0;
+  records.enemies[enemy.id] = { kills: current + 1 };
   return true;
 }
 
@@ -564,6 +578,7 @@ function applyRewards(party, area, rewards) {
   s.gold += rewards.gold;
   s.kills += rewards.kills;
   s.missionsCleared += 1;
+  recordEnemyKills(rewards);
   storeEquipmentDrops(rewards);
 
   const levelUps = [];
@@ -581,6 +596,13 @@ function applyRewards(party, area, rewards) {
     ...rewards,
     levelUps,
   };
+}
+
+function recordEnemyKills(rewards) {
+  for (const encounter of rewards?.encounters || []) {
+    if (!encounter?.victory) continue;
+    recordEnemyKill(encounter.monster);
+  }
 }
 
 function storeEquipmentDrops(rewards) {
@@ -1628,22 +1650,64 @@ function equipmentRecordHtml(item) {
   </li>`;
 }
 
+function enemyRecordHtml(enemyId, record) {
+  const enemy = MONSTERS?.[enemyId];
+  const kills = Math.max(0, Number(record?.kills) || 0);
+  const unlockedName = kills >= 1;
+  const unlockedHp = kills >= 5;
+  const unlockedAtk = kills >= 10;
+  const unlockedDef = kills >= 15;
+  const def = enemy?.def ?? 0;
+  return `<li>
+    <div class="records-info">
+      <div class="records-head">
+        <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>
+        <span class="records-meta">討伐：${kills}</span>
+      </div>
+      <div class="records-effect">HP：${unlockedHp ? enemy?.hp ?? "？？？" : "？？？"}</div>
+      <div class="records-effect">ATK：${unlockedAtk ? enemy?.atk ?? "？？？" : "？？？"}</div>
+      <div class="records-effect">DEF：${unlockedDef ? def : "？？？"}</div>
+    </div>
+  </li>`;
+}
+
+function enemyRecordEntries(records) {
+  return Object.entries(records.enemies || {})
+    .filter(([enemyId, record]) => MONSTERS?.[enemyId] && (record?.kills || 0) > 0)
+    .sort((a, b) => {
+      const nameA = MONSTERS[a[0]]?.name || a[0];
+      const nameB = MONSTERS[b[0]]?.name || b[0];
+      return nameA.localeCompare(nameB, "ja");
+    });
+}
+
 function renderRecords() {
   const root = $("records-root");
   if (!root) return;
   const records = ensureRecords();
   const ids = records.equipment;
-  const total = Object.keys(EQUIPMENT_ITEMS || {}).length;
+  const equipmentTotal = Object.keys(EQUIPMENT_ITEMS || {}).length;
+  const enemyTotal = Object.keys(MONSTERS || {}).length;
   const items = ids.map((id) => EQUIPMENT_ITEMS[id]).filter(Boolean);
-
-  if (!items.length) {
-    root.innerHTML = `<p class="records-count">装備図録 0 / ${total}</p><p class="log-empty">記録された装備はありません</p>`;
-    return;
-  }
+  const enemies = enemyRecordEntries(records);
 
   root.innerHTML = `
-    <p class="records-count">装備図録 ${items.length} / ${total}</p>
-    <ul class="records-list">${items.map(equipmentRecordHtml).join("")}</ul>
+    <div class="records-section">
+      <p class="records-count">装備図録 ${items.length} / ${equipmentTotal}</p>
+      ${
+        items.length
+          ? `<ul class="records-list">${items.map(equipmentRecordHtml).join("")}</ul>`
+          : '<p class="log-empty">記録された装備はありません</p>'
+      }
+    </div>
+    <div class="records-section">
+      <p class="records-count">敵図録 ${enemies.length} / ${enemyTotal}</p>
+      ${
+        enemies.length
+          ? `<ul class="records-list">${enemies.map(([enemyId, record]) => enemyRecordHtml(enemyId, record)).join("")}</ul>`
+          : '<p class="log-empty">記録された敵はありません</p>'
+      }
+    </div>
   `;
 }
 
