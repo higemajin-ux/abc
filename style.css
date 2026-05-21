@@ -607,14 +607,73 @@ h1 {
 }
 
 .storage-list li {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.storage-controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.storage-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-on-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.storage-sort-select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink-on-dark);
+  padding: 5px 8px;
+}
+
+.storage-group-head,
+.storage-stack-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
+  width: 100%;
   padding: 8px 10px;
+}
+
+.storage-group-head {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.storage-group-head:hover {
+  background: rgba(214, 168, 79, 0.06);
+}
+
+.storage-expand-mark {
+  color: var(--muted-on-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.storage-stack-items {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.storage-stack-row {
+  background: rgba(11, 7, 5, 0.28);
+}
+
+.storage-stack-row + .storage-stack-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .storage-info {
@@ -649,10 +708,20 @@ h1 {
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.storage-equip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
 }
 
 .storage-sell-btn,
-.storage-lock-btn {
+.storage-lock-btn,
+.storage-equip-btn {
   flex: 0 0 auto;
   min-height: 30px;
   border: 1px solid var(--line);
@@ -666,7 +735,8 @@ h1 {
 }
 
 .storage-sell-btn:hover,
-.storage-lock-btn:hover {
+.storage-lock-btn:hover,
+.storage-equip-btn:hover {
   border-color: var(--line-bright);
   color: var(--accent);
   background: rgba(214, 168, 79, 0.06);
