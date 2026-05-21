@@ -29,9 +29,22 @@ function pickWeightedMonster(area, rareWeight = 1) {
   return options.at(-1)?.monster || MONSTERS[pick(area.monsters)];
 }
 
+function defaultSkillSettings(job) {
+  return Object.fromEntries((JOB_SKILLS?.[job] || []).map((skill) => [skill.id, true]));
+}
+
+function normalizeSkillSettings(member) {
+  const defaults = defaultSkillSettings(member?.job);
+  return { ...defaults, ...(member?.skillSettings || {}) };
+}
+
+function isSkillEnabled(member, skillId) {
+  return normalizeSkillSettings(member)[skillId] !== false;
+}
+
 function tryMageMagicSense(members, monster, area) {
   if (monster.boss || !area.monsters?.length) return { monster, explorationEvents: [] };
-  const mages = livingMembers(members).filter((member) => member.job === "mage");
+  const mages = livingMembers(members).filter((member) => member.job === "mage" && isSkillEnabled(member, "magicSense"));
   if (!mages.length || Math.random() >= 0.2) return { monster, explorationEvents: [] };
 
   const detector = pick(mages);
@@ -68,6 +81,7 @@ function createMember(template, level = 1) {
     baseLuc,
     dex: baseDex + bonus.dex,
     luc: baseLuc + bonus.luc,
+    skillSettings: normalizeSkillSettings(template),
   };
 }
 
@@ -78,6 +92,7 @@ function normalizeMember(member) {
     name: member.name,
     job: member.job || "warrior",
     equipment: member.equipment,
+    skillSettings: member.skillSettings,
     baseDex: member.baseDex ?? (member.dex == null ? undefined : member.dex - currentBonus.dex),
     baseLuc: member.baseLuc ?? (member.luc == null ? undefined : member.luc - currentBonus.luc),
   };
@@ -487,9 +502,12 @@ function confirmRemainingDownMembers(party, events, speechState, allowFinalLine 
 
 function performPriestAction(actor, party, enemy, events) {
   const fallen = party.filter((m) => m.hp <= 0);
-  if (fallen.length) {
+  const canResurrect = isSkillEnabled(actor, "resurrect");
+  const canResura = isSkillEnabled(actor, "resura");
+  if (fallen.length && ((canResurrect && !actor.sureReviveUsed) || canResura)) {
     const target = pick(fallen);
-    const sureRevive = !actor.sureReviveUsed;
+    const sureRevive = canResurrect && !actor.sureReviveUsed;
+    if (!sureRevive && !canResura) return;
     events.push({ kind: "heal", text: `${actor.name}は${sureRevive ? "リザレクト" : "リザラ"}を唱えた。` });
     if (sureRevive || Math.random() < 0.5) {
       actor.sureReviveUsed = actor.sureReviveUsed || sureRevive;
@@ -506,7 +524,7 @@ function performPriestAction(actor, party, enemy, events) {
   }
 
   const statusTarget = livingMembers(party).find(hasBadStatus);
-  if (statusTarget) {
+  if (statusTarget && isSkillEnabled(actor, "prayer")) {
     clearBadStatus(statusTarget);
     events.push({ kind: "heal", text: `${actor.name}は祈りを捧げた。` });
     events.push({ kind: "heal", text: `${statusTarget.name}の状態が安定した。` });
@@ -514,7 +532,7 @@ function performPriestAction(actor, party, enemy, events) {
   }
 
   const lowest = lowestHpLivingMember(party);
-  if (lowest && hpRate(lowest) <= 0.3) {
+  if (lowest && hpRate(lowest) <= 0.3 && isSkillEnabled(actor, "middleHeal")) {
     const amount = healingAmount(actor, 15, 22, 2);
     const healed = recoverHp(lowest, amount);
     events.push({ kind: "heal", text: `${actor.name}のミドルヒール！` });
@@ -527,7 +545,7 @@ function performPriestAction(actor, party, enemy, events) {
     .filter((m) => m.hp < Math.floor(m.maxHp * 0.45))
     .sort((a, b) => hpRate(a) - hpRate(b))[0];
 
-  if (wounded) {
+  if (wounded && isSkillEnabled(actor, "heal")) {
     const amount = healingAmount(actor, 8, 13, 1.4);
     const healed = recoverHp(wounded, amount);
     events.push({ kind: "heal", text: `${actor.name}のヒール！` });
@@ -537,7 +555,7 @@ function performPriestAction(actor, party, enemy, events) {
   }
 
   const groupTargets = livingMembers(party).filter((m) => hpRate(m) <= 0.75 && m.hp < m.maxHp);
-  if (groupTargets.length >= 2) {
+  if (groupTargets.length >= 2 && isSkillEnabled(actor, "healRain")) {
     const amount = healingAmount(actor, 5, 8, 0.8);
     events.push({ kind: "heal", text: `${actor.name}のヒールレイン！` });
     events.push({ kind: "heal", text: `全員のHPが${amount}回復した。` });
@@ -549,7 +567,7 @@ function performPriestAction(actor, party, enemy, events) {
   }
 
   const barrierTarget = magicBarrierTarget(party);
-  if (barrierTarget) {
+  if (barrierTarget && isSkillEnabled(actor, "magicBarrier")) {
     barrierTarget.magicBarrier = true;
     events.push({ kind: "heal", text: `${actor.name}は${barrierTarget.name}に魔力障壁を張った。` });
     return;
@@ -659,8 +677,8 @@ function tickEnemyDots(enemy, events, kind = "enemy-action") {
 }
 
 function performMageAction(actor, enemy, events) {
-  if (Math.random() < 0.35) {
-    const focused = Math.random() < 0.3;
+  if (isSkillEnabled(actor, "acidMist") && Math.random() < 0.35) {
+    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     const baseDamage = damageFor(Math.floor(actor.atk * 0.5) + Math.floor(actor.level / 2), Math.floor(enemy.def * 0.2));
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
@@ -677,8 +695,8 @@ function performMageAction(actor, enemy, events) {
   }
 
   const skillRoll = Math.random();
-  if (skillRoll < 0.3) {
-    const focused = Math.random() < 0.3;
+  if (isSkillEnabled(actor, "lightning") && skillRoll < 0.3) {
+    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     events.push({ kind: "spell", text: `${actor.name}の雷撃！` });
     if (!focused && Math.random() >= 0.85) {
@@ -697,8 +715,8 @@ function performMageAction(actor, enemy, events) {
     return;
   }
 
-  if (skillRoll < 0.7) {
-    const focused = Math.random() < 0.3;
+  if (isSkillEnabled(actor, "iceLance") && skillRoll < 0.7) {
+    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     events.push({ kind: "spell", text: `${actor.name}の氷槍。` });
 
@@ -725,8 +743,8 @@ function performMageAction(actor, enemy, events) {
     return;
   }
 
-  if (skillRoll < 0.9) {
-    const focused = Math.random() < 0.3;
+  if (isSkillEnabled(actor, "firebolt") && skillRoll < 0.9) {
+    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     const baseDamage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
@@ -755,7 +773,7 @@ function performScoutAction(actor, party, enemy, events) {
   const criticalAlly = livingMembers(party)
     .filter((member) => member.hp < Math.floor(member.maxHp * 0.3))
     .sort((a, b) => hpRate(a) - hpRate(b))[0];
-  if (criticalAlly && Math.random() < 0.55) {
+  if (criticalAlly && isSkillEnabled(actor, "firstAid") && Math.random() < 0.55) {
     const amount = roll(5, 9) + Math.floor(actor.level * 0.7);
     const guarded = grantTempHp(criticalAlly, amount);
     events.push({ kind: "heal", text: `${actor.name}は応急手当をした。` });
@@ -764,7 +782,7 @@ function performScoutAction(actor, party, enemy, events) {
     return;
   }
 
-  if (enemy.hp > 0 && !enemy.blindTurns && Math.random() < 0.4) {
+  if (enemy.hp > 0 && !enemy.blindTurns && isSkillEnabled(actor, "blind") && Math.random() < 0.4) {
     if (applyEnemyBlind(enemy)) {
       events.push({ kind: "voice", text: `${actor.name}は目つぶしを使った。` });
       events.push({ kind: "voice", text: `${enemy.name}の視界を奪った。` });
@@ -773,7 +791,7 @@ function performScoutAction(actor, party, enemy, events) {
     }
   }
 
-  if (!actor.focusTurns && Math.random() < 0.35) {
+  if (!actor.focusTurns && isSkillEnabled(actor, "focus") && Math.random() < 0.35) {
     actor.focusTurns = 2;
     events.push({ kind: "voice", text: `${actor.name}は集中している。` });
     return;
@@ -790,7 +808,7 @@ function performScoutAction(actor, party, enemy, events) {
 }
 
 function shouldWarriorDefend(actor) {
-  if (actor.job !== "warrior" || actor.hp <= 0) return false;
+  if (actor.job !== "warrior" || actor.hp <= 0 || !isSkillEnabled(actor, "guard")) return false;
   const hpRate = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
   if (hpRate <= 30) return Math.random() < 0.45;
   if (hpRate <= 50) return Math.random() < 0.25;
@@ -798,7 +816,7 @@ function shouldWarriorDefend(actor) {
 }
 
 function shouldWarriorIronWall(actor, enemyCount = 1) {
-  if (actor.job !== "warrior" || actor.hp <= 0 || actor.ironWall) return false;
+  if (actor.job !== "warrior" || actor.hp <= 0 || actor.ironWall || !isSkillEnabled(actor, "ironWall")) return false;
   const hpRate = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
   return hpRate <= 50 || enemyCount >= 2;
 }
@@ -858,7 +876,7 @@ function performTurnStartSkillChecks(party, enemy, events) {
 }
 
 function shouldWarriorTaunt(actor, party) {
-  if (actor.job !== "warrior" || actor.hp <= 0 || actor.tauntTurns > 0) return false;
+  if (actor.job !== "warrior" || actor.hp <= 0 || actor.tauntTurns > 0 || !isSkillEnabled(actor, "provoke")) return false;
   const needsAttention = livingMembers(party).some((member) => {
     if (member.id === actor.id || member.maxHp <= 0) return false;
     const hpRate = (member.hp / member.maxHp) * 100;
@@ -868,7 +886,7 @@ function shouldWarriorTaunt(actor, party) {
 }
 
 function shouldWarriorDesperateStrike(actor) {
-  if (actor.job !== "warrior" || actor.hp <= 0 || actor.ironWall) return false;
+  if (actor.job !== "warrior" || actor.hp <= 0 || actor.ironWall || !isSkillEnabled(actor, "desperateStrike")) return false;
   return Math.random() < 0.3;
 }
 
@@ -936,7 +954,7 @@ function pickCoverWarrior(party, target) {
   if (Math.random() >= coverChanceFor(target)) return null;
 
   const candidates = livingMembers(party).filter(
-    (member) => member.job === "warrior" && member.id !== target.id
+    (member) => member.job === "warrior" && member.id !== target.id && isSkillEnabled(member, "cover")
   );
   return candidates.length ? pick(candidates) : null;
 }
@@ -950,6 +968,7 @@ function maybeCoverTarget(party, target) {
 function maybeCounterAttack(actor, enemy, events) {
   // Passive counter only happens after direct damage is taken.
   if (actor.job !== "warrior" || actor.hp <= 0 || enemy.hp <= 0) return;
+  if (!isSkillEnabled(actor, "counter")) return;
   if (Math.random() >= 0.6) return;
 
   const damageRate = 0.5 + Math.random() * 0.3;
@@ -966,7 +985,7 @@ function maybeCounterAttack(actor, enemy, events) {
 }
 
 function pickAmbushScout(party) {
-  const scouts = livingScouts(party);
+  const scouts = livingScouts(party).filter((scout) => isSkillEnabled(scout, "ambush"));
   return scouts.length ? pick(scouts) : null;
 }
 
@@ -988,13 +1007,13 @@ function buildScoutExplorationEvents(party) {
 
   const scout = pick(scouts);
   const events = [];
-  if (Math.random() < 0.2) {
+  if (isSkillEnabled(scout, "treasureFind") && Math.random() < 0.2) {
     events.push({ kind: "voice", text: `${scout.name}が宝箱を見つけた。` });
   }
-  if (Math.random() < 0.15) {
+  if (isSkillEnabled(scout, "trapDisarm") && Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${scout.name}が罠を解除した。` });
   }
-  if (Math.random() < 0.15) {
+  if (isSkillEnabled(scout, "shortcutFind") && Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${scout.name}が近道を見つけた。` });
   }
 
@@ -1133,6 +1152,7 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
   const canUsePriestBlessing =
     beforeHp > 0 &&
     target.job === "priest" &&
+    isSkillEnabled(target, "divineGrace") &&
     !party.priestBlessingUsed &&
     target.hp > 0;
   applyDamageToMember(target, damage);
