@@ -29,6 +29,13 @@ const EQUIPMENT_ITEMS = {
   travelWear: { id: "travelWear", name: "旅装束", slot: "armor", def: 1 },
 };
 
+const EQUIPMENT_SLOTS = [
+  { key: "weapon", label: "武器", kind: "weapon" },
+  { key: "armor", label: "防具", kind: "armor" },
+  { key: "accessory1", label: "装飾1", kind: "accessory" },
+  { key: "accessory2", label: "装飾2", kind: "accessory" },
+];
+
 const DEFAULT_EQUIPMENT_BY_MEMBER = {
   "pt1-allen": { weapon: "oldSword", armor: "leatherArmor", accessory1: null, accessory2: null },
   "pt1-mina": { weapon: "tinStaff", armor: "monkRobe", accessory1: null, accessory2: null },
