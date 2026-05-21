@@ -701,7 +701,7 @@ h1 {
 }
 
 .storage-sell-btn:disabled {
-  cursor: not-allowed;
+  cursor: default;
   opacity: 0.45;
 }
 
