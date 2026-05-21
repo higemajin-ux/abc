@@ -963,15 +963,24 @@ function equipmentSlotKind(slot) {
 
 function equipmentCandidateList(member, slot) {
   const kind = equipmentSlotKind(slot);
+  const equipment = ensureCharacterEquipment(member);
+  const hasItem = !!EQUIPMENT_ITEMS[equipment[slot]];
   const candidates = (state.storage || [])
     .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index }))
     .filter(({ item }) => item?.slot === kind);
 
-  if (!candidates.length) {
+  const removeChoice = hasItem
+    ? `<button type="button" class="equip-choice-btn unequip-choice-btn" data-unequip="true" data-member-id="${member.id}" data-slot="${slot}">
+        <span class="equip-choice-head"><strong>なし</strong><span>解除</span></span>
+        <span class="equip-choice-meta">装備を外す</span>
+      </button>`
+    : "";
+
+  if (!removeChoice && !candidates.length) {
     return '<p class="equipment-empty">保管庫に候補はありません</p>';
   }
 
-  return candidates
+  return removeChoice + candidates
     .map(({ item, index }) => {
       const rarity = normalizeRarity(item.rarity);
       return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
@@ -986,16 +995,12 @@ function equipmentSlotHtml(member, slot) {
   const equipment = ensureCharacterEquipment(member);
   const item = EQUIPMENT_ITEMS[equipment[slot]];
   const rarity = normalizeRarity(item?.rarity);
-  const removeButton = item
-    ? `<button type="button" class="unequip-btn" data-member-id="${member.id}" data-slot="${slot}">外す</button>`
-    : "";
   const name = item ? formatEquipmentLine(item) : "なし";
   return `<div class="member-equipment-slot">
     <button type="button" class="equip-slot-btn" data-member-id="${member.id}" data-slot="${slot}">
       <span>${equipmentSlotLabel(slot)}</span>
       <strong class="${rarityClassName(rarity)}">${name}</strong>
     </button>
-    ${removeButton}
     <div class="equipment-candidates" hidden>${equipmentCandidateList(member, slot)}</div>
   </div>`;
 }
@@ -1112,12 +1117,11 @@ function createPartyCard(party) {
   });
   card.querySelectorAll(".equip-choice-btn").forEach((button) => {
     button.addEventListener("click", () => {
+      if (button.dataset.unequip === "true") {
+        unequipMemberItem(button.dataset.memberId, button.dataset.slot);
+        return;
+      }
       equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
-    });
-  });
-  card.querySelectorAll(".unequip-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      unequipMemberItem(button.dataset.memberId, button.dataset.slot);
     });
   });
   card.querySelector(".dispatch-btn").addEventListener("click", () => startMission(party.id));
