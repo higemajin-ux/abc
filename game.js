@@ -195,7 +195,7 @@ function battleSummary(encounter) {
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
-function buildRewardJournalEntries(rewards) {
+function buildDeliveryBoxHtml(rewards) {
   const names = (rewards?.encounters || [])
     .map((encounter) => encounter?.equipmentDrop)
     .filter(Boolean)
@@ -205,13 +205,8 @@ function buildRewardJournalEntries(rewards) {
       const suffix = wasAutoSoldDrop(drop) ? "（売却）" : "";
       return `<span class="${rarityClassName(item?.rarity)}">${name}</span>${suffix}`;
     });
-  if (!names.length) return [];
-  return [{
-    id: uid("entry"),
-    type: "flavor",
-    title: `今回の冒険で装備を持ち帰った。<br>装備箱：<br>${names.map((name) => `・${name}`).join("<br>")}`,
-    shown: false,
-  }];
+  if (!names.length) return "";
+  return `今回の冒険で装備を持ち帰った。<br>納品箱：<br>${names.map((name) => `・${name}`).join("<br>")}`;
 }
 
 function buildMvpLine(party, rewards) {
@@ -475,23 +470,16 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   const returnMembersSnapshot = rewards.encounters.at(-1)?.membersSnapshot;
   const mvpLine = buildMvpLine(party, rewards);
   const returnEvents = buildReturnEvents(party.members, returnMembersSnapshot, mvpLine);
-  const rewardEntries = buildRewardJournalEntries(rewards);
+  const deliveryBox = buildDeliveryBoxHtml(rewards);
   const reportAuthor = reportAuthorName(party, mvpLine, returnEvents);
   returnEvents.forEach((event, eventIndex) => {
     entries.push({
       id: uid("entry"),
-      timestamp: Math.max(startedAt, returnTime - rewardEntries.length - returnEvents.length + eventIndex),
+      timestamp: Math.max(startedAt, returnTime - returnEvents.length + eventIndex),
       type: "flavor",
       title: event.text,
       membersSnapshot: returnMembersSnapshot,
       shown: false,
-    });
-  });
-  rewardEntries.forEach((entry, entryIndex) => {
-    entries.push({
-      ...entry,
-      timestamp: Math.max(startedAt, returnTime - entryIndex - 1),
-      membersSnapshot: returnMembersSnapshot,
     });
   });
 
@@ -506,6 +494,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
       ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
       : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     mvpLine,
+    deliveryBox,
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
     shown: false,
   });
@@ -869,6 +858,9 @@ function renderLogEntry(entry) {
     }
     if (entry.mvpLine && entry.type === "return") {
       detail.innerHTML += `<p>${entry.mvpLine}</p>`;
+    }
+    if (entry.deliveryBox && entry.type === "return") {
+      detail.innerHTML += `<p>${entry.deliveryBox}</p>`;
     }
     li.appendChild(detail);
     btn.addEventListener("click", () => {
