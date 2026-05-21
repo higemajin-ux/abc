@@ -106,11 +106,11 @@ const EQUIPMENT_DROPS = [
   { id: "oldCharm", name: "古い護符", slot: "accessory", rarity: "uncommon", luc: 1, sellGold: 12 },
   { id: "crackedRing", name: "ひび割れた指輪", slot: "accessory", rarity: "uncommon", dex: 1, sellGold: 9 },
   { id: "silverBuckle", name: "銀留めの帯具", slot: "accessory", rarity: "rare", def: 1, luc: 1, sellGold: 28 },
-  { id: "emberPendant", name: "燠火の首飾り", slot: "accessory", rarity: "epic", atk: 2, luc: 1, sellGold: 70 },
-  { id: "saintFragment", name: "聖片の護符", slot: "accessory", rarity: "legendary", maxHp: 4, luc: 2, sellGold: 180 },
-  { id: "ashGrimoire", name: "灰の魔導書", slot: "accessory", rarity: "artifact", sellGold: 260 },
-  { id: "namelessSignet", name: "名も無き聖印", slot: "accessory", rarity: "artifact", sellGold: 280 },
-  { id: "blackKingRing", name: "黒王の指輪", slot: "accessory", rarity: "artifact", sellGold: 320 },
+  { id: "emberPendant", name: "燠火の首飾り", slot: "accessory", rarity: "epic", atk: 2, luc: 1, sellGold: 70, flavor: "火は消えている。それでも、胸元だけが夜に温かい。" },
+  { id: "saintFragment", name: "聖片の護符", slot: "accessory", rarity: "legendary", maxHp: 4, luc: 2, sellGold: 180, flavor: "聖者の名は欠けて読めない。祈りの跡だけが指に残る。" },
+  { id: "ashGrimoire", name: "灰の魔導書", slot: "accessory", rarity: "artifact", sellGold: 260, flavor: "焼け落ちた塔の地下で見つかった。頁の灰は、今も指に残る。" },
+  { id: "namelessSignet", name: "名も無き聖印", slot: "accessory", rarity: "artifact", sellGold: 280, flavor: "祈りの名は削られている。それでも、誰かはこれを握っていた。" },
+  { id: "blackKingRing", name: "黒王の指輪", slot: "accessory", rarity: "artifact", sellGold: 320, flavor: "王が消えた後も、指輪だけは玉座に残っていた。" },
 { id: "rustyAxe", name: "錆びた斧", slot: "weapon", rarity: "common", atk: 2, dex: -1, sellGold: 11 },
 
 { id: "mercenarySword", name: "傭兵の剣", slot: "weapon", rarity: "uncommon", atk: 4, dex: 1, sellGold: 24 },
@@ -121,9 +121,9 @@ const EQUIPMENT_DROPS = [
 
 { id: "ashCoveredStaff", name: "灰かぶりの杖", slot: "weapon", rarity: "rare", atk: 5, luc: 2, sellGold: 60 },
 
-{ id: "emberRemnantBlade", name: "名残火の刃", slot: "weapon", rarity: "epic", atk: 8, maxHp: -3, sellGold: 120 },
+{ id: "emberRemnantBlade", name: "名残火の刃", slot: "weapon", rarity: "epic", atk: 8, maxHp: -3, sellGold: 120, flavor: "刃の奥に、まだ赤いものが眠っている。長く握ると脈が乱れる。" },
 
-{ id: "gravekeeperGreatsword", name: "墓守の大剣", slot: "weapon", rarity: "legendary", atk: 10, def: 2, dex: -1, sellGold: 220 },
+{ id: "gravekeeperGreatsword", name: "墓守の大剣", slot: "weapon", rarity: "legendary", atk: 10, def: 2, dex: -1, sellGold: 220, flavor: "墓標の列より重い。抜くたび、土の匂いが濃くなる。" },
 
 { id: "patchedCloak", name: "継ぎ布の外套", slot: "armor", rarity: "common", def: 1, maxHp: 2, sellGold: 10 },
 
@@ -133,9 +133,9 @@ const EQUIPMENT_DROPS = [
 
 { id: "sootRobe", name: "煤けた法衣", slot: "armor", rarity: "rare", def: 3, luc: 3, sellGold: 60 },
 
-{ id: "fallenKingMail", name: "亡国の鎖帷子", slot: "armor", rarity: "epic", def: 7, maxHp: 6, sellGold: 130 },
+{ id: "fallenKingMail", name: "亡国の鎖帷子", slot: "armor", rarity: "epic", def: 7, maxHp: 6, sellGold: 130, flavor: "内側に古い血の輪が残る。旗印は、誰も覚えていない。" },
 
-{ id: "ashKingCloak", name: "灰王の外套", slot: "armor", rarity: "legendary", def: 6, maxHp: 10, luc: 2, sellGold: 240 },
+{ id: "ashKingCloak", name: "灰王の外套", slot: "armor", rarity: "legendary", def: 6, maxHp: 10, luc: 2, sellGold: 240, flavor: "灰は払っても戻ってくる。肩に掛けると、遠い戴冠の声がする。" },
 
 { id: "dryHolyMark", name: "乾いた聖印", slot: "accessory", rarity: "common", luc: 1, sellGold: 10 },
 
@@ -144,9 +144,9 @@ const EQUIPMENT_DROPS = [
 { id: "pilgrimShoes", name: "巡礼者の靴", slot: "accessory", rarity: "uncommon", dex: 2, sellGold: 24 },
 
 { id: "thiefGloves", name: "盗賊の手袋", slot: "accessory", rarity: "rare", dex: 3, luc: 1, sellGold: 60 },
-  { id: "blackPage", name: "黒い頁", slot: "relic", rarity: "epic", luc: 2, sellGold: 140 },
-  { id: "brokenStarMap", name: "割れた星図", slot: "relic", rarity: "legendary", dex: 2, luc: 3, sellGold: 240 },
-  { id: "namelessTablet", name: "名前の消えた記録板", slot: "relic", rarity: "artifact", luc: 5, maxHp: 5, sellGold: 500 },
+  { id: "blackPage", name: "黒い頁", slot: "relic", rarity: "epic", luc: 2, sellGold: 140, flavor: "文字は光を吸って読めない。閉じても、頁をめくる音がする。" },
+  { id: "brokenStarMap", name: "割れた星図", slot: "relic", rarity: "legendary", dex: 2, luc: 3, sellGold: 240, flavor: "星の半分が失われている。残った星だけが、地下を指している。" },
+  { id: "namelessTablet", name: "名前の消えた記録板", slot: "relic", rarity: "artifact", luc: 5, maxHp: 5, sellGold: 500, flavor: "名は削られたのではない。石そのものが、名を拒んでいる。" },
 ];
 
 const PARTY_TEMPLATES = {
