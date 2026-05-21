@@ -712,16 +712,8 @@ h1 {
   justify-content: flex-end;
 }
 
-.storage-equip-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: flex-end;
-}
-
 .storage-sell-btn,
-.storage-lock-btn,
-.storage-equip-btn {
+.storage-lock-btn {
   flex: 0 0 auto;
   min-height: 30px;
   border: 1px solid var(--line);
@@ -735,8 +727,7 @@ h1 {
 }
 
 .storage-sell-btn:hover,
-.storage-lock-btn:hover,
-.storage-equip-btn:hover {
+.storage-lock-btn:hover {
   border-color: var(--line-bright);
   color: var(--accent);
   background: rgba(214, 168, 79, 0.06);
