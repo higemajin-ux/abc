@@ -1079,17 +1079,31 @@ function equipmentSlotHtml(member, slot) {
 function memberSkillListHtml(member) {
   const skills = JOB_SKILLS?.[member.job] || [];
   if (!skills.length) return "";
+  const settings = normalizeSkillSettings(member);
   return `<div class="member-skills">
     <div class="member-skills-title">スキル：</div>
     <ul>
       ${skills
         .map(
           (skill) =>
-            `<li data-skill-id="${skill.id}"><strong>${skill.name}</strong>：${skill.description}</li>`
+            `<li data-skill-id="${skill.id}">
+              <label>
+                <input type="checkbox" class="skill-toggle" data-member-id="${member.id}" data-skill-id="${skill.id}" ${settings[skill.id] !== false ? "checked" : ""}>
+                <strong>${skill.name}</strong>：${skill.description}
+              </label>
+            </li>`
         )
         .join("")}
     </ul>
   </div>`;
+}
+
+function setMemberSkillSetting(memberId, skillId, enabled) {
+  const member = findMemberById(memberId);
+  if (!member || !skillId) return;
+  member.skillSettings = normalizeSkillSettings(member);
+  member.skillSettings[skillId] = !!enabled;
+  saveGame();
 }
 
 function memberDetails(party) {
@@ -1189,6 +1203,11 @@ function createPartyCard(party) {
         return;
       }
       equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
+    });
+  });
+  card.querySelectorAll(".skill-toggle").forEach((input) => {
+    input.addEventListener("change", () => {
+      setMemberSkillSetting(input.dataset.memberId, input.dataset.skillId, input.checked);
     });
   });
   card.querySelector(".dispatch-btn")?.addEventListener("click", () => startMission(party.id));
