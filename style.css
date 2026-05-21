@@ -979,6 +979,14 @@ h1 {
   display: block;
 }
 
+.delivery-box {
+  margin: 0 0 0.5rem 0.3rem;
+  color: #b9a789;
+  font-size: 0.74rem;
+  letter-spacing: 0.045em;
+  line-height: 1.75;
+}
+
 .battle-detail p + p {
   margin-top: 3px;
 }
