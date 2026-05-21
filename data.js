@@ -10,6 +10,29 @@ const JOB_LABELS = {
   scout: "斥候",
 };
 
+const JOB_SKILLS = {
+  warrior: [
+    { id: "guard", name: "防御", description: "被ダメージを軽減する" },
+    { id: "cover", name: "かばう", description: "味方への攻撃を引き受ける" },
+    { id: "provoke", name: "挑発", description: "敵の狙いを引きつける" },
+  ],
+  priest: [
+    { id: "heal", name: "回復", description: "傷ついた味方を癒やす" },
+    { id: "prayer", name: "祈り", description: "味方の生存を支える" },
+    { id: "purify", name: "浄化", description: "不利な流れを整える" },
+  ],
+  mage: [
+    { id: "firebolt", name: "火球", description: "魔法で敵にダメージを与える" },
+    { id: "focus", name: "集中", description: "魔力を高めて攻撃に備える" },
+    { id: "barrier", name: "障壁", description: "味方への被害を抑える" },
+  ],
+  scout: [
+    { id: "quickstep", name: "早駆け", description: "素早く立ち回る" },
+    { id: "aim", name: "狙撃", description: "急所を狙って攻撃する" },
+    { id: "trap", name: "罠探知", description: "危険を見つけて回避を助ける" },
+  ],
+};
+
 const JOB_STATS = {
   warrior: { maxHp: 44, atk: 11, def: 6, dex: 5, luc: 4 },
   priest: { maxHp: 34, atk: 7, def: 4, dex: 7, luc: 9 },
