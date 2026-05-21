@@ -1,11 +1,10 @@
-"use strict";
+﻿"use strict";
 
 let nextId = 1;
 let tickId = null;
 let worldTickId = null;
 let storageRenderCount = -1;
 let storageSortMode = "new";
-const expandedStorageGroupIds = new Set();
 const openDetailPartyIds = new Set();
 registerDropEquipmentItems();
 let state = {
@@ -1297,44 +1296,24 @@ function storageGroups(items) {
   return groups.sort(compareStorageGroups);
 }
 
-function storageStackRowHtml(entry, fallbackName) {
-  const { item, index, locked } = entry;
+function storageGroupHtml(group) {
+  const { item, count, entries } = group;
   const rarity = normalizeRarity(item?.rarity);
-  return `<div class="storage-stack-row">
+  const name = item?.name || "名称不明の装備";
+  const index = entries[0]?.index;
+  const locked = !!entries[0]?.locked;
+  return `<li>
     <div class="storage-info">
       <div class="storage-head">
-        <span class="storage-item ${rarityClassName(rarity)}">${item?.name || fallbackName}</span>
-        ${locked ? '<span class="storage-lock-label">保護中</span>' : ""}
+        <span class="storage-item ${rarityClassName(rarity)}">${name}${locked ? " ★" : count > 1 ? ` ×${count}` : ""}</span>
+        <span class="storage-meta">${rarity}</span>
       </div>
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
     </div>
     <div class="storage-actions">
       <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
-      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${locked ? "disabled" : ""}>売却</button>
+      ${locked ? "" : `<button type="button" class="storage-sell-btn" data-storage-index="${index}">売却</button>`}
     </div>
-  </div>`;
-}
-
-function storageGroupHtml(group) {
-  const { item, count, entries } = group;
-  const rarity = normalizeRarity(item?.rarity);
-  const name = item?.name || "名称不明の装備";
-  const key = storageGroupKey(item, entries[0]?.index);
-  const expanded = expandedStorageGroupIds.has(key);
-  const lockedCount = entries.filter((entry) => entry.locked).length;
-  return `<li>
-    <button type="button" class="storage-group-head" data-storage-group="${key}">
-      <div class="storage-info">
-        <div class="storage-head">
-          <span class="storage-item ${rarityClassName(rarity)}">${name}${count > 1 ? ` ×${count}` : ""}</span>
-          <span class="storage-meta">${rarity}</span>
-          ${lockedCount ? `<span class="storage-lock-label">保護 ${lockedCount}</span>` : ""}
-        </div>
-        <div class="storage-effect">${equipmentStorageLine(item)}</div>
-      </div>
-      <span class="storage-expand-mark">${expanded ? "▲" : "▼"}</span>
-    </button>
-    ${expanded ? `<div class="storage-stack-items">${entries.map((entry) => storageStackRowHtml(entry, name)).join("")}</div>` : ""}
   </li>`;
 }
 
@@ -1343,15 +1322,6 @@ function bindStorageEvents(root) {
     storageSortMode = e.target.value;
     storageRenderCount = -1;
     renderStorage();
-  });
-  root.querySelectorAll(".storage-group-head").forEach((button) => {
-    button.addEventListener("click", () => {
-      const key = button.dataset.storageGroup;
-      if (expandedStorageGroupIds.has(key)) expandedStorageGroupIds.delete(key);
-      else expandedStorageGroupIds.add(key);
-      storageRenderCount = -1;
-      renderStorage();
-    });
   });
   root.querySelectorAll(".storage-sell-btn").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1369,7 +1339,7 @@ function renderStorage() {
   const root = $("storage-root");
   if (!root) return;
   const items = state.storage || [];
-  const renderKey = `${items.length}:${storageSortMode}:${[...expandedStorageGroupIds].sort().join("|")}`;
+  const renderKey = `${items.length}:${storageSortMode}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
