@@ -1056,7 +1056,13 @@ function rarityClassName(rarity) {
 }
 
 function shouldAutoSellDrop(item) {
-  return normalizeRarity(item?.rarity) === "common";
+  const rarity = normalizeRarity(item?.rarity);
+  const settings = typeof ensureAutoSellSettings === "function"
+    ? ensureAutoSellSettings()
+    : { common: true, uncommon: false };
+  const autoSold = rarity === "common" || rarity === "uncommon" ? !!settings[rarity] : false;
+  if (item && typeof item === "object") item.autoSold = autoSold;
+  return autoSold;
 }
 
 function dropNameHtml(item) {
