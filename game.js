@@ -5,6 +5,7 @@ let tickId = null;
 let worldTickId = null;
 let storageRenderCount = -1;
 let storageSortMode = "new";
+let storageFilterMode = "all";
 const openDetailPartyIds = new Set();
 registerDropEquipmentItems();
 let state = {
@@ -1199,6 +1200,32 @@ function compareStorageGroups(a, b) {
   return b.latestIndex - a.latestIndex;
 }
 
+function storageFilterMatches(item) {
+  if (storageFilterMode === "weapon") return item?.slot === "weapon";
+  if (storageFilterMode === "armor") return item?.slot === "armor";
+  if (storageFilterMode === "accessory") return item?.slot === "accessory";
+  if (storageFilterMode === "artifact") return normalizeRarity(item?.rarity) === "artifact";
+  return true;
+}
+
+function filteredStorageEntries(items) {
+  return items
+    .map((rawItem, index) => ({ rawItem, storageIndex: index, item: storageItemFromEquipment(rawItem) }))
+    .filter(({ item }) => item && storageFilterMatches(item));
+}
+
+function storageCountHtml(items) {
+  const lockedCount = items.filter((item) => !!item?.locked).length;
+  return `<div class="storage-counts">
+    <span>装備保管：${items.length}</span>
+    <span>保護：${lockedCount}</span>
+  </div>`;
+}
+
+function storageFilterButton(value, label) {
+  return `<button type="button" class="storage-filter-btn ${storageFilterMode === value ? "active" : ""}" data-storage-filter="${value}">${label}</button>`;
+}
+
 function renderStorageLegacy() {
   const root = $("storage-root");
   if (!root) return;
@@ -1265,6 +1292,13 @@ function renderStorageLegacy() {
 
 function storageSortOptionsHtml() {
   return `<div class="storage-controls">
+    <div class="storage-filters">
+      ${storageFilterButton("all", "すべて")}
+      ${storageFilterButton("weapon", "武器")}
+      ${storageFilterButton("armor", "防具")}
+      ${storageFilterButton("accessory", "装飾")}
+      ${storageFilterButton("artifact", "artifact")}
+    </div>
     <label>並び替え
       <select class="storage-sort-select">
         <option value="new" ${storageSortMode === "new" ? "selected" : ""}>新しい順</option>
@@ -1276,22 +1310,21 @@ function storageSortOptionsHtml() {
   </div>`;
 }
 
-function storageGroups(items) {
+function storageGroups(entries) {
   const groups = [];
   const groupByKey = new Map();
-  items.forEach((rawItem, index) => {
-    const item = storageItemFromEquipment(rawItem);
+  entries.forEach(({ item, storageIndex }) => {
     if (!item) return;
-    const key = storageGroupKey(item, index);
+    const key = storageGroupKey(item, storageIndex);
     let group = groupByKey.get(key);
     if (!group) {
-      group = { item, count: 0, entries: [], latestIndex: index };
+      group = { item, count: 0, entries: [], latestIndex: storageIndex };
       groupByKey.set(key, group);
       groups.push(group);
     }
     group.count += 1;
-    group.latestIndex = Math.max(group.latestIndex, index);
-    group.entries.push({ item, index, locked: !!item.locked });
+    group.latestIndex = Math.max(group.latestIndex, storageIndex);
+    group.entries.push({ item, index: storageIndex, locked: !!item.locked });
   });
   return groups.sort(compareStorageGroups);
 }
@@ -1318,6 +1351,13 @@ function storageGroupHtml(group) {
 }
 
 function bindStorageEvents(root) {
+  root.querySelectorAll(".storage-filter-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      storageFilterMode = button.dataset.storageFilter || "all";
+      storageRenderCount = -1;
+      renderStorage();
+    });
+  });
   root.querySelector(".storage-sort-select")?.addEventListener("change", (e) => {
     storageSortMode = e.target.value;
     storageRenderCount = -1;
@@ -1339,18 +1379,23 @@ function renderStorage() {
   const root = $("storage-root");
   if (!root) return;
   const items = state.storage || [];
-  const renderKey = `${items.length}:${storageSortMode}`;
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
+  const visibleEntries = filteredStorageEntries(items);
 
   if (!items.length) {
-    root.innerHTML = `${storageSortOptionsHtml()}<p class="log-empty">保管中の装備はありません</p>`;
+    root.innerHTML = `${storageCountHtml(items)}${storageSortOptionsHtml()}<p class="log-empty">保管中の装備はありません</p>`;
     bindStorageEvents(root);
     return;
   }
 
-  root.innerHTML = `${storageSortOptionsHtml()}
-    <ul class="storage-list">${storageGroups(items).map(storageGroupHtml).join("")}</ul>`;
+  root.innerHTML = `${storageCountHtml(items)}${storageSortOptionsHtml()}
+    ${
+      visibleEntries.length
+        ? `<ul class="storage-list">${storageGroups(visibleEntries).map(storageGroupHtml).join("")}</ul>`
+        : '<p class="log-empty">条件に合う装備はありません</p>'
+    }`;
   bindStorageEvents(root);
 }
 
