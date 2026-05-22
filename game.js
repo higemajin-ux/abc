@@ -233,7 +233,7 @@ function generateBattle(area, party) {
   const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory && !encounter.draw);
   const extraEquipmentDrops = !noRewards && treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters) : [];
   if (treasureEvents[0] && extraEquipmentDrops[0]) {
-    treasureEvents[0].text += `<br>${dropNameHtml(extraEquipmentDrops[0])}を入手した。`;
+    treasureEvents[0].text += `<br>宝箱の中から${dropNameHtml(extraEquipmentDrops[0])}を見つけた。`;
   }
   const trapDisarmed = trapEvents.length > 0;
   const shortcutFound = shortcutEvents.length > 0;
