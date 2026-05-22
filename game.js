@@ -211,7 +211,7 @@ function generateBattle(area, party) {
   const encounters = [];
   const normalCount = clamp(area.difficulty + roll(0, 1), 1, 4);
   const speechState = {};
-  const shortcutEvents = buildShortcutExplorationEvents(party.members);
+  const shortcutEvents = buildShortcutExplorationEvents(party.members, area);
   const dispatchMembersSnapshot = snapshotPartyHp(party.members);
 
   for (let i = 0; i < normalCount; i += 1) {
