@@ -430,6 +430,14 @@ h1 {
   color: var(--ink-on-dark);
 }
 
+.skill-type {
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .skill-toggle {
   appearance: none;
   width: 0.95rem;
