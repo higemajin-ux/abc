@@ -211,6 +211,8 @@ function generateBattle(area, party) {
   const encounters = [];
   const normalCount = clamp(area.difficulty + roll(0, 1), 1, 4);
   const speechState = {};
+  const shortcutEvents = buildShortcutExplorationEvents(party.members);
+  const shortcutMembersSnapshot = snapshotPartyHp(party.members);
 
   for (let i = 0; i < normalCount; i += 1) {
     encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area, speechState));
@@ -224,12 +226,12 @@ function generateBattle(area, party) {
   }
 
   const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory);
-  const shortcutFound = encounters.some((encounter) =>
-    (encounter.explorationEvents || []).some((event) => event?.skillId === "shortcutFind")
-  );
+  const shortcutFound = shortcutEvents.length > 0;
 
   return {
     encounters,
+    shortcutEvents,
+    shortcutMembersSnapshot,
     kills: encounters.reduce((sum, e) => sum + e.kills, 0),
     xp: encounters.reduce((sum, e) => sum + e.xp, 0),
     gold: encounters.reduce((sum, e) => sum + e.gold, 0),
@@ -354,11 +356,10 @@ function isShortcutEvent(event) {
 }
 
 function shortcutExplorationEvents(rewards) {
-  return (rewards?.encounters || []).flatMap((encounter) =>
-    (encounter.explorationEvents || [])
-      .filter(isShortcutEvent)
-      .map((event) => ({ event, snapshot: encounter.startMembersSnapshot }))
-  );
+  return (rewards?.shortcutEvents || []).map((event) => ({
+    event,
+    snapshot: rewards.shortcutMembersSnapshot,
+  }));
 }
 
 function normalExplorationEvents(encounter) {
