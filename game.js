@@ -1851,6 +1851,11 @@ function equipmentRecordHtml(item) {
   </li>`;
 }
 
+function enemyRecordInfoValue(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).join("、") || "？？？";
+  return value || "？？？";
+}
+
 function enemyRecordHtml(enemyId, record) {
   const enemy = MONSTERS?.[enemyId];
   const kills = Math.max(0, Number(record?.kills) || 0);
@@ -1859,12 +1864,19 @@ function enemyRecordHtml(enemyId, record) {
   const unlockedAtk = kills >= 10;
   const unlockedDef = kills >= 15;
   const def = enemy?.def ?? 0;
+  const tags = [
+    enemy?.boss ? '<span class="enemy-tag boss-tag">[BOSS]</span>' : "",
+    enemy?.rare ? '<span class="enemy-tag rare-tag">[RARE]</span>' : "",
+  ].join("");
+  const info = enemy?.recordInfo || {};
   return `<li>
     <div class="records-info">
       <div class="records-head">
-        <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>
-        <span class="records-meta">討伐：${kills}</span>
+        <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>${tags}
       </div>
+      <div class="records-effect">出現：${enemyRecordInfoValue(info.appearance)}</div>
+      <div class="records-effect">ドロップ：${enemyRecordInfoValue(info.drops)}</div>
+      <div class="records-effect">討伐数：${kills}回</div>
       <div class="records-effect">HP：${unlockedHp ? enemy?.hp ?? "？？？" : "？？？"}</div>
       <div class="records-effect">ATK：${unlockedAtk ? enemy?.atk ?? "？？？" : "？？？"}</div>
       <div class="records-effect">DEF：${unlockedDef ? def : "？？？"}</div>
