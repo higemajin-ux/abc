@@ -12,10 +12,10 @@ const JOB_LABELS = {
 
 const JOB_SKILLS = {
   warrior: [
-    { id: "guard", type: "passive", name: "防御", description: "被ダメージを軽減する" },
+    { id: "guard", type: "active", name: "防御", description: "被ダメージを軽減する" },
     { id: "cover", type: "passive", name: "かばう", description: "大きなダメージから味方をかばう" },
     { id: "provoke", type: "active", name: "挑発", description: "敵の狙いを引きつける" },
-    { id: "ironWall", type: "active", name: "鉄壁", description: "大きく被ダメージを軽減する" },
+    { id: "ironWall", type: "passive", name: "鉄壁", description: "大きく被ダメージを軽減する" },
     { id: "desperateStrike", type: "active", name: "捨て身", description: "危険を承知で強く攻撃する" },
     { id: "counter", type: "passive", name: "反撃", description: "攻撃を受けた時、反撃することがある" },
   ],
