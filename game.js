@@ -1842,6 +1842,27 @@ function equipmentRecordInfoValue(value, lookup = null) {
   return labels.join("、") || "？？？";
 }
 
+function equipmentRecordDropEnemyIds(item) {
+  if (item?.dropEnemies) return Array.isArray(item.dropEnemies) ? item.dropEnemies : [item.dropEnemies];
+  if (!item?.id) return [];
+  return Object.values(MONSTERS || {})
+    .filter((enemy) =>
+      (enemy?.drops || []).some((drop) => (typeof drop === "string" ? drop : drop?.id) === item.id)
+    )
+    .map((enemy) => enemy.id)
+    .filter(Boolean);
+}
+
+function equipmentRecordDropAreaIds(item, enemyIds) {
+  if (item?.dropAreas) return Array.isArray(item.dropAreas) ? item.dropAreas : [item.dropAreas];
+  const enemies = new Set(enemyIds);
+  if (!enemies.size) return [];
+  return Object.values(AREAS || {})
+    .filter((area) => enemies.has(area?.boss) || (area?.monsters || []).some((enemyId) => enemies.has(enemyId)))
+    .map((area) => area.id)
+    .filter(Boolean);
+}
+
 function equipmentRecordKindLabel(slot) {
   return {
     weapon: "武器",
@@ -1892,6 +1913,8 @@ function equipmentRecordHtml(item) {
   const slot = item?.slot || "unknown";
   const slotKind = EQUIPMENT_SLOTS.find(({ key, kind }) => key === slot || kind === slot)?.kind || slot;
   const slotLabel = equipmentRecordKindLabel(slotKind);
+  const dropEnemyIds = equipmentRecordDropEnemyIds(item);
+  const dropAreaIds = equipmentRecordDropAreaIds(item, dropEnemyIds);
   const flavor = item?.flavor || item?.description || "未記録";
   return `<li>
     <div class="records-info">
@@ -1899,8 +1922,8 @@ function equipmentRecordHtml(item) {
         <span class="records-item ${rarityClassName(rarity)}">${item?.name || "名称不明の装備"}</span>
         <span class="records-meta">${rarity} / ${slotLabel}</span>
       </div>
-      <div class="records-effect">入手場所：${equipmentRecordInfoValue(item?.dropAreas, AREAS)}</div>
-      <div class="records-effect">ドロップ：${equipmentRecordInfoValue(item?.dropEnemies, MONSTERS)}</div>
+      <div class="records-effect">ドロップ：${equipmentRecordInfoValue(dropEnemyIds, MONSTERS)}</div>
+      <div class="records-effect">出現：${equipmentRecordInfoValue(dropAreaIds, AREAS)}</div>
       <div class="records-effect">性能：${equipmentStatLine(item)}</div>
       <p class="records-flavor">説明：${flavor}</p>
     </div>
