@@ -33,6 +33,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  padding-bottom: 64px;
   color: var(--ink-on-dark);
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(214, 168, 79, 0.09), transparent),
@@ -100,6 +101,42 @@ h1 {
   margin: 0 auto 48px;
   display: grid;
   gap: 12px;
+}
+
+.quick-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(46px, 1fr));
+  gap: 4px;
+  width: min(420px, calc(100% - 24px));
+  padding: 5px;
+  border: 1px solid rgba(138, 106, 61, 0.72);
+  border-radius: 8px;
+  background: rgba(20, 13, 8, 0.92);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+}
+
+.quick-nav button {
+  min-height: 34px;
+  border: 1px solid rgba(74, 56, 39, 0.9);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(53, 40, 28, 0.94), rgba(31, 23, 17, 0.94));
+  color: var(--paper-light);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.quick-nav button:hover,
+.quick-nav button:focus-visible {
+  border-color: var(--line-bright);
+  color: var(--accent);
+  outline: none;
 }
 
 .panel {
