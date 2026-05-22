@@ -52,7 +52,7 @@ function isSkillEnabled(member, skillId) {
 function tryMageMagicSense(members, monster, area) {
   if (monster.boss || !area.monsters?.length) return { monster, explorationEvents: [] };
   const mages = livingMembers(members).filter((member) => member.job === "mage" && isSkillEnabled(member, "magicSense"));
-  if (!mages.length || Math.random() >= 0.2) return { monster, explorationEvents: [] };
+  if (!mages.length || Math.random() >= 0.1) return { monster, explorationEvents: [] };
 
   const detector = pick(mages);
   const detectedMonster = pickWeightedMonster(area, 3);
@@ -1020,10 +1020,10 @@ function buildScoutExplorationEvents(party) {
 
   const scout = pick(scouts);
   const events = [];
-  if (isSkillEnabled(scout, "treasureFind")) {
+  if (isSkillEnabled(scout, "treasureFind") && Math.random() < 0.1) {
     events.push({ kind: "voice", text: `${scout.name}が宝箱を見つけた。` });
   }
-  if (isSkillEnabled(scout, "trapDisarm")) {
+  if (isSkillEnabled(scout, "trapDisarm") && Math.random() < 0.1) {
     events.push({ kind: "voice", text: `${scout.name}が罠を解除した。` });
   }
   if (isSkillEnabled(scout, "shortcutFind")) {
