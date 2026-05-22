@@ -9,6 +9,10 @@ let storageFilterMode = "all";
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 const openDetailPartyIds = new Set();
+const SKILL_DEBUG_LINES = {
+  firebolt: ["威力:1.2", "火傷率:25%"],
+  cover: ["発動率:40%", "条件:", "最大HP25%以上", "または8ダメ以上"],
+};
 registerDropEquipmentItems();
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
@@ -16,6 +20,7 @@ let state = {
   storage: [],
   autoSell: { common: true, uncommon: false },
   records: defaultRecords(),
+  developerMode: false,
 };
 
 function $(id) {
@@ -112,6 +117,11 @@ function ensureRecords(target = state) {
       .map(([enemyId, record]) => [enemyId, { kills: Math.max(0, Number(record?.kills) || 0) }])
   );
   return target.records;
+}
+
+function ensureDeveloperMode(target = state) {
+  target.developerMode = target.developerMode === true;
+  return target.developerMode;
 }
 
 function recordEquipment(item, target = state) {
@@ -1110,6 +1120,12 @@ function equipmentSlotHtml(member, slot) {
   </div>`;
 }
 
+function skillDebugHtml(skill) {
+  const lines = skill?.debug || SKILL_DEBUG_LINES[skill?.id] || [];
+  if (!state.developerMode || !lines.length) return "";
+  return `<div class="skill-debug"><strong>[DEBUG]</strong>${lines.map((line) => `<span>${line}</span>`).join("")}</div>`;
+}
+
 function memberSkillListHtml(member) {
   const skills = JOB_SKILLS?.[member.job] || [];
   if (!skills.length) return "";
@@ -1125,6 +1141,7 @@ function memberSkillListHtml(member) {
                 <input type="checkbox" class="skill-toggle" data-member-id="${member.id}" data-skill-id="${skill.id}" ${settings[skill.id] !== false ? "checked" : ""}>
                 <strong>${skill.name}</strong>：${skill.description}
               </label>
+              ${skillDebugHtml(skill)}
             </li>`
         )
         .join("")}
@@ -1311,6 +1328,20 @@ function renderParties() {
 
 function renderPartySection() {
   renderParties();
+}
+
+function updateDeveloperButton() {
+  const button = $("developer-btn");
+  if (!button) return;
+  button.classList.toggle("active", !!state.developerMode);
+  button.setAttribute("aria-pressed", String(!!state.developerMode));
+}
+
+function toggleDeveloperMode() {
+  state.developerMode = !state.developerMode;
+  saveGame();
+  updateDeveloperButton();
+  renderPartySection();
 }
 
 function renderReports() {
@@ -1839,6 +1870,7 @@ function migrate(data) {
   if (!data.storage) data.storage = [];
   ensureAutoSellSettings(data);
   ensureRecords(data);
+  ensureDeveloperMode(data);
   for (const rawItem of data.storage || []) {
     const item = storageItemFromEquipment(rawItem);
     recordEquipment(item, data);
@@ -1898,9 +1930,11 @@ function loadGame() {
         storage: data.storage || [],
         autoSell: data.autoSell || defaultAutoSellSettings(),
         records: data.records || defaultRecords(),
+        developerMode: data.developerMode === true,
       };
       ensureAutoSellSettings();
       ensureRecords();
+      ensureDeveloperMode();
       state.parties.forEach(trimDispatches);
     }
   } catch (e) {
@@ -1919,11 +1953,13 @@ function resetGame() {
     storage: [],
     autoSell: defaultAutoSellSettings(),
     records: defaultRecords(),
+    developerMode: false,
   };
   nextId = 1;
   storageRenderCount = -1;
   stopTick();
   saveGame();
+  updateDeveloperButton();
   renderAll();
 }
 
@@ -1954,6 +1990,7 @@ function setupQuickNav() {
 }
 
 $("reset-btn").addEventListener("click", resetGame);
+$("developer-btn")?.addEventListener("click", toggleDeveloperMode);
 setupQuickNav();
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
@@ -1987,5 +2024,6 @@ for (const p of state.parties) {
 }
 processMissions();
 renderAll();
+updateDeveloperButton();
 ensureWorldSituationTick();
 if (state.parties.some((p) => p.mission)) ensureTick();
