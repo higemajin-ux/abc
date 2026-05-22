@@ -217,18 +217,21 @@ function generateBattle(area, party) {
   const dispatchMembersSnapshot = snapshotPartyHp(party.members);
 
   for (let i = 0; i < normalCount; i += 1) {
-    encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area, speechState));
+    encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area, speechState, party.name));
     if (party.members.every((member) => member.hp <= 0)) break;
   }
 
+  const stoppedByDraw = encounters.at(-1)?.draw && party.members.every((member) => member.hp <= 0);
   const failedBeforeBoss =
-    party.members.every((member) => member.hp <= 0) || encounters.some((encounter) => !encounter.victory);
-  if (!failedBeforeBoss) {
-    encounters.push(runEncounter(party.members, chooseBoss(area), area, speechState));
+    (party.members.every((member) => member.hp <= 0) && !stoppedByDraw) ||
+    encounters.some((encounter) => !encounter.victory && !encounter.draw);
+  if (!failedBeforeBoss && !stoppedByDraw) {
+    encounters.push(runEncounter(party.members, chooseBoss(area), area, speechState, party.name));
   }
 
-  const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory);
-  const extraEquipmentDrops = treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters) : [];
+  const noRewards = encounters.some((encounter) => encounter.draw);
+  const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory && !encounter.draw);
+  const extraEquipmentDrops = !noRewards && treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters) : [];
   const trapDisarmed = trapEvents.length > 0;
   const shortcutFound = shortcutEvents.length > 0;
 
@@ -240,9 +243,10 @@ function generateBattle(area, party) {
     dispatchMembersSnapshot,
     extraEquipmentDrops,
     trapDisarmed,
-    kills: encounters.reduce((sum, e) => sum + e.kills, 0),
-    xp: encounters.reduce((sum, e) => sum + e.xp, 0),
-    gold: encounters.reduce((sum, e) => sum + e.gold, 0) + extraEquipmentDrops.reduce((sum, item) => sum + (wasAutoSoldDrop(item) ? item.sellGold || 0 : 0), 0),
+    noRewards,
+    kills: noRewards ? 0 : encounters.reduce((sum, e) => sum + e.kills, 0),
+    xp: noRewards ? 0 : encounters.reduce((sum, e) => sum + e.xp, 0),
+    gold: noRewards ? 0 : encounters.reduce((sum, e) => sum + e.gold, 0) + extraEquipmentDrops.reduce((sum, item) => sum + (wasAutoSoldDrop(item) ? item.sellGold || 0 : 0), 0),
     failed,
     forcedReturn: failed && party.members.every((member) => member.hp <= 0),
     shortcutFound,
@@ -268,7 +272,8 @@ function missionDurationMs(area) {
 }
 
 function battleSummary(encounter) {
-  const result = encounter.victory ? "討伐成功" : "撤退";
+  const result = encounter.draw ? "相打ち" : encounter.victory ? "討伐成功" : "撤退";
+  if (encounter.draw) return `${encounter.monster.name}: ${result} / 報酬なし`;
   return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
@@ -468,7 +473,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
       id: uid("entry"),
       timestamp: battleTime,
       type: "battle",
-      title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
+      title: `${encounter.monster.name}との戦闘記録（${encounter.draw ? "相打ち" : encounter.victory ? "勝利" : "撤退"}）`,
       monsterBoss: !!encounter.monster.boss,
       monsterRare: !!encounter.monster.rare && !encounter.monster.boss,
       battleDetail: encounter.events,
@@ -482,9 +487,9 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     id: uid("entry"),
     timestamp: endsAt,
     type: "return",
-    title: `帰還報告（全戦闘記録▼）`,
+    title: rewards.noRewards ? "相打ち報告（全戦闘記録▼）" : `帰還報告（全戦闘記録▼）`,
     battleDetail: rewards.encounters.flatMap((e) => e.events),
-    summary: `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
+    summary: rewards.noRewards ? "相打ち / 報酬なし" : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     mvpLine: buildMvpLine(party, rewards),
     deliveryBox: buildDeliveryBoxHtml(rewards),
     membersSnapshot: rewards.encounters.at(-1)?.membersSnapshot,
@@ -579,7 +584,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
       id: uid("entry"),
       timestamp: battleTime,
       type: "battle",
-      title: `${encounter.monster.name}との戦闘記録（${encounter.victory ? "勝利" : "撤退"}）`,
+      title: `${encounter.monster.name}との戦闘記録（${encounter.draw ? "相打ち" : encounter.victory ? "勝利" : "撤退"}）`,
       monsterBoss: !!encounter.monster.boss,
       monsterRare: !!encounter.monster.rare && !encounter.monster.boss,
       battleDetail: encounter.events,
@@ -621,10 +626,12 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     id: uid("entry"),
     timestamp: returnTime,
     type: "return",
-    title: rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
+    title: rewards.noRewards ? "相打ち報告（全戦闘記録▼）" : rewards.forcedReturn ? "全滅により強制帰還（全戦闘記録▼）" : "帰還報告（全戦闘記録▼）",
     battleDetail: rewards.encounters.flatMap((e) => e.events),
     reportAuthor,
-    summary: rewards.forcedReturn
+    summary: rewards.noRewards
+      ? "相打ち / 報酬なし"
+      : rewards.forcedReturn
       ? `全滅により強制帰還 / ${rewards.kills}体討伐 / ${rewards.gold}G / ${rewards.xp}XP`
       : `${rewards.kills}体討伐、${rewards.gold}G、${rewards.xp}XPを獲得`,
     mvpLine,
@@ -685,12 +692,12 @@ function applyRewards(party, area, rewards) {
   const s = party.stats;
   s.gold += rewards.gold;
   s.kills += rewards.kills;
-  s.missionsCleared += 1;
+  if (!rewards.noRewards) s.missionsCleared += 1;
   recordEnemyKills(rewards);
-  storeEquipmentDrops(rewards);
+  if (!rewards.noRewards) storeEquipmentDrops(rewards);
 
   const levelUps = [];
-  const xpEach = Math.max(1, Math.floor(rewards.xp / party.members.length));
+  const xpEach = rewards.noRewards ? 0 : Math.max(1, Math.floor(rewards.xp / party.members.length));
   party.members.forEach((member) => {
     applyMemberXp(member, xpEach, levelUps);
     member.hp = member.maxHp;
@@ -904,7 +911,7 @@ function completeMission(party) {
 
   const missionFailed = party.mission.failed;
 
-  if (!missionFailed) {
+  if (!missionFailed && !party.mission.rewards?.noRewards) {
     recordAreaClear(area.id);
   }
   applyRewards(party, area, party.mission.rewards);
