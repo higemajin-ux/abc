@@ -386,9 +386,9 @@ function shortcutExplorationEvents(rewards) {
 
 function dispatchExplorationEvents(rewards) {
   return [
-    ...(rewards?.treasureEvents || []),
-    ...(rewards?.trapEvents || []),
     ...(rewards?.shortcutEvents || []),
+    ...(rewards?.trapEvents || []),
+    ...(rewards?.treasureEvents || []),
   ].map((event) => ({
     event,
     snapshot: rewards.dispatchMembersSnapshot,
