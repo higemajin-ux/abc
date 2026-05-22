@@ -1849,6 +1849,8 @@ function equipmentRecordKindLabel(slot) {
     accessory: "装飾",
     accessory1: "装飾",
     accessory2: "装飾",
+    装飾1: "装飾",
+    装飾2: "装飾",
     relic: "遺物",
   }[slot] || slot || "？？？";
 }
