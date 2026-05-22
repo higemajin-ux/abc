@@ -61,8 +61,7 @@ function tryMageMagicSense(members, monster, area) {
     detector,
     foundRare: detectedMonster.rare && !detectedMonster.boss,
     explorationEvents: [
-      { kind: "spell", text: `${detector.name}は魔力探知を使った。` },
-      { kind: "voice", text: `${detector.name}<br>「……珍しいやつがいるな」` },
+      { kind: "spell", text: `${detector.name}は魔力探知を使った。<br><br>${detector.name}<br>「……珍しいやつがいるな」` },
     ],
   };
 }
