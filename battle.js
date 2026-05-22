@@ -1026,7 +1026,7 @@ function buildTreasureExplorationEvents(party) {
 
   const scout = pick(scouts);
   const events = [];
-  if (Math.random() < 0.5) {
+  if (Math.random() < 0.2) {
     events.push({
       kind: "voice",
       skillId: "treasureFind",
@@ -1041,7 +1041,7 @@ function buildTreasureExplorationEvents(party) {
 function buildTrapExplorationEvents(party) {
   const target = pick(livingMembers(party));
   const events = [];
-  if (!target) return events;
+  if (!target || Math.random() >= 0.2) return events;
 
   const dexRate = Math.min(70, Math.max(0, effectiveDex(target) * 3));
   const trapDisarmer = livingScouts(party).find((scout) => isSkillEnabled(scout, "trapDisarm"));
