@@ -1021,12 +1021,12 @@ function buildScoutExplorationEvents(party) {
 }
 
 function buildTreasureExplorationEvents(party) {
-  const scouts = livingScouts(party);
+  const scouts = livingScouts(party).filter((scout) => isSkillEnabled(scout, "treasureFind"));
   if (!scouts.length) return [];
 
   const scout = pick(scouts);
   const events = [];
-  if (isSkillEnabled(scout, "treasureFind") && Math.random() < 0.5) {
+  if (Math.random() < 0.5) {
     events.push({
       kind: "voice",
       skillId: "treasureFind",
