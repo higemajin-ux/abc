@@ -1015,16 +1015,40 @@ function actionOrderForRound(party, round, ambushScout) {
 }
 
 function buildScoutExplorationEvents(party) {
+  return [];
+}
+
+function buildTreasureExplorationEvents(party) {
   const scouts = livingScouts(party);
   if (!scouts.length) return [];
 
   const scout = pick(scouts);
   const events = [];
   if (isSkillEnabled(scout, "treasureFind") && Math.random() < 0.1) {
-    events.push({ kind: "voice", text: `${scout.name}が宝箱を見つけた。` });
+    events.push({
+      kind: "voice",
+      skillId: "treasureFind",
+      text: `${scout.name}が宝箱を見つけた。`,
+      debug: ["追加抽選:+1"],
+    });
   }
+
+  return events;
+}
+
+function buildTrapExplorationEvents(party) {
+  const scouts = livingScouts(party);
+  if (!scouts.length) return [];
+
+  const scout = pick(scouts);
+  const events = [];
   if (isSkillEnabled(scout, "trapDisarm") && Math.random() < 0.1) {
-    events.push({ kind: "voice", text: `${scout.name}が罠を解除した。` });
+    events.push({
+      kind: "voice",
+      skillId: "trapDisarm",
+      text: `${scout.name}が罠を解除した。`,
+      debug: ["罠回避成功"],
+    });
   }
 
   return events;
