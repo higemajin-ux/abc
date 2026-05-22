@@ -9,6 +9,8 @@ let storageFilterMode = "all";
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 const openDetailPartyIds = new Set();
+const SHORTCUT_REDUCTION_RATE = 0.1;
+const MIN_MISSION_DURATION_MS = 5000;
 registerDropEquipmentItems();
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
@@ -221,6 +223,9 @@ function generateBattle(area, party) {
   }
 
   const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory);
+  const shortcutFound = encounters.some((encounter) =>
+    (encounter.explorationEvents || []).some((event) => event?.skillId === "shortcutFind")
+  );
 
   return {
     encounters,
@@ -229,7 +234,14 @@ function generateBattle(area, party) {
     gold: encounters.reduce((sum, e) => sum + e.gold, 0),
     failed,
     forcedReturn: failed && party.members.every((member) => member.hp <= 0),
+    shortcutFound,
   };
+}
+
+function shortcutMissionReductionMs(area, rewards) {
+  const durationMs = Math.max(0, Number(area?.durationMs) || 0);
+  if (!rewards?.shortcutFound || durationMs <= MIN_MISSION_DURATION_MS) return 0;
+  return Math.min(Math.floor(durationMs * SHORTCUT_REDUCTION_RATE), durationMs - MIN_MISSION_DURATION_MS);
 }
 
 function battleSummary(encounter) {
@@ -757,7 +769,8 @@ function startMission(partyId) {
   const startMembersSnapshot = snapshotMembers(party.members);
   const rewards = generateBattle(area, party);
   const now = Date.now();
-  const endsAt = now + area.durationMs;
+  const plannedEndsAt = now + area.durationMs;
+  const endsAt = plannedEndsAt - shortcutMissionReductionMs(area, rewards);
   const dispatchId = uid("dispatch");
   applyMembersSnapshot(party, startMembersSnapshot);
 
@@ -777,7 +790,7 @@ function startMission(partyId) {
     areaId: area.id,
     startedAt: now,
     endsAt,
-    plannedEndsAt: endsAt,
+    plannedEndsAt,
     rewards,
     failed: false,
     startMembersSnapshot,
