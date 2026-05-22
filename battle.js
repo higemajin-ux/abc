@@ -221,7 +221,7 @@ function statusLabels(unit) {
 function hpLabel(unit) {
   const statuses = statusLabels(unit);
   const statusText = statuses.length ? `<span class="status-tags">【${statuses.join(" ")}】</span>` : "";
-  const tempText = unit.tempHp > 0 ? `<span class="temp-hp">+${unit.tempHp}</span>` : "";
+  const tempText = unit.tempHp > 0 ? `<span class="temp-hp"> バリア${unit.tempHp}</span>` : "";
   return `<span class="hp-text ${hpClass(unit)}"><span class="hp-name">${unit.name}</span>（<span class="hp-value">${unit.hp}${tempText}/${unit.maxHp}</span>）${statusText}</span>`;
 }
 
@@ -784,7 +784,7 @@ function performScoutAction(actor, party, enemy, events) {
     const amount = roll(5, 9) + Math.floor(actor.level * 0.7);
     const guarded = grantTempHp(criticalAlly, amount);
     events.push({ kind: "heal", text: `${actor.name}は応急手当をした。` });
-    events.push({ kind: "heal", text: `${criticalAlly.name}に一時HP${guarded}を付与した。` });
+    events.push({ kind: "heal", text: `${criticalAlly.name}にバリア${guarded}を付与した。` });
     pushHp(events, criticalAlly, "heal");
     return;
   }
