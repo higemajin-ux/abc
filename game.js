@@ -233,7 +233,7 @@ function generateBattle(area, party) {
   const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory && !encounter.draw);
   const extraEquipmentDrops = !noRewards && treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters) : [];
   if (treasureEvents[0] && extraEquipmentDrops[0]) {
-    treasureEvents[0].text += `<br>宝箱の中から${dropNameHtml(extraEquipmentDrops[0])}を見つけた。`;
+    treasureEvents[0].text += `<br>宝箱の中から${dropNameHtml(extraEquipmentDrops[0])}を見つけた。${treasureRarityTagHtml(extraEquipmentDrops[0])}`;
   }
   const trapDisarmed = trapEvents.length > 0;
   const shortcutFound = shortcutEvents.length > 0;
@@ -261,6 +261,12 @@ function rollTreasureEquipmentDrops(members, encounters) {
   const encounter = pick(victories);
   const item = encounter ? rollEquipmentDrop(members, encounter.monster) : null;
   return item ? [item] : [];
+}
+
+function treasureRarityTagHtml(item) {
+  const rarity = normalizeRarity(item?.rarity);
+  if (!["rare", "epic", "legendary", "artifact"].includes(rarity)) return "";
+  return ` <span class="${rarityClassName(rarity)}">[${rarity.toUpperCase()}]</span>`;
 }
 
 function shortcutMissionReductionMs(area, rewards) {
