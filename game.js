@@ -211,8 +211,6 @@ function generateBattle(area, party) {
   const encounters = [];
   const normalCount = clamp(area.difficulty + roll(0, 1), 1, 4);
   const speechState = {};
-  const treasureEvents = buildTreasureExplorationEvents(party.members);
-  const trapEvents = buildTrapExplorationEvents(party.members);
   const shortcutEvents = buildShortcutExplorationEvents(party.members);
   const dispatchMembersSnapshot = snapshotPartyHp(party.members);
 
@@ -231,12 +229,16 @@ function generateBattle(area, party) {
 
   const noRewards = encounters.some((encounter) => encounter.draw);
   const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory && !encounter.draw);
-  const extraEquipmentDrops = !noRewards && treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters) : [];
-  if (treasureEvents[0] && extraEquipmentDrops[0]) {
-    treasureEvents[0].text += `<br>宝箱の中から${dropNameHtml(extraEquipmentDrops[0])}を見つけた。${treasureRarityTagHtml(extraEquipmentDrops[0])}`;
-  } else if (treasureEvents[0]) {
-    treasureEvents[0].text += "<br>中に使える物は残っていなかった。";
-  }
+  const treasureEvents = encounterExplorationEvents(encounters, "treasureFind");
+  const trapEvents = encounterExplorationEvents(encounters, "trapDisarm");
+  const treasureDropRolls = !noRewards && treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters, treasureEvents.length) : [];
+  const extraEquipmentDrops = treasureDropRolls.filter(Boolean);
+  treasureEvents.forEach((event, index) => {
+    const item = treasureDropRolls[index];
+    event.text += item
+      ? `<br>宝箱の中から${dropNameHtml(item)}を見つけた。${treasureRarityTagHtml(item)}`
+      : "<br>中に使える物は残っていなかった。";
+  });
   const trapDisarmed = trapEvents.length > 0;
   const shortcutFound = shortcutEvents.length > 0;
 
@@ -258,11 +260,18 @@ function generateBattle(area, party) {
   };
 }
 
-function rollTreasureEquipmentDrops(members, encounters) {
+function encounterExplorationEvents(encounters, skillId) {
+  return (encounters || []).flatMap((encounter) =>
+    (encounter.explorationEvents || []).filter((event) => event?.skillId === skillId)
+  );
+}
+
+function rollTreasureEquipmentDrops(members, encounters, count = 1) {
   const victories = (encounters || []).filter((encounter) => encounter?.victory && encounter.monster);
-  const encounter = pick(victories);
-  const item = encounter ? rollEquipmentDrop(members, encounter.monster) : null;
-  return item ? [item] : [];
+  return Array.from({ length: count }, () => {
+    const encounter = pick(victories);
+    return encounter ? rollEquipmentDrop(members, encounter.monster) : null;
+  });
 }
 
 function treasureRarityTagHtml(item) {
@@ -396,13 +405,7 @@ function shortcutExplorationEvents(rewards) {
 }
 
 function dispatchExplorationEvents(rewards) {
-  return [
-    ...(rewards?.trapEvents || []),
-    ...(rewards?.treasureEvents || []),
-  ].map((event) => ({
-    event,
-    snapshot: rewards.dispatchMembersSnapshot,
-  }));
+  return [];
 }
 
 function randomDispatchEventTime(startedAt, endsAt, offset = 0) {
@@ -493,7 +496,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
         type: "flavor",
         title: event.text,
         debug: event.debug,
-        membersSnapshot: encounter.startMembersSnapshot,
+        membersSnapshot: event.membersSnapshot || encounter.startMembersSnapshot,
         shown: false,
       });
     });
@@ -616,7 +619,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
         type: "flavor",
         title: event.text,
         debug: event.debug,
-        membersSnapshot: encounter.startMembersSnapshot,
+        membersSnapshot: event.membersSnapshot || encounter.startMembersSnapshot,
         shown: false,
       });
     });
