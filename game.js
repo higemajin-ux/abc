@@ -1853,6 +1853,38 @@ function equipmentRecordKindLabel(slot) {
   }[slot] || slot || "？？？";
 }
 
+function equipmentRecordSortText(item) {
+  return `${item?.id || ""} ${item?.name || ""}`.toLowerCase();
+}
+
+function equipmentRecordTypeRank(item) {
+  const slot = item?.slot || "";
+  const text = equipmentRecordSortText(item);
+  if (slot === "weapon") {
+    if (text.includes("sword") || text.includes("blade") || text.includes("剣")) return 0;
+    if (text.includes("dagger") || text.includes("短剣")) return 1;
+    if (text.includes("staff") || text.includes("杖")) return 2;
+    return 3;
+  }
+  if (slot === "armor") {
+    if (text.includes("armor") || text.includes("mail") || text.includes("breastplate") || text.includes("鎧")) return 4;
+    if (text.includes("robe") || text.includes("wear") || text.includes("法衣") || text.includes("服")) return 5;
+    if (text.includes("cloak") || text.includes("外套")) return 6;
+    return 7;
+  }
+  if (slot === "accessory") return 8;
+  if (slot === "relic") return 9;
+  return 10 + storageSlotRank(slot);
+}
+
+function compareEquipmentRecords(a, b) {
+  return (
+    equipmentRecordTypeRank(a) - equipmentRecordTypeRank(b) ||
+    rarityRank(b?.rarity) - rarityRank(a?.rarity) ||
+    (a?.name || "").localeCompare(b?.name || "", "ja")
+  );
+}
+
 function equipmentRecordHtml(item) {
   const rarity = normalizeRarity(item?.rarity);
   const slot = item?.slot || "unknown";
@@ -1924,7 +1956,7 @@ function renderRecords() {
   const ids = records.equipment;
   const equipmentTotal = Object.keys(EQUIPMENT_ITEMS || {}).length;
   const enemyTotal = Object.keys(MONSTERS || {}).length;
-  const items = ids.map((id) => EQUIPMENT_ITEMS[id]).filter(Boolean);
+  const items = ids.map((id) => EQUIPMENT_ITEMS[id]).filter(Boolean).sort(compareEquipmentRecords);
   const enemies = enemyRecordEntries(records);
 
   root.innerHTML = `
