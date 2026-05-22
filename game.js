@@ -397,13 +397,18 @@ function shortcutExplorationEvents(rewards) {
 
 function dispatchExplorationEvents(rewards) {
   return [
-    ...(rewards?.shortcutEvents || []),
     ...(rewards?.trapEvents || []),
     ...(rewards?.treasureEvents || []),
   ].map((event) => ({
     event,
     snapshot: rewards.dispatchMembersSnapshot,
   }));
+}
+
+function randomDispatchEventTime(startedAt, endsAt, offset = 0) {
+  const span = Math.max(1, endsAt - startedAt);
+  const timestamp = startedAt + Math.floor(span * (0.22 + Math.random() * 0.62)) + offset;
+  return Math.min(Math.max(startedAt + 2 + offset, timestamp), endsAt - 1);
 }
 
 function normalExplorationEvents(encounter) {
@@ -421,7 +426,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     shown: false,
   });
 
-  dispatchExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+  shortcutExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
     entries.push({
       id: uid("entry"),
       timestamp: startedAt + 351 + eventIndex,
@@ -439,6 +444,18 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
       timestamp: startedAt + Math.floor(span * (0.18 + index * 0.14)),
       type: "flavor",
       title: text,
+      shown: false,
+    });
+  });
+
+  dispatchExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+    entries.push({
+      id: uid("entry"),
+      timestamp: randomDispatchEventTime(startedAt, endsAt, eventIndex),
+      type: "flavor",
+      title: event.text,
+      debug: event.debug,
+      membersSnapshot: snapshot,
       shown: false,
     });
   });
@@ -528,7 +545,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     shown: false,
   });
 
-  dispatchExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+  shortcutExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
     entries.push({
       id: uid("entry"),
       timestamp: startedAt + 1 + eventIndex,
@@ -551,6 +568,18 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
       });
     });
   }
+
+  dispatchExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+    entries.push({
+      id: uid("entry"),
+      timestamp: randomDispatchEventTime(startedAt, endsAt, eventIndex),
+      type: "flavor",
+      title: event.text,
+      debug: event.debug,
+      membersSnapshot: snapshot,
+      shown: false,
+    });
+  });
 
   rewards.encounters.forEach((encounter, index) => {
     const ratio = encounterRatios[index];
