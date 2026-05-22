@@ -458,6 +458,20 @@ h1 {
   outline-offset: 2px;
 }
 
+.skill-debug {
+  display: grid;
+  gap: 1px;
+  margin: 3px 0 0 1.55rem;
+  padding: 5px 7px;
+  border-left: 2px solid var(--line-bright);
+  color: var(--paper-dark);
+  font-size: 0.74rem;
+}
+
+.skill-debug strong {
+  color: var(--accent);
+}
+
 .member-equipment {
   display: grid;
   gap: 6px;
@@ -616,6 +630,12 @@ h1 {
   border-color: var(--red);
   color: var(--red);
   background: rgba(201, 70, 62, 0.08);
+}
+
+.developer-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(214, 168, 79, 0.08);
 }
 
 .btn-progress {
