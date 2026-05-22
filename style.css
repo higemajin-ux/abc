@@ -458,6 +458,7 @@ h1 {
   outline-offset: 2px;
 }
 
+.skill-description,
 .skill-debug {
   display: grid;
   gap: 1px;
@@ -468,6 +469,7 @@ h1 {
   font-size: 0.74rem;
 }
 
+.skill-description strong,
 .skill-debug strong {
   color: var(--accent);
 }
