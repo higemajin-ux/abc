@@ -41,7 +41,7 @@ const JOB_SKILLS = {
     { id: "ambush", type: "passive", name: "奇襲", description: "敵より先に動き、不意打ちを仕掛けることがある" },
     { id: "rogueFocus", type: "active", name: "集中", description: "攻撃の会心率を高める" },
     { id: "blind", type: "active", name: "目つぶし", description: "敵の攻撃を外れやすくする" },
-    { id: "firstAid", type: "active", name: "応急手当", description: "味方に一時的なバリアを与える" },
+    { id: "firstAid", type: "active", name: "応急手当", description: "味方にバリアを付与し、ダメージを防ぐ" },
     { id: "treasureFind", type: "passive", name: "宝箱発見", description: "探索中に宝箱を見つけることがある" },
     { id: "trapDisarm", type: "passive", name: "罠解除", description: "探索中に罠を解除することがある" },
     { id: "shortcutFind", type: "passive", name: "近道発見", description: "探索中に近道を見つけることがある" },
@@ -74,7 +74,7 @@ const SKILL_DEBUG_INFO = {
 
   ambush: ["条件:ローグが生存", "条件:奇襲が有効", "効果:1ラウンド目に先制攻撃"],
   rogueFocus: ["発動:35%", "持続:2ターン", "会心率:+25%"],
-  firstAid: ["発動:55%", "条件:味方HP30%未満"],
+  firstAid: ["発動率:55%", "条件:味方HP30%未満", "効果:バリア付与"],
   blind: ["発動:40%", "盲目ミス:40%", "盲目:2ターン"],
   treasureFind: ["発動:20%"],
   trapDisarm: ["発動:15%"],
