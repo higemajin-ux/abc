@@ -1016,32 +1016,47 @@ function actionOrderForRound(party, round, ambushScout) {
   return [ambushScout, ...ordered.filter((member) => member.id !== ambushScout.id)];
 }
 
-function buildScoutExplorationEvents(party) {
-  return [];
+function decayedExplorationRate(count) {
+  return [0.6, 0.4, 0.2][count] ?? 0.1;
 }
 
-function buildTreasureExplorationEvents(party) {
+function buildScoutExplorationEvents(party, speechState = {}) {
+  return [
+    ...buildTreasureExplorationEvents(party, speechState),
+    ...buildTrapExplorationEvents(party, speechState),
+  ];
+}
+
+function buildTreasureExplorationEvents(party, speechState = {}) {
   const scouts = livingScouts(party).filter((scout) => isSkillEnabled(scout, "treasureFind"));
   if (!scouts.length) return [];
 
   const scout = pick(scouts);
   const events = [];
-  if (Math.random() < 0.2) {
+  const count = speechState.treasureFindCount || 0;
+  const rate = decayedExplorationRate(count);
+  if (Math.random() < rate) {
+    speechState.treasureFindCount = count + 1;
     events.push({
       kind: "voice",
       skillId: "treasureFind",
       text: `${scout.name}が宝箱を見つけた。`,
-      debug: ["追加抽選:+1"],
+      debug: [`宝箱回数:${count + 1}`, `今回確率:${Math.round(rate * 100)}%`, "追加抽選:+1"],
     });
   }
 
   return events;
 }
 
-function buildTrapExplorationEvents(party) {
+function buildTrapExplorationEvents(party, speechState = {}) {
   const target = pick(livingMembers(party));
   const events = [];
-  if (!target || Math.random() >= 0.2) return events;
+  if (!target) return events;
+
+  const count = speechState.trapDisarmCount || 0;
+  const rate = decayedExplorationRate(count);
+  if (Math.random() >= rate) return events;
+  speechState.trapDisarmCount = count + 1;
 
   const dexRate = Math.min(70, Math.max(0, effectiveDex(target) * 3));
   const trapDisarmer = livingScouts(party).find((scout) => isSkillEnabled(scout, "trapDisarm"));
@@ -1049,6 +1064,8 @@ function buildTrapExplorationEvents(party) {
   const avoidRate = Math.min(90, dexRate + trapBonus);
   const trapDamage = Math.max(1, Math.floor(target.maxHp * 0.1));
   const debug = [
+    `罠回数:${count + 1}`,
+    `今回確率:${Math.round(rate * 100)}%`,
     `罠回避率:${avoidRate}%`,
     `DEX補正:${dexRate}%`,
     ...(trapDisarmer ? ["盗賊補正:+25%"] : []),
@@ -1073,6 +1090,7 @@ function buildTrapExplorationEvents(party) {
     skillId: "trapDisarm",
     text: `罠が作動した。<br>${target.name}が${trapDamage}ダメージを受けた。`,
     debug,
+    membersSnapshot: snapshotPartyHp(party),
   });
   return events;
 }
@@ -1279,7 +1297,7 @@ function runEncounter(members, monster, area, speechState = {}, partyName = "隊
   const startMembersSnapshot = snapshotPartyHp(party);
   const events = [];
   const ambushScout = pickAmbushScout(party);
-  const explorationEvents = [...magicSense.explorationEvents, ...buildScoutExplorationEvents(party)];
+  const explorationEvents = [...magicSense.explorationEvents, ...buildScoutExplorationEvents(party, speechState)];
   let round = 1;
 
   events.push({
