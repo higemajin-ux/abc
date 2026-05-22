@@ -1834,19 +1834,41 @@ function renderItemSection() {
   renderStorage();
 }
 
+function equipmentRecordInfoValue(value, lookup = null) {
+  const values = Array.isArray(value) ? value : value ? [value] : [];
+  const labels = values
+    .filter(Boolean)
+    .map((item) => lookup?.[item]?.name || item);
+  return labels.join("、") || "？？？";
+}
+
+function equipmentRecordKindLabel(slot) {
+  return {
+    weapon: "武器",
+    armor: "防具",
+    accessory: "装飾",
+    accessory1: "装飾",
+    accessory2: "装飾",
+    relic: "遺物",
+  }[slot] || slot || "？？？";
+}
+
 function equipmentRecordHtml(item) {
   const rarity = normalizeRarity(item?.rarity);
   const slot = item?.slot || "unknown";
-  const slotLabel = EQUIPMENT_SLOTS.find(({ key, kind }) => key === slot || kind === slot)?.label || slot;
-  const flavor = item?.description || item?.flavor || "";
+  const slotKind = EQUIPMENT_SLOTS.find(({ key, kind }) => key === slot || kind === slot)?.kind || slot;
+  const slotLabel = equipmentRecordKindLabel(slotKind);
+  const flavor = item?.flavor || item?.description || "未記録";
   return `<li>
     <div class="records-info">
       <div class="records-head">
         <span class="records-item ${rarityClassName(rarity)}">${item?.name || "名称不明の装備"}</span>
-        <span class="records-meta">${slotLabel}</span>
+        <span class="records-meta">${rarity} / ${slotLabel}</span>
       </div>
-      <div class="records-effect">${equipmentStorageLine(item)}</div>
-      ${flavor ? `<p class="records-flavor">${flavor}</p>` : ""}
+      <div class="records-effect">入手場所：${equipmentRecordInfoValue(item?.dropAreas, AREAS)}</div>
+      <div class="records-effect">ドロップ：${equipmentRecordInfoValue(item?.dropEnemies, MONSTERS)}</div>
+      <div class="records-effect">性能：${equipmentStatLine(item)}</div>
+      <p class="records-flavor">説明：${flavor}</p>
     </div>
   </li>`;
 }
