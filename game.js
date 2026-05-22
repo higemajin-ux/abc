@@ -1129,7 +1129,7 @@ function skillDescriptionHtml(skill) {
 }
 
 function skillTypeHtml(skill) {
-  const labels = { active: "アクティブ", passive: "パッシブ" };
+  const labels = { active: "【アクティブ】", passive: "【パッシブ】" };
   const label = labels[skill?.type];
   return label ? `<span class="skill-type">${label}</span>` : "";
 }
