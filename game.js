@@ -1123,6 +1123,11 @@ function skillDebugHtml(skill) {
   return `<div class="skill-debug"><strong>[DEBUG]</strong>${lines.map((line) => `<span>${line}</span>`).join("")}</div>`;
 }
 
+function skillDescriptionHtml(skill) {
+  if (!skill?.description) return "";
+  return `<div class="skill-description"><strong>説明：</strong><span>${skill.description}</span></div>`;
+}
+
 function memberSkillListHtml(member) {
   const skills = JOB_SKILLS?.[member.job] || [];
   if (!skills.length) return "";
@@ -1136,8 +1141,9 @@ function memberSkillListHtml(member) {
             `<li data-skill-id="${skill.id}">
               <label>
                 <input type="checkbox" class="skill-toggle" data-member-id="${member.id}" data-skill-id="${skill.id}" ${settings[skill.id] !== false ? "checked" : ""}>
-                <strong>${skill.name}</strong>：${skill.description}
+                <strong>${skill.name}</strong>
               </label>
+              ${skillDescriptionHtml(skill)}
               ${skillDebugHtml(skill)}
             </li>`
         )
