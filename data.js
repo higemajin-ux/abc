@@ -77,7 +77,7 @@ const SKILL_DEBUG_INFO = {
   firstAid: ["発動率:55%", "条件:味方HP30%未満", "効果:バリア付与"],
   blind: ["発動:40%", "盲目ミス:40%", "盲目:2ターン"],
   treasureFind: ["発動率:10%"],
-  trapDisarm: ["発動率:10%"],
+  trapDisarm: ["罠発生:10%", "DEX補正:DEX×3%（上限70%）", "盗賊補正:+25%", "最終上限:90%", "罠ダメージ:最大HP10%"],
   shortcutFind: ["発動率:100%"],
 };
 
