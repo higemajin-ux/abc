@@ -1016,25 +1016,29 @@ function actionOrderForRound(party, round, ambushScout) {
   return [ambushScout, ...ordered.filter((member) => member.id !== ambushScout.id)];
 }
 
-function decayedExplorationRate(count) {
-  return [0.6, 0.4, 0.2][count] ?? 0.1;
+const DEFAULT_TREASURE_RATES = [0.6, 0.4, 0.2, 0.1];
+const DEFAULT_TRAP_RATES = [0.6, 0.4, 0.2, 0.1];
+
+function explorationRate(area, key, count, defaults) {
+  const rates = Array.isArray(area?.[key]) ? area[key] : defaults;
+  return rates[count] ?? rates.at(-1) ?? 0;
 }
 
-function buildScoutExplorationEvents(party, speechState = {}) {
+function buildScoutExplorationEvents(party, speechState = {}, area = null) {
   return [
-    ...buildTreasureExplorationEvents(party, speechState),
-    ...buildTrapExplorationEvents(party, speechState),
+    ...buildTreasureExplorationEvents(party, speechState, area),
+    ...buildTrapExplorationEvents(party, speechState, area),
   ];
 }
 
-function buildTreasureExplorationEvents(party, speechState = {}) {
+function buildTreasureExplorationEvents(party, speechState = {}, area = null) {
   const scouts = livingScouts(party).filter((scout) => isSkillEnabled(scout, "treasureFind"));
   if (!scouts.length) return [];
 
   const scout = pick(scouts);
   const events = [];
   const count = speechState.treasureFindCount || 0;
-  const rate = decayedExplorationRate(count);
+  const rate = explorationRate(area, "treasureRates", count, DEFAULT_TREASURE_RATES);
   if (Math.random() < rate) {
     speechState.treasureFindCount = count + 1;
     events.push({
@@ -1048,13 +1052,13 @@ function buildTreasureExplorationEvents(party, speechState = {}) {
   return events;
 }
 
-function buildTrapExplorationEvents(party, speechState = {}) {
+function buildTrapExplorationEvents(party, speechState = {}, area = null) {
   const target = pick(livingMembers(party));
   const events = [];
   if (!target) return events;
 
   const count = speechState.trapDisarmCount || 0;
-  const rate = decayedExplorationRate(count);
+  const rate = explorationRate(area, "trapRates", count, DEFAULT_TRAP_RATES);
   if (Math.random() >= rate) return events;
   speechState.trapDisarmCount = count + 1;
 
@@ -1095,13 +1099,14 @@ function buildTrapExplorationEvents(party, speechState = {}) {
   return events;
 }
 
-function buildShortcutExplorationEvents(party) {
+function buildShortcutExplorationEvents(party, area = null) {
   const scouts = livingScouts(party);
   if (!scouts.length) return [];
 
   const scout = pick(scouts);
   const events = [];
-  if (isSkillEnabled(scout, "shortcutFind")) {
+  const rate = Number.isFinite(area?.shortcutRate) ? area.shortcutRate : 1;
+  if (isSkillEnabled(scout, "shortcutFind") && Math.random() < rate) {
     events.push({
       kind: "voice",
       skillId: "shortcutFind",
@@ -1297,7 +1302,7 @@ function runEncounter(members, monster, area, speechState = {}, partyName = "隊
   const startMembersSnapshot = snapshotPartyHp(party);
   const events = [];
   const ambushScout = pickAmbushScout(party);
-  const explorationEvents = [...magicSense.explorationEvents, ...buildScoutExplorationEvents(party, speechState)];
+  const explorationEvents = [...magicSense.explorationEvents, ...buildScoutExplorationEvents(party, speechState, area)];
   let round = 1;
 
   events.push({
