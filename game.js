@@ -211,8 +211,10 @@ function generateBattle(area, party) {
   const encounters = [];
   const normalCount = clamp(area.difficulty + roll(0, 1), 1, 4);
   const speechState = {};
+  const treasureEvents = buildTreasureExplorationEvents(party.members);
+  const trapEvents = buildTrapExplorationEvents(party.members);
   const shortcutEvents = buildShortcutExplorationEvents(party.members);
-  const shortcutMembersSnapshot = snapshotPartyHp(party.members);
+  const dispatchMembersSnapshot = snapshotPartyHp(party.members);
 
   for (let i = 0; i < normalCount; i += 1) {
     encounters.push(runEncounter(party.members, MONSTERS[pick(area.monsters)], area, speechState));
@@ -226,19 +228,32 @@ function generateBattle(area, party) {
   }
 
   const failed = failedBeforeBoss || encounters.some((encounter) => !encounter.victory);
+  const extraEquipmentDrops = treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters) : [];
+  const trapDisarmed = trapEvents.length > 0;
   const shortcutFound = shortcutEvents.length > 0;
 
   return {
     encounters,
+    treasureEvents,
+    trapEvents,
     shortcutEvents,
-    shortcutMembersSnapshot,
+    dispatchMembersSnapshot,
+    extraEquipmentDrops,
+    trapDisarmed,
     kills: encounters.reduce((sum, e) => sum + e.kills, 0),
     xp: encounters.reduce((sum, e) => sum + e.xp, 0),
-    gold: encounters.reduce((sum, e) => sum + e.gold, 0),
+    gold: encounters.reduce((sum, e) => sum + e.gold, 0) + extraEquipmentDrops.reduce((sum, item) => sum + (wasAutoSoldDrop(item) ? item.sellGold || 0 : 0), 0),
     failed,
     forcedReturn: failed && party.members.every((member) => member.hp <= 0),
     shortcutFound,
   };
+}
+
+function rollTreasureEquipmentDrops(members, encounters) {
+  const victories = (encounters || []).filter((encounter) => encounter?.victory && encounter.monster);
+  const encounter = pick(victories);
+  const item = encounter ? rollEquipmentDrop(members, encounter.monster) : null;
+  return item ? [item] : [];
 }
 
 function shortcutMissionReductionMs(area, rewards) {
@@ -258,8 +273,10 @@ function battleSummary(encounter) {
 }
 
 function buildDeliveryBoxHtml(rewards) {
-  const names = (rewards?.encounters || [])
-    .map((encounter) => encounter?.equipmentDrop)
+  const names = [
+    ...(rewards?.encounters || []).map((encounter) => encounter?.equipmentDrop),
+    ...(rewards?.extraEquipmentDrops || []),
+  ]
     .filter(Boolean)
     .map((drop) => {
       const item = storageItemFromEquipment(drop) || drop;
@@ -358,7 +375,18 @@ function isShortcutEvent(event) {
 function shortcutExplorationEvents(rewards) {
   return (rewards?.shortcutEvents || []).map((event) => ({
     event,
-    snapshot: rewards.shortcutMembersSnapshot,
+    snapshot: rewards.dispatchMembersSnapshot,
+  }));
+}
+
+function dispatchExplorationEvents(rewards) {
+  return [
+    ...(rewards?.treasureEvents || []),
+    ...(rewards?.trapEvents || []),
+    ...(rewards?.shortcutEvents || []),
+  ].map((event) => ({
+    event,
+    snapshot: rewards.dispatchMembersSnapshot,
   }));
 }
 
@@ -377,7 +405,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     shown: false,
   });
 
-  shortcutExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+  dispatchExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
     entries.push({
       id: uid("entry"),
       timestamp: startedAt + 351 + eventIndex,
@@ -484,7 +512,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     shown: false,
   });
 
-  shortcutExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+  dispatchExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
     entries.push({
       id: uid("entry"),
       timestamp: startedAt + 1 + eventIndex,
@@ -687,8 +715,11 @@ function recordEnemyKills(rewards) {
 
 function storeEquipmentDrops(rewards) {
   if (!state.storage) state.storage = [];
-  for (const encounter of rewards.encounters || []) {
-    const item = encounter.equipmentDrop;
+  const drops = [
+    ...(rewards?.encounters || []).map((encounter) => encounter?.equipmentDrop),
+    ...(rewards?.extraEquipmentDrops || []),
+  ];
+  for (const item of drops) {
     const storedItem = storageItemFromEquipment(item);
     recordEquipment(storedItem);
     if (!item || !storedItem || wasAutoSoldDrop(item)) continue;
