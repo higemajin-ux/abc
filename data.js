@@ -381,6 +381,8 @@ const AREAS = {
     monsters: ["slime", "goblin"],
     boss: "goblinChief",
     unlockAfter: null,
+    treasureRates: [0.7, 0.5, 0.25, 0.12],
+    trapRates: [0.25, 0.15, 0.1, 0.05],
     flavor: ["朝露の草を踏み、隊列は街道の外へ出た。", "遠くで鐘が鳴り、草むらが小さく揺れた。"],
   },
   forest: {
@@ -414,6 +416,7 @@ const AREAS = {
     monsters: ["skeleton", "stoneGuard"],
     unlockAfter: "swamp",
     boss: "ruinKnight",
+    trapRates: [0.75, 0.5, 0.25, 0.12],
     flavor: ["崩れた石畳に、誰かの足跡が続いている。", "壁画の目が、一行を見送った気がした。"],
   },
   canyon: {
@@ -458,6 +461,8 @@ const AREAS = {
     monsters: ["abyssCrawler", "namelessShade"],
     boss: "abyssEnvoy",
     unlockAfter: "volcano",
+    treasureRates: [0.3, 0.2, 0.1, 0.05],
+    trapRates: [0.8, 0.55, 0.3, 0.15],
     flavor: ["道は下へ続くはずなのに、影だけが天井へ伸びていく。", "壊れた標識に、まだ出発していない隊の名が刻まれていた。"],
   },
   forgottenCorridor: {
@@ -469,6 +474,7 @@ const AREAS = {
     monsters: ["chalkGuard", "lostRecord"],
     boss: "ledgerKeeper",
     unlockAfter: "abyss",
+    trapRates: [0.75, 0.5, 0.25, 0.12],
     flavor: ["同じ扉が何度も現れ、壁の番号だけが増えていく。", "記録用の札が、誰の名も残さず白く擦り切れていた。"],
   },
   starMarsh: {
