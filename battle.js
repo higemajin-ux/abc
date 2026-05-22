@@ -1026,6 +1026,16 @@ function buildScoutExplorationEvents(party) {
   if (isSkillEnabled(scout, "trapDisarm") && Math.random() < 0.1) {
     events.push({ kind: "voice", text: `${scout.name}が罠を解除した。` });
   }
+
+  return events;
+}
+
+function buildShortcutExplorationEvents(party) {
+  const scouts = livingScouts(party);
+  if (!scouts.length) return [];
+
+  const scout = pick(scouts);
+  const events = [];
   if (isSkillEnabled(scout, "shortcutFind")) {
     events.push({
       kind: "voice",
