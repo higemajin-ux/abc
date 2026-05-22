@@ -234,6 +234,8 @@ function generateBattle(area, party) {
   const extraEquipmentDrops = !noRewards && treasureEvents.length ? rollTreasureEquipmentDrops(party.members, encounters) : [];
   if (treasureEvents[0] && extraEquipmentDrops[0]) {
     treasureEvents[0].text += `<br>宝箱の中から${dropNameHtml(extraEquipmentDrops[0])}を見つけた。${treasureRarityTagHtml(extraEquipmentDrops[0])}`;
+  } else if (treasureEvents[0]) {
+    treasureEvents[0].text += "<br>中に使える物は残っていなかった。";
   }
   const trapDisarmed = trapEvents.length > 0;
   const shortcutFound = shortcutEvents.length > 0;
