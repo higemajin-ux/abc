@@ -1944,7 +1944,17 @@ function ensureWorldSituationTick() {
   worldTickId = setInterval(renderWorldSituation, 3000);
 }
 
+function setupQuickNav() {
+  document.querySelectorAll("[data-scroll-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = $(button.dataset.scrollTarget);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
 $("reset-btn").addEventListener("click", resetGame);
+setupQuickNav();
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     processMissions();
