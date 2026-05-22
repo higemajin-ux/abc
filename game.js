@@ -1930,9 +1930,46 @@ function equipmentRecordHtml(item) {
   </li>`;
 }
 
-function enemyRecordInfoValue(value) {
-  if (Array.isArray(value)) return value.filter(Boolean).join("、") || "？？？";
-  return value || "？？？";
+function enemyRecordInfoValue(value, lookup = null) {
+  const values = Array.isArray(value) ? value : value ? [value] : [];
+  const labels = values
+    .filter(Boolean)
+    .map((item) => lookup?.[item]?.name || item);
+  return labels.join("、") || "？？？";
+}
+
+function enemyRecordDropItemId(drop) {
+  return typeof drop === "string" ? drop : drop?.id || drop?.itemId || null;
+}
+
+function enemyRecordDropItemIds(enemyId, enemy) {
+  const explicit = enemy?.dropItems || enemy?.drops || enemy?.dropTable;
+  if (explicit?.length) return explicit.map(enemyRecordDropItemId).filter(Boolean);
+
+  return Object.values(EQUIPMENT_ITEMS || {})
+    .filter((item) => {
+      const enemyIds = Array.isArray(item?.dropEnemies)
+        ? item.dropEnemies
+        : item?.dropEnemies
+          ? [item.dropEnemies]
+          : [];
+      return enemyIds.includes(enemyId);
+    })
+    .map((item) => item.id)
+    .filter(Boolean);
+}
+
+function enemyRecordDropItemsValue(enemyId, enemy) {
+  const itemIds = enemyRecordDropItemIds(enemyId, enemy);
+  const names = itemIds.map((itemId) => EQUIPMENT_ITEMS?.[itemId]?.name || itemId);
+  return [...new Set(names)].join("、") || "？？？";
+}
+
+function enemyRecordAreaIds(enemyId) {
+  return Object.values(AREAS || {})
+    .filter((area) => area?.boss === enemyId || (area?.monsters || []).includes(enemyId))
+    .map((area) => area.id)
+    .filter(Boolean);
 }
 
 function enemyRecordHtml(enemyId, record) {
@@ -1954,8 +1991,8 @@ function enemyRecordHtml(enemyId, record) {
       <div class="records-head">
         <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>${tag}
       </div>
-      <div class="records-effect">出現：${enemyRecordInfoValue(info.appearance)}</div>
-      <div class="records-effect">ドロップ：${enemyRecordInfoValue(info.drops)}</div>
+      <div class="records-effect">出現：${enemyRecordInfoValue(info.appearance || enemyRecordAreaIds(enemyId), AREAS)}</div>
+      <div class="records-effect">ドロップ：${enemyRecordDropItemsValue(enemyId, enemy)}</div>
       <div class="records-effect">討伐数：${kills}回</div>
       <div class="records-effect">HP：${unlockedHp ? enemy?.hp ?? "？？？" : "？？？"}</div>
       <div class="records-effect">ATK：${unlockedAtk ? enemy?.atk ?? "？？？" : "？？？"}</div>
