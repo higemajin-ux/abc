@@ -76,9 +76,9 @@ const SKILL_DEBUG_INFO = {
   rogueFocus: ["発動:35%", "持続:2ターン", "会心率:+25%"],
   firstAid: ["発動率:55%", "条件:味方HP30%未満", "効果:バリア付与"],
   blind: ["発動:40%", "盲目ミス:40%", "盲目:2ターン"],
-  treasureFind: ["発動:20%"],
-  trapDisarm: ["発動:15%"],
-  shortcutFind: ["発動:15%"],
+  treasureFind: ["発動率:100%"],
+  trapDisarm: ["発動率:100%"],
+  shortcutFind: ["発動率:100%"],
 };
 
 const JOB_STATS = {
