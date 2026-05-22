@@ -211,9 +211,8 @@ function generateBattle(area, party) {
   const encounters = [];
   const normalCount = clamp(area.difficulty + roll(0, 1), 1, 4);
   const speechState = {};
-  const explorationSlot = rollDispatchExplorationSlot(party.members);
-  const treasureEvents = explorationSlot === "treasure" ? buildTreasureExplorationEvents(party.members) : [];
-  const trapEvents = explorationSlot === "trap" ? buildTrapExplorationEvents(party.members) : [];
+  const treasureEvents = buildTreasureExplorationEvents(party.members);
+  const trapEvents = buildTrapExplorationEvents(party.members);
   const shortcutEvents = buildShortcutExplorationEvents(party.members);
   const dispatchMembersSnapshot = snapshotPartyHp(party.members);
 
@@ -257,15 +256,6 @@ function generateBattle(area, party) {
     forcedReturn: failed && party.members.every((member) => member.hp <= 0),
     shortcutFound,
   };
-}
-
-function rollDispatchExplorationSlot(members) {
-  const rollValue = Math.random();
-  if (rollValue < 0.3 && livingScouts(members).some((scout) => isSkillEnabled(scout, "treasureFind"))) {
-    return "treasure";
-  }
-  if (rollValue < 0.6 && livingMembers(members).length) return "trap";
-  return null;
 }
 
 function rollTreasureEquipmentDrops(members, encounters) {
