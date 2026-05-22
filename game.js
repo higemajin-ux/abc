@@ -11,6 +11,7 @@ let storageAutoSellOpen = false;
 const openDetailPartyIds = new Set();
 const SHORTCUT_REDUCTION_RATE = 0.1;
 const MIN_MISSION_DURATION_MS = 5000;
+const DEVELOPER_MISSION_DURATION_MS = 6000;
 registerDropEquipmentItems();
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
@@ -239,9 +240,14 @@ function generateBattle(area, party) {
 }
 
 function shortcutMissionReductionMs(area, rewards) {
-  const durationMs = Math.max(0, Number(area?.durationMs) || 0);
+  const durationMs = missionDurationMs(area);
   if (!rewards?.shortcutFound || durationMs <= MIN_MISSION_DURATION_MS) return 0;
   return Math.min(Math.floor(durationMs * SHORTCUT_REDUCTION_RATE), durationMs - MIN_MISSION_DURATION_MS);
+}
+
+function missionDurationMs(area) {
+  if (state.developerMode) return DEVELOPER_MISSION_DURATION_MS;
+  return Math.max(0, Number(area?.durationMs) || 0);
 }
 
 function battleSummary(encounter) {
@@ -395,6 +401,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
         timestamp: Math.max(startedAt, battleTime - encounter.explorationEvents.length + eventIndex),
         type: "flavor",
         title: event.text,
+        debug: event.debug,
         membersSnapshot: encounter.startMembersSnapshot,
         shown: false,
       });
@@ -492,6 +499,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
         timestamp: Math.max(startedAt, battleTime - encounter.explorationEvents.length + eventIndex),
         type: "flavor",
         title: event.text,
+        debug: event.debug,
         membersSnapshot: encounter.startMembersSnapshot,
         shown: false,
       });
@@ -769,7 +777,7 @@ function startMission(partyId) {
   const startMembersSnapshot = snapshotMembers(party.members);
   const rewards = generateBattle(area, party);
   const now = Date.now();
-  const plannedEndsAt = now + area.durationMs;
+  const plannedEndsAt = now + missionDurationMs(area);
   const endsAt = plannedEndsAt - shortcutMissionReductionMs(area, rewards);
   const dispatchId = uid("dispatch");
   applyMembersSnapshot(party, startMembersSnapshot);
@@ -886,6 +894,9 @@ function entryButtonHtml(entry, open) {
     : entry.monsterRare
       ? '<span class="enemy-tag rare-tag">[RARE]</span>'
       : "";
+  const debug = state.developerMode && entry.debug?.length
+    ? `<br><span class="log-debug">[DEBUG]</span>${entry.debug.map((line) => `<br><span class="log-debug">${line}</span>`).join("")}`
+    : "";
   let title = entry.title;
   if (entry.type === "return") {
     title = title.replace(/（全戦闘記録[▼▲]）$/, "");
@@ -893,7 +904,7 @@ function entryButtonHtml(entry, open) {
   } else if (entry.battleDetail?.length) {
     title += open ? " ▲" : " ▼";
   }
-  return `<span class="time">${formatClock(entry.timestamp)}</span>${title}${monsterTag}`;
+  return `<span class="time">${formatClock(entry.timestamp)}</span>${title}${debug}${monsterTag}`;
 }
 
 function renderLogEntry(entry) {
