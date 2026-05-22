@@ -1039,20 +1039,41 @@ function buildTreasureExplorationEvents(party) {
 }
 
 function buildTrapExplorationEvents(party) {
-  const scouts = livingScouts(party);
-  if (!scouts.length) return [];
-
-  const scout = pick(scouts);
+  const target = pick(livingMembers(party));
   const events = [];
-  if (isSkillEnabled(scout, "trapDisarm") && Math.random() < 0.1) {
+  if (!target || Math.random() >= 0.1) return events;
+
+  const dexRate = Math.min(70, Math.max(0, effectiveDex(target) * 3));
+  const trapDisarmer = livingScouts(party).find((scout) => isSkillEnabled(scout, "trapDisarm"));
+  const trapBonus = trapDisarmer ? 25 : 0;
+  const avoidRate = Math.min(90, dexRate + trapBonus);
+  const trapDamage = Math.max(1, Math.floor(target.maxHp * 0.1));
+  const debug = [
+    `罠回避率:${avoidRate}%`,
+    `DEX補正:${dexRate}%`,
+    ...(trapDisarmer ? ["盗賊補正:+25%"] : []),
+    "罠ダメージ:最大HP10%",
+  ];
+
+  if (Math.random() * 100 < avoidRate) {
     events.push({
       kind: "voice",
       skillId: "trapDisarm",
-      text: `${scout.name}が罠を解除した。`,
-      debug: ["罠回避成功"],
+      text: trapDisarmer
+        ? `${trapDisarmer.name}が罠を解除した。<br>危険は未然に防がれた。`
+        : `${target.name}は罠をかわした。`,
+      debug,
     });
+    return events;
   }
 
+  target.hp = clamp(target.hp - trapDamage, 0, target.maxHp);
+  events.push({
+    kind: "voice",
+    skillId: "trapDisarm",
+    text: `罠が作動した。<br>${target.name}が${trapDamage}ダメージを受けた。`,
+    debug,
+  });
   return events;
 }
 
