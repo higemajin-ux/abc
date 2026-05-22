@@ -1020,10 +1020,10 @@ function buildScoutExplorationEvents(party) {
 
   const scout = pick(scouts);
   const events = [];
-  if (isSkillEnabled(scout, "treasureFind") && Math.random() < 0.2) {
+  if (isSkillEnabled(scout, "treasureFind")) {
     events.push({ kind: "voice", text: `${scout.name}が宝箱を見つけた。` });
   }
-  if (isSkillEnabled(scout, "trapDisarm") && Math.random() < 0.15) {
+  if (isSkillEnabled(scout, "trapDisarm")) {
     events.push({ kind: "voice", text: `${scout.name}が罠を解除した。` });
   }
   if (isSkillEnabled(scout, "shortcutFind")) {
