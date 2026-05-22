@@ -349,6 +349,22 @@ function applyMembersSnapshot(party, snapshot) {
   return changed;
 }
 
+function isShortcutEvent(event) {
+  return event?.skillId === "shortcutFind";
+}
+
+function shortcutExplorationEvents(rewards) {
+  return (rewards?.encounters || []).flatMap((encounter) =>
+    (encounter.explorationEvents || [])
+      .filter(isShortcutEvent)
+      .map((event) => ({ event, snapshot: encounter.startMembersSnapshot }))
+  );
+}
+
+function normalExplorationEvents(encounter) {
+  return (encounter.explorationEvents || []).filter((event) => !isShortcutEvent(event));
+}
+
 function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
   const entries = [];
   const span = endsAt - startedAt;
@@ -358,6 +374,18 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     type: "flavor",
     title: `${party.name}、${area.name}へ出発。`,
     shown: false,
+  });
+
+  shortcutExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+    entries.push({
+      id: uid("entry"),
+      timestamp: startedAt + 351 + eventIndex,
+      type: "flavor",
+      title: event.text,
+      debug: event.debug,
+      membersSnapshot: snapshot,
+      shown: false,
+    });
   });
 
   area.flavor.forEach((text, index) => {
@@ -395,10 +423,11 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
         });
       });
     }
-    (encounter.explorationEvents || []).forEach((event, eventIndex) => {
+    const explorationEvents = normalExplorationEvents(encounter);
+    explorationEvents.forEach((event, eventIndex) => {
       entries.push({
         id: uid("entry"),
-        timestamp: Math.max(startedAt, battleTime - encounter.explorationEvents.length + eventIndex),
+        timestamp: Math.max(startedAt, battleTime - explorationEvents.length + eventIndex),
         type: "flavor",
         title: event.text,
         debug: event.debug,
@@ -454,6 +483,18 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
     shown: false,
   });
 
+  shortcutExplorationEvents(rewards).forEach(({ event, snapshot }, eventIndex) => {
+    entries.push({
+      id: uid("entry"),
+      timestamp: startedAt + 1 + eventIndex,
+      type: "flavor",
+      title: event.text,
+      debug: event.debug,
+      membersSnapshot: snapshot,
+      shown: false,
+    });
+  });
+
   if (!rewards.forcedReturn) {
     area.flavor.forEach((text, index) => {
       entries.push({
@@ -493,10 +534,11 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
         });
       });
     }
-    (encounter.explorationEvents || []).forEach((event, eventIndex) => {
+    const explorationEvents = normalExplorationEvents(encounter);
+    explorationEvents.forEach((event, eventIndex) => {
       entries.push({
         id: uid("entry"),
-        timestamp: Math.max(startedAt, battleTime - encounter.explorationEvents.length + eventIndex),
+        timestamp: Math.max(startedAt, battleTime - explorationEvents.length + eventIndex),
         type: "flavor",
         title: event.text,
         debug: event.debug,
