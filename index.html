@@ -19,7 +19,7 @@
   </header>
 
   <main class="layout">
-    <section class="panel">
+    <section id="party-section" class="panel">
       <div class="section-title">
         <h2>パーティ派遣</h2>
         <p>自動戦闘で記録される、ギルドの日報。</p>
@@ -51,7 +51,7 @@
       <div id="world-root" class="world-root"></div>
     </section>
 
-    <section class="panel">
+    <section id="storage-section" class="panel">
       <div class="section-title">
         <h2>保管庫</h2>
         <p>持ち帰った装備の控え。</p>
@@ -59,7 +59,7 @@
       <div id="storage-root" class="storage-root"></div>
     </section>
 
-    <section class="panel">
+    <section id="records-section" class="panel">
       <div class="section-title">
         <h2>記録室</h2>
         <p>装備図録</p>
@@ -68,7 +68,7 @@
     </section>
 
     <section class="split">
-      <div class="panel">
+      <div id="reports-section" class="panel">
         <div class="section-title">
           <h2>帰還報告</h2>
           <p>最新の成果。</p>
@@ -86,6 +86,13 @@
     </section>
 
   </main>
+
+  <nav class="quick-nav" aria-label="quick navigation">
+    <button type="button" data-scroll-target="party-section">&#38538;</button>
+    <button type="button" data-scroll-target="reports-section">&#22577;&#21578;</button>
+    <button type="button" data-scroll-target="storage-section">&#20445;&#31649;</button>
+    <button type="button" data-scroll-target="records-section">&#35352;&#37682;</button>
+  </nav>
 
   <script src="data.js"></script>
   <script src="equip.js"></script>
