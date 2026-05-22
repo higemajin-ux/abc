@@ -1027,7 +1027,7 @@ function buildScoutExplorationEvents(party) {
     events.push({ kind: "voice", text: `${scout.name}が罠を解除した。` });
   }
   if (isSkillEnabled(scout, "shortcutFind") && Math.random() < 0.15) {
-    events.push({ kind: "voice", text: `${scout.name}が近道を見つけた。` });
+    events.push({ kind: "voice", skillId: "shortcutFind", text: `${scout.name}が近道を見つけた。` });
   }
 
   return events;
