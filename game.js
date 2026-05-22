@@ -9,10 +9,6 @@ let storageFilterMode = "all";
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 const openDetailPartyIds = new Set();
-const SKILL_DEBUG_LINES = {
-  firebolt: ["威力:1.2", "火傷率:25%"],
-  cover: ["発動率:40%", "条件:", "最大HP25%以上", "または8ダメ以上"],
-};
 registerDropEquipmentItems();
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
@@ -1121,7 +1117,8 @@ function equipmentSlotHtml(member, slot) {
 }
 
 function skillDebugHtml(skill) {
-  const lines = skill?.debug || SKILL_DEBUG_LINES[skill?.id] || [];
+  const debugInfo = typeof SKILL_DEBUG_INFO === "object" ? SKILL_DEBUG_INFO : {};
+  const lines = skill?.debug || debugInfo[skill?.id] || [];
   if (!state.developerMode || !lines.length) return "";
   return `<div class="skill-debug"><strong>[DEBUG]</strong>${lines.map((line) => `<span>${line}</span>`).join("")}</div>`;
 }
