@@ -663,6 +663,7 @@ function tickEnemyDots(enemy, events, kind = "enemy-action") {
     const damage = enemy.poisonTier === "venom" ? baseDamage * 2 : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind, text: `${enemy.name}は毒で${damage}ダメージ。` });
+    if (enemy.hp <= 0) enemy.dotDefeatText = `${enemy.name}は毒で倒れた。`;
     enemy.poisonTurns -= 1;
     if (enemy.poisonTurns <= 0) {
       enemy.poisonTurns = 0;
@@ -677,6 +678,7 @@ function tickEnemyDots(enemy, events, kind = "enemy-action") {
     const damage = Math.max(4, Math.floor(enemy.maxHp * 0.06));
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind, text: `${enemy.name}は火傷で${damage}ダメージ。` });
+    if (enemy.hp <= 0) enemy.dotDefeatText = `${enemy.name}は火傷で倒れた。`;
     enemy.burnTurns -= 1;
     if (enemy.burnTurns <= 0) enemy.burnTurns = 0;
     pushHp(events, enemy, enemy.hp <= 0 ? `${kind} down` : kind);
@@ -1241,7 +1243,7 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
   pushActionBreak(events);
 }
 
-function runEncounter(members, monster, area, speechState = {}) {
+function runEncounter(members, monster, area, speechState = {}, partyName = "隊") {
   const magicSense = tryMageMagicSense(members, monster, area);
   monster = magicSense.monster;
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
@@ -1292,7 +1294,8 @@ function runEncounter(members, monster, area, speechState = {}) {
     round += 1;
   }
 
-  const victory = enemy.hp <= 0;
+  const draw = enemy.hp <= 0 && livingMembers(party).length === 0;
+  const victory = enemy.hp <= 0 && !draw;
   confirmRemainingDownMembers(party, events, speechState, !(victory && enemy.boss));
   clearTempHp(party);
   const equipmentDrop = victory ? rollEquipmentDrop(party, monster) : null;
@@ -1306,6 +1309,10 @@ function runEncounter(members, monster, area, speechState = {}) {
         events.push({ kind: "voice", text: `${dropName}を売却した（${equipmentDrop.sellGold || 0}G）。` });
       }
     }
+  } else if (draw) {
+    events.push({ kind: "down", text: enemy.dotDefeatText || `${enemy.name}は倒れた。` });
+    events.push({ kind: "down", text: `しかし既に${partyName}は壊滅していた。` });
+    events.push({ kind: "down", text: "戦闘記録だけがギルドへ送られた。" });
   } else {
     events.push({ kind: "down", text: `${enemy.name}を退けきれず、隊は煙幕で撤退した。` });
   }
@@ -1314,6 +1321,7 @@ function runEncounter(members, monster, area, speechState = {}) {
     monster,
     enemy,
     victory,
+    draw,
     events,
     explorationEvents,
     equipmentDrop,
@@ -1321,7 +1329,7 @@ function runEncounter(members, monster, area, speechState = {}) {
     bossPreludeEvents: enemy.boss ? buildBossPreludeEvents(party, startMembersSnapshot) : [],
     membersSnapshot: snapshotPartyHp(party),
     kills: victory ? 1 : 0,
-    xp: victory ? enemy.xp : Math.floor(enemy.xp * 0.35),
-    gold: victory ? enemy.gold + (equipmentDrop && shouldAutoSellDrop(equipmentDrop) ? equipmentDrop.sellGold || 0 : 0) : Math.floor(enemy.gold * 0.25),
+    xp: victory ? enemy.xp : draw ? 0 : Math.floor(enemy.xp * 0.35),
+    gold: victory ? enemy.gold + (equipmentDrop && shouldAutoSellDrop(equipmentDrop) ? equipmentDrop.sellGold || 0 : 0) : draw ? 0 : Math.floor(enemy.gold * 0.25),
   };
 }
