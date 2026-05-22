@@ -1864,15 +1864,16 @@ function enemyRecordHtml(enemyId, record) {
   const unlockedAtk = kills >= 10;
   const unlockedDef = kills >= 15;
   const def = enemy?.def ?? 0;
-  const tags = [
-    enemy?.boss ? '<span class="enemy-tag boss-tag">[BOSS]</span>' : "",
-    enemy?.rare ? '<span class="enemy-tag rare-tag">[RARE]</span>' : "",
-  ].join("");
+  const tag = enemy?.boss
+    ? '<span class="enemy-tag boss-tag">[BOSS]</span>'
+    : enemy?.rare
+      ? '<span class="enemy-tag rare-tag">[RARE]</span>'
+      : "";
   const info = enemy?.recordInfo || {};
   return `<li>
     <div class="records-info">
       <div class="records-head">
-        <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>${tags}
+        <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>${tag}
       </div>
       <div class="records-effect">出現：${enemyRecordInfoValue(info.appearance)}</div>
       <div class="records-effect">ドロップ：${enemyRecordInfoValue(info.drops)}</div>
