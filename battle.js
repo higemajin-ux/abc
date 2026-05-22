@@ -35,7 +35,14 @@ function defaultSkillSettings(job) {
 
 function normalizeSkillSettings(member) {
   const defaults = defaultSkillSettings(member?.job);
-  return { ...defaults, ...(member?.skillSettings || {}) };
+  const settings = { ...(member?.skillSettings || {}) };
+  if (member?.job === "scout" && settings.focus != null && settings.rogueFocus == null) {
+    settings.rogueFocus = settings.focus;
+  }
+  if (member?.job === "mage" && settings.focus != null && settings.magicFocus == null) {
+    settings.magicFocus = settings.focus;
+  }
+  return { ...defaults, ...settings };
 }
 
 function isSkillEnabled(member, skillId) {
@@ -412,8 +419,8 @@ function consumeReviveEquipment(member) {
 function trySurviveFatalDamage(member, events, party = null, canUsePriestBlessing = false) {
   if (member.hp > 0) return true;
 
-  if (canUsePriestBlessing && party && !party.priestBlessingUsed) {
-    party.priestBlessingUsed = true;
+  if (canUsePriestBlessing && member && !member.divineGraceUsed) {
+    member.divineGraceUsed = true;
     member.hp = 1;
     member.pendingDownConfirm = false;
     events.push({ kind: "heal", text: `${member.name}は神の加護に守られた。` });
@@ -678,7 +685,7 @@ function tickEnemyDots(enemy, events, kind = "enemy-action") {
 
 function performMageAction(actor, enemy, events) {
   if (isSkillEnabled(actor, "acidMist") && Math.random() < 0.35) {
-    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
+    const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     const baseDamage = damageFor(Math.floor(actor.atk * 0.5) + Math.floor(actor.level / 2), Math.floor(enemy.def * 0.2));
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
@@ -696,7 +703,7 @@ function performMageAction(actor, enemy, events) {
 
   const skillRoll = Math.random();
   if (isSkillEnabled(actor, "lightning") && skillRoll < 0.3) {
-    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
+    const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     events.push({ kind: "spell", text: `${actor.name}の雷撃！` });
     if (!focused && Math.random() >= 0.85) {
@@ -716,7 +723,7 @@ function performMageAction(actor, enemy, events) {
   }
 
   if (isSkillEnabled(actor, "iceLance") && skillRoll < 0.7) {
-    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
+    const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     events.push({ kind: "spell", text: `${actor.name}の氷槍。` });
 
@@ -744,7 +751,7 @@ function performMageAction(actor, enemy, events) {
   }
 
   if (isSkillEnabled(actor, "firebolt") && skillRoll < 0.9) {
-    const focused = isSkillEnabled(actor, "focus") && Math.random() < 0.3;
+    const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     const baseDamage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
@@ -791,7 +798,7 @@ function performScoutAction(actor, party, enemy, events) {
     }
   }
 
-  if (!actor.focusTurns && isSkillEnabled(actor, "focus") && Math.random() < 0.35) {
+  if (!actor.focusTurns && isSkillEnabled(actor, "rogueFocus") && Math.random() < 0.35) {
     actor.focusTurns = 2;
     events.push({ kind: "voice", text: `${actor.name}は集中している。` });
     return;
@@ -1163,7 +1170,7 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     beforeHp > 0 &&
     target.job === "priest" &&
     isSkillEnabled(target, "divineGrace") &&
-    !party.priestBlessingUsed &&
+    !target.divineGraceUsed &&
     target.hp > 0;
   applyDamageToMember(target, damage);
   events.push({
@@ -1201,9 +1208,11 @@ function runEncounter(members, monster, area, speechState = {}) {
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
   const enemy = createEnemy(monster, area, highestLevel);
   const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
-  party.priestBlessingUsed = false;
   party.forEach((member) => {
-    if (member.job === "priest") member.sureReviveUsed = false;
+    if (member.job === "priest") {
+      member.sureReviveUsed = false;
+      member.divineGraceUsed = false;
+    }
   });
   const startMembersSnapshot = snapshotPartyHp(party);
   const events = [];
