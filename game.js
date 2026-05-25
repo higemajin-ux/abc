@@ -1916,10 +1916,13 @@ function storageGroupHtml(group) {
   const selectionId = storageGroupSelectionId(group);
   const selectable = selectableEntries.length > 0;
   const checked = selectable && selectedStorageGroups.has(selectionId);
-  return `<li>
-    <label class="storage-select" ${storageBulkSellMode ? "" : "hidden"}>
+  const checkboxHtml = storageBulkSellMode
+    ? `<label class="storage-select">
       <input type="checkbox" class="storage-select-checkbox" data-storage-select="${selectionId}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
-    </label>
+    </label>`
+    : "";
+  return `<li>
+    ${checkboxHtml}
     <div class="storage-info">
       <div class="storage-head">
         <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : count > 1 ? ` ×${count}` : ""}</span>
