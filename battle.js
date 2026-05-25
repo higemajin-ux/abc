@@ -95,8 +95,9 @@ function tryMageMagicSense(members, monster, area) {
 
 function createMember(template, level = 1) {
   const equipment = ensureCharacterEquipment(template);
-  const bonus = getEquipmentBonus(template);
   const base = JOB_STATS[template.job];
+  const baseAtk = base.atk + Math.floor((level - 1) * 1.5);
+  const bonus = getEquipmentBonus({ ...template, level }, baseAtk);
   const maxHp = base.maxHp + (level - 1) * 5 + bonus.maxHp;
   const baseDex = template.baseDex ?? template.dex ?? base.dex;
   const baseLuc = template.baseLuc ?? template.luc ?? base.luc;
@@ -108,7 +109,7 @@ function createMember(template, level = 1) {
     xpToNext: template.xpToNext || 40,
     maxHp,
     hp: template.hp == null ? maxHp : clamp(template.hp, 0, maxHp),
-    atk: base.atk + Math.floor((level - 1) * 1.5) + bonus.atk,
+    atk: baseAtk + bonus.atk,
     def: base.def + Math.floor((level - 1) * 0.8) + bonus.def,
     baseDex,
     baseLuc,
