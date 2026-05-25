@@ -685,6 +685,8 @@ const WORLD_SITUATIONS = {
   lightlessCatacomb: [["灯なき地下墓地へ向かった灯火係が、空のランタンだけを残して戻らなかった。", "墓地の名簿には、まだ生きている者の名前が混じっている。"]],
 };
 
+// Optional monster fields:
+// special: "selfDestruct"
 const MONSTERS = {
   slime: { id: "slime", name: "スライム", hp: 18, atk: 5, xp: 8, gold: 7, drops: ["oldCharm"] },
   goblin: { id: "goblin", name: "小鬼", hp: 24, atk: 7, xp: 11, gold: 10 },
