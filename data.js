@@ -165,7 +165,26 @@ const DROP_RARITY_WEIGHTS = {
 // Optional equipment fields:
 // options: []
 const EQUIPMENT_DROPS = [
-  { id: "chippedSword", name: "欠けた剣", slot: "weapon", rarity: "common", atk: 1, sellGold: 10 },
+  {
+    id: "chippedSword",
+    name: "欠けた剣",
+    slot: "weapon",
+    rarity: "common",
+    atk: 1,
+    sellGold: 10,
+    // Example future option payload:
+    // chippedSword+3 -> 攻撃Lv4 / 盲目Lv2
+    options: [
+      {
+        id: "attackUp",
+        level: 4,
+      },
+      {
+        id: "blindStrike",
+        level: 2,
+      },
+    ],
+  },
   { id: "oldCharm", name: "古い護符", slot: "accessory", rarity: "uncommon", luc: 1, sellGold: 12 },
   { id: "crackedRing", name: "ひび割れた指輪", slot: "accessory", rarity: "uncommon", dex: 1, sellGold: 9 },
   { id: "silverBuckle", name: "銀留めの帯具", slot: "accessory", rarity: "rare", def: 1, luc: 1, sellGold: 28 },
