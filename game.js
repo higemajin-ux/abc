@@ -9,7 +9,9 @@ let storageFilterMode = "all";
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 let storageBulkSellMode = false;
+let storageFusionMode = false;
 const selectedStorageGroups = new Set();
+let selectedStorageFusionGroupId = null;
 const openDetailPartyIds = new Set();
 const SHORTCUT_REDUCTION_RATE = 0.1;
 const MIN_MISSION_DURATION_MS = 5000;
@@ -96,7 +98,7 @@ function storageItemFromEquipmentId(itemId) {
 
 function hasItemInstanceData(item) {
   if (!item || typeof item !== "object") return false;
-  return Array.isArray(item.options) && item.options.length > 0;
+  return (Array.isArray(item.options) && item.options.length > 0) || Number(item.plus) > 0 || Number(item.enhance) > 0;
 }
 
 function equipmentStatLine(item) {
@@ -106,6 +108,12 @@ function equipmentStatLine(item) {
     .filter((key) => item[key])
     .map((key) => `${labels[key]}${item[key] > 0 ? "+" : ""}${item[key]}`);
   return parts.length ? parts.join(" / ") : "性能なし";
+}
+
+function equipmentDisplayName(item) {
+  const name = item?.name || "名称不明の装備";
+  const plus = Math.max(0, Number(item?.plus) || 0);
+  return plus > 0 ? `${name}+${plus}` : name;
 }
 
 function equipmentStorageLine(item) {
@@ -1326,7 +1334,7 @@ function equipmentCandidateList(member, slot) {
 
   const currentChoice = hasItem
     ? `<div class="equip-choice-current ${rarityClassName(equippedItem.rarity)}" aria-disabled="true">
-        <span class="equip-choice-head"><strong>現在：${equippedItem.name}</strong><span>${normalizeRarity(equippedItem.rarity)}</span></span>
+        <span class="equip-choice-head"><strong>現在：${equipmentDisplayName(equippedItem)}</strong><span>${normalizeRarity(equippedItem.rarity)}</span></span>
         <span class="equip-choice-meta">${equipmentStatLine(equippedItem)}</span>
         ${equipmentOptionsStorageHtml(equippedItem)}
       </div>`
@@ -1347,7 +1355,7 @@ function equipmentCandidateList(member, slot) {
     .map(({ item, index }) => {
       const rarity = normalizeRarity(item.rarity);
       return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
-        <span class="equip-choice-head"><strong>${item.name}</strong><span>${rarity}</span></span>
+        <span class="equip-choice-head"><strong>${equipmentDisplayName(item)}</strong><span>${rarity}</span></span>
         <span class="equip-choice-meta">${equipmentStorageLine(item)}</span>
         ${equipmentOptionsStorageHtml(item)}
       </button>`;
@@ -1359,7 +1367,7 @@ function equipmentSlotHtml(member, slot) {
   const equipment = ensureCharacterEquipment(member);
   const item = storageItemFromEquipmentId(equipment[slot]);
   const rarity = normalizeRarity(item?.rarity);
-  const name = item ? formatEquipmentLine(item) : "なし";
+  const name = item ? formatEquipmentLine({ ...item, name: equipmentDisplayName(item) }) : "なし";
   return `<div class="member-equipment-slot">
     <button type="button" class="equip-slot-btn" data-member-id="${member.id}" data-slot="${slot}">
       <span>${equipmentSlotLabel(slot)}</span>
@@ -1652,6 +1660,9 @@ function renderStatsSection() {
 function storageGroupKey(item, fallback) {
   if (typeof fallback === "string" && fallback.startsWith("equipped-")) return fallback;
   if (item?.options?.length) return `optioned-${fallback}`;
+  if (Number(item?.plus) > 0 || Number(item?.enhance) > 0) {
+    return `${item?.id || "item"}:plus-${Number(item?.plus) || 0}:enhance-${Number(item?.enhance) || 0}`;
+  }
   if (item?.locked) return `locked-${fallback}`;
   return item?.id || `item-${fallback}`;
 }
@@ -1758,6 +1769,64 @@ function cancelStorageBulkSellMode() {
   selectedStorageGroups.clear();
 }
 
+function isStorageFusionEntrySelectable(entry) {
+  const item = entry?.item;
+  return (
+    typeof entry?.index === "number" &&
+    !entry?.locked &&
+    !entry?.equippedBy &&
+    !(Array.isArray(item?.options) && item.options.length > 0) &&
+    !Number(item?.plus) &&
+    !Number(item?.enhance) &&
+    normalizeRarity(item?.rarity) !== "artifact"
+  );
+}
+
+function storageFusionSelectableCount(group) {
+  return (group?.entries || []).filter(isStorageFusionEntrySelectable).length;
+}
+
+function isStorageFusionGroupSelectable(group) {
+  return storageFusionSelectableCount(group) >= 2;
+}
+
+function cancelStorageFusionMode() {
+  storageFusionMode = false;
+  selectedStorageFusionGroupId = null;
+}
+
+function fuseSelectedStorageGroup(visibleGroups) {
+  const group = visibleGroups.find((entry) => storageGroupSelectionId(entry) === selectedStorageFusionGroupId);
+  if (!group || !isStorageFusionGroupSelectable(group)) return;
+
+  const indices = group.entries
+    .filter(isStorageFusionEntrySelectable)
+    .map((entry) => entry.index)
+    .filter((index) => typeof index === "number")
+    .slice(0, 2)
+    .sort((a, b) => b - a);
+  if (indices.length < 2) return;
+
+  const baseItem = storageItemFromEquipment(state.storage[indices[0]]);
+  if (!baseItem) return;
+
+  indices.forEach((index) => {
+    state.storage.splice(index, 1);
+  });
+  state.storage.push(
+    storageItemFromEquipment({
+      ...baseItem,
+      plus: 1,
+      locked: false,
+      options: undefined,
+    })
+  );
+  cancelStorageFusionMode();
+  storageRenderCount = -1;
+  saveGame();
+  renderAll();
+}
+
 function sellSelectedStorageGroups(visibleGroups) {
   const selectedEntries = visibleGroups
     .filter((group) => selectedStorageGroups.has(storageGroupSelectionId(group)))
@@ -1810,7 +1879,7 @@ function renderStorageLegacy() {
       ${groups
         .map(({ item, index, count, locked }) => {
           const rarity = normalizeRarity(item?.rarity);
-          const name = item?.name || "名称不明の装備";
+          const name = equipmentDisplayName(item);
           return `<li>
             <div class="storage-info">
               <div class="storage-head">
@@ -1871,6 +1940,7 @@ function storageSortOptionsHtml() {
 
 function storageBulkSellHtml(visibleGroups) {
   const count = selectedStorageSellCount(visibleGroups);
+  if (storageFusionMode) return "";
   if (!storageBulkSellMode) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell-toggle>選択売却</button>';
   }
@@ -1880,8 +1950,20 @@ function storageBulkSellHtml(visibleGroups) {
   </div>`;
 }
 
+function storageFusionHtml(visibleGroups) {
+  if (storageBulkSellMode) return "";
+  const selectedGroup = visibleGroups.find((group) => storageGroupSelectionId(group) === selectedStorageFusionGroupId);
+  if (!storageFusionMode) {
+    return '<button type="button" class="storage-bulk-sell-btn" data-storage-fusion-toggle>装備合成</button>';
+  }
+  return `<div class="storage-bulk-sell-actions">
+    <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup) ? "" : "disabled"}>合成</button>
+    <button type="button" class="storage-bulk-cancel-btn" data-storage-fusion-cancel>キャンセル</button>
+  </div>`;
+}
+
 function storageHeaderHtml(items, visibleGroups = []) {
-  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}${storageBulkSellHtml(visibleGroups)}</div>`;
+  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleGroups)}</div>`;
 }
 
 function storageGroups(entries) {
@@ -1906,7 +1988,7 @@ function storageGroups(entries) {
 function storageGroupHtml(group) {
   const { item, count, entries } = group;
   const rarity = normalizeRarity(item?.rarity);
-  const name = item?.name || "名称不明の装備";
+  const name = equipmentDisplayName(item);
   const index = entries[0]?.index;
   const locked = !!entries[0]?.locked;
   const equippedEntry = entries.find((entry) => entry.equippedBy);
@@ -1916,9 +1998,15 @@ function storageGroupHtml(group) {
   const selectionId = storageGroupSelectionId(group);
   const selectable = selectableEntries.length > 0;
   const checked = selectable && selectedStorageGroups.has(selectionId);
+  const fusionSelectable = isStorageFusionGroupSelectable(group);
+  const fusionChecked = fusionSelectable && selectedStorageFusionGroupId === selectionId;
   const checkboxHtml = storageBulkSellMode
     ? `<label class="storage-select">
       <input type="checkbox" class="storage-select-checkbox" data-storage-select="${selectionId}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
+    </label>`
+    : storageFusionMode
+      ? `<label class="storage-select">
+      <input type="checkbox" class="storage-select-checkbox" data-storage-fusion-select="${selectionId}" ${fusionChecked ? "checked" : ""} ${fusionSelectable ? "" : "disabled"}>
     </label>`
     : "";
   return `<li>
@@ -1974,6 +2062,14 @@ function bindStorageEvents(root) {
   });
   root.querySelectorAll(".storage-select-checkbox").forEach((input) => {
     input.addEventListener("change", () => {
+      if (storageFusionMode) {
+        const selectionId = input.dataset.storageFusionSelect;
+        if (!selectionId) return;
+        selectedStorageFusionGroupId = input.checked ? selectionId : null;
+        storageRenderCount = -1;
+        renderStorage();
+        return;
+      }
       const selectionId = input.dataset.storageSelect;
       if (!selectionId) return;
       if (input.checked) selectedStorageGroups.add(selectionId);
@@ -1984,6 +2080,7 @@ function bindStorageEvents(root) {
   });
   root.querySelector("[data-storage-bulk-sell-toggle]")?.addEventListener("click", () => {
     storageBulkSellMode = true;
+    cancelStorageFusionMode();
     selectedStorageGroups.clear();
     storageRenderCount = -1;
     renderStorage();
@@ -1994,6 +2091,22 @@ function bindStorageEvents(root) {
   });
   root.querySelector("[data-storage-bulk-cancel]")?.addEventListener("click", () => {
     cancelStorageBulkSellMode();
+    storageRenderCount = -1;
+    renderStorage();
+  });
+  root.querySelector("[data-storage-fusion-toggle]")?.addEventListener("click", () => {
+    storageFusionMode = true;
+    cancelStorageBulkSellMode();
+    selectedStorageFusionGroupId = null;
+    storageRenderCount = -1;
+    renderStorage();
+  });
+  root.querySelector("[data-storage-fusion-run]")?.addEventListener("click", () => {
+    const visibleGroups = storageGroups(filteredStorageEntries(state.storage || []));
+    fuseSelectedStorageGroup(visibleGroups);
+  });
+  root.querySelector("[data-storage-fusion-cancel]")?.addEventListener("click", () => {
+    cancelStorageFusionMode();
     storageRenderCount = -1;
     renderStorage();
   });
@@ -2024,7 +2137,7 @@ function renderStorage() {
   const visibleGroups = storageGroups(visibleEntries);
   syncSelectedStorageGroups(visibleGroups);
   const selectedKey = [...selectedStorageGroups].sort().join(",");
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${selectedKey}`;
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionGroupId || ""}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
