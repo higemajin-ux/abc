@@ -688,6 +688,23 @@ function applyEnemyBurn(enemy, events) {
 // 敵専用ではない
 // 味方にも使用中
 // 名称変更禁止
+function tryApplyEquipmentStrikeOptions(actor, enemy, events) {
+  if (!actor || !enemy || enemy.hp <= 0) return;
+  const rates = typeof getEquipmentStatusStrikeRates === "function"
+    ? getEquipmentStatusStrikeRates(actor)
+    : { blind: 0, poison: 0 };
+  if (rates.blind > 0 && Math.random() < rates.blind) {
+    if (applyEnemyBlind(enemy)) {
+      pushHp(events, enemy);
+      return;
+    }
+  }
+  if (rates.poison > 0 && Math.random() < rates.poison) {
+    applyEnemyPoison(enemy, events);
+    pushHp(events, enemy);
+  }
+}
+
 function tickEnemyDots(enemy, events, kind = "enemy-action") {
   if (enemy.hp <= 0) return;
 
@@ -978,10 +995,14 @@ function performMemberAction(actor, party, enemy, events) {
   if (actor.hp <= 0 || enemy.hp <= 0) return;
   if (actor.actionConsumed) return;
   if (shouldSkipParalyzedAction(actor, events)) return;
+  const hpBeforeAction = enemy.hp;
   if (actor.job === "priest") performPriestAction(actor, party, enemy, events);
   else if (actor.job === "mage") performMageAction(actor, enemy, events);
   else if (actor.job === "scout") performScoutAction(actor, party, enemy, events);
   else performWarriorAction(actor, party, enemy, events);
+  if (enemy.hp > 0 && enemy.hp < hpBeforeAction) {
+    tryApplyEquipmentStrikeOptions(actor, enemy, events);
+  }
 }
 
 function shouldCoverTarget(target) {
@@ -1035,6 +1056,7 @@ function maybeCounterAttack(actor, enemy, events) {
   }
   events.push({ kind: "guard", text: `${actor.name}の反撃！` });
   events.push({ kind: "guard", text: `${damageResultText(enemy, damage, hit.critical)}。` });
+  tryApplyEquipmentStrikeOptions(actor, enemy, events);
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
