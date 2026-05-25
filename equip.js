@@ -1,5 +1,35 @@
 "use strict";
 
+function cloneEquippedItemOptions(options) {
+  return Array.isArray(options) ? options.map((option) => ({ ...option })) : undefined;
+}
+
+function cloneEquippedItem(item) {
+  if (!item || typeof item !== "object") return item;
+  return {
+    ...item,
+    ...(item.options ? { options: cloneEquippedItemOptions(item.options) } : {}),
+  };
+}
+
+function equipmentEntryId(entry) {
+  if (!entry) return null;
+  return typeof entry === "string" ? entry : entry.id || null;
+}
+
+function resolveEquippedItem(entry) {
+  const itemId = equipmentEntryId(entry);
+  if (!itemId) return null;
+  const base = EQUIPMENT_ITEMS[itemId] || EQUIPMENT_DROPS.find((drop) => drop.id === itemId);
+  if (!base && typeof entry !== "object") return null;
+  const source = typeof entry === "object" ? entry : base;
+  return {
+    ...(base || {}),
+    ...(source || {}),
+    ...(source?.options ? { options: cloneEquippedItemOptions(source.options) } : base?.options ? { options: cloneEquippedItemOptions(base.options) } : {}),
+  };
+}
+
 function ensureCharacterEquipment(character) {
   const defaults = DEFAULT_EQUIPMENT_BY_MEMBER[character.id] || DEFAULT_EQUIPMENT_BY_JOB[character.job] || {};
   if (!character.equipment) character.equipment = {};
@@ -8,7 +38,8 @@ function ensureCharacterEquipment(character) {
     if (current == null && Object.prototype.hasOwnProperty.call(character.equipment, slot)) {
       character.equipment[slot] = null;
     } else {
-      character.equipment[slot] = EQUIPMENT_ITEMS[current] ? current : defaults[slot] || null;
+      const resolved = resolveEquippedItem(current);
+      character.equipment[slot] = resolved ? (typeof current === "string" ? resolved.id : cloneEquippedItem(resolved)) : defaults[slot] || null;
     }
   }
   return character.equipment;
@@ -63,7 +94,7 @@ function emptyEquipmentBonus() {
 
 function equipmentIds(character) {
   const equipment = ensureCharacterEquipment(character || {});
-  return EQUIPMENT_SLOTS.map(({ key }) => equipment[key]).filter(Boolean);
+  return EQUIPMENT_SLOTS.map(({ key }) => equipmentEntryId(equipment[key])).filter(Boolean);
 }
 
 function getActiveSetBonuses(character) {
@@ -88,8 +119,8 @@ function getEquipmentBonus(character) {
   if (!character) return emptyEquipmentBonus();
   const equipment = ensureCharacterEquipment(character);
   const bonus = Object.values(equipment).reduce(
-    (bonus, itemId) => {
-      const item = EQUIPMENT_ITEMS[itemId];
+    (bonus, entry) => {
+      const item = resolveEquippedItem(entry);
       if (!item) return bonus;
       bonus.maxHp += item.maxHp || 0;
       bonus.atk += item.atk || 0;
