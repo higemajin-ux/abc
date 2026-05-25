@@ -1256,15 +1256,28 @@ function shouldAutoSellDrop(item) {
   const rarity = normalizeRarity(item?.rarity);
   const settings = typeof ensureAutoSellSettings === "function"
     ? ensureAutoSellSettings()
-    : { common: true, uncommon: false };
+    : { common: false, uncommon: false };
   const autoSold = rarity === "common" || rarity === "uncommon" ? !!settings[rarity] : false;
   if (item && typeof item === "object") item.autoSold = autoSold;
   return autoSold;
 }
 
+function dropOptionLabels(item) {
+  const options = Array.isArray(item?.options) ? item.options : [];
+  return options
+    .map((option) => {
+      const meta = OPTION_MASTER?.[option?.id];
+      if (!meta?.name) return "";
+      const level = Number(option?.level) || 0;
+      return `\u3010${meta.name}${level > 0 ? `Lv${level}` : ""}\u3011`;
+    })
+    .filter(Boolean)
+    .join("");
+}
+
 function dropNameHtml(item) {
   if (!item?.name) return "";
-  return `<span class="${rarityClassName(item.rarity)}">${item.name}</span>`;
+  return `<span class="${rarityClassName(item.rarity)}">${item.name}</span>${dropOptionLabels(item)}`;
 }
 
 function performEnemyAction(enemy, party, events, speechState, round = 1) {
