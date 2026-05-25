@@ -90,6 +90,19 @@ function equipmentStorageLine(item) {
   return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
 }
 
+function equipmentOptionsStorageHtml(item) {
+  const options = Array.isArray(item?.options) ? item.options : [];
+  const lines = options
+    .map((option) => {
+      const meta = OPTION_MASTER?.[option?.id];
+      if (!meta?.name) return "";
+      const level = Number(option?.level) || 0;
+      return level > 0 ? `${meta.name}Lv${level}` : meta.name;
+    })
+    .filter(Boolean);
+  return lines.length ? `<div class="storage-effect">${lines.join("<br>")}</div>` : "";
+}
+
 function defaultAutoSellSettings() {
   return { common: true, uncommon: false };
 }
@@ -1660,6 +1673,7 @@ function renderStorageLegacy() {
                 ${locked ? '<span class="storage-lock-label">★ 保護中</span>' : ""}
               </div>
               <div class="storage-effect">${equipmentStorageLine(item)}</div>
+              ${equipmentOptionsStorageHtml(item)}
             </div>
             <div class="storage-actions">
               <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
@@ -1749,6 +1763,7 @@ function storageGroupHtml(group) {
         ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
       </div>
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
+      ${equipmentOptionsStorageHtml(item)}
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
