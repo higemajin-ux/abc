@@ -88,6 +88,34 @@ const JOB_STATS = {
   scout: { maxHp: 30, atk: 9, def: 2, dex: 11, luc: 9 },
 };
 
+const OPTION_MASTER = {
+  attackUp: {
+    id: "attackUp",
+    name: "攻撃",
+    maxLevel: 10,
+  },
+  attackPercent: {
+    id: "attackPercent",
+    name: "攻撃%",
+    maxLevel: 10,
+  },
+  hpUp: {
+    id: "hpUp",
+    name: "HP",
+    maxLevel: 10,
+  },
+  blindStrike: {
+    id: "blindStrike",
+    name: "盲目",
+  },
+  poisonStrike: {
+    id: "poisonStrike",
+    name: "毒",
+  },
+};
+
+// Optional equipment fields:
+// options: []
 const EQUIPMENT_ITEMS = {
   oldSword: { id: "oldSword", name: "古びた剣", slot: "weapon", atk: 2 },
   tinStaff: { id: "tinStaff", name: "錫杖", slot: "weapon", atk: 1, luc: 1 },
@@ -134,6 +162,8 @@ const DROP_RARITY_WEIGHTS = {
   boss: { common: 0, uncommon: 50, rare: 35, epic: 13, legendary: 2, artifact: 0.25 },
 };
 
+// Optional equipment fields:
+// options: []
 const EQUIPMENT_DROPS = [
   { id: "chippedSword", name: "欠けた剣", slot: "weapon", rarity: "common", atk: 1, sellGold: 10 },
   { id: "oldCharm", name: "古い護符", slot: "accessory", rarity: "uncommon", luc: 1, sellGold: 12 },
