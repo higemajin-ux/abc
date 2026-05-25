@@ -405,6 +405,12 @@ h1 {
   text-align: right;
 }
 
+.member-stat-detail {
+  color: var(--muted-on-dark);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .member-skills {
   display: grid;
   gap: 5px;
