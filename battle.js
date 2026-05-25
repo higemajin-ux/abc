@@ -1204,13 +1204,24 @@ function pickDropFromPool(pool, rarity) {
 }
 
 function buildDropOption() {
-  const optionIds = ["attackUp", "hpUp", "blindStrike", "poisonStrike"]
-    .filter((id) => OPTION_MASTER?.[id]);
-  if (!optionIds.length || Math.random() >= 0.1) return [];
-  return [{
-    id: pick(optionIds),
-    level: roll(1, 3),
-  }];
+  const optionIds = Object.keys(OPTION_MASTER || {});
+  if (!optionIds.length) return [];
+
+  const optionCount = pickWeightedKey({ 0: 40, 1: 30, 2: 20, 3: 10 });
+  const count = Math.min(Number(optionCount) || 0, optionIds.length);
+  if (count <= 0) return [];
+
+  const pool = [...optionIds];
+  const options = [];
+  for (let i = 0; i < count; i += 1) {
+    const index = roll(0, pool.length - 1);
+    const [id] = pool.splice(index, 1);
+    options.push({
+      id,
+      level: roll(1, 3),
+    });
+  }
+  return options;
 }
 
 function rollEquipmentDrop(party, monster) {
