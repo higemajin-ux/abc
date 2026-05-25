@@ -17,7 +17,7 @@ let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
   areaClears: {},
   storage: [],
-  autoSell: { common: true, uncommon: false },
+  autoSell: { common: false, uncommon: false },
   records: defaultRecords(),
   developerMode: false,
 };
@@ -119,7 +119,14 @@ function equipmentOptionsStorageHtml(item) {
 }
 
 function defaultAutoSellSettings() {
-  return { common: true, uncommon: false };
+  return { common: false, uncommon: false };
+}
+
+function formatMissionDurationLabel(durationMs) {
+  const seconds = Math.max(0, Number(durationMs) || 0) / 1000;
+  const rounded = Math.round(seconds * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text}秒`;
 }
 
 function ensureAutoSellSettings(target = state) {
@@ -1374,7 +1381,7 @@ function areaOptions(selected) {
   return AREA_ORDER.map((id) => {
     const a = AREAS[id];
     const unlocked = isAreaUnlocked(id);
-    const label = unlocked ? `${a.name}（${a.durationMs / 1000}秒）` : `${a.name}（${getUnlockHint(id)}）`;
+    const label = unlocked ? `${a.name}（${formatMissionDurationLabel(missionDurationMs(a))}）` : `${a.name}（${getUnlockHint(id)}）`;
     return `<option value="${id}" ${id === selected ? "selected" : ""} ${unlocked ? "" : "disabled"}>${label}</option>`;
   }).join("");
 }
