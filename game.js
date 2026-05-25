@@ -1417,6 +1417,7 @@ function memberDetails(party) {
           <div class="member-stat-row"><span>DEX</span><strong>${memberStatWithBreakdown(m, "dex")}</strong></div>
           <div class="member-stat-row"><span>LUC</span><strong>${memberStatWithBreakdown(m, "luc")}</strong></div>
         </div>
+        <div class="member-stat-detail">※（+）は装備とオプションの合計補正です。</div>
         ${memberSkillListHtml(m)}
         <div class="member-equipment">${EQUIPMENT_SLOTS
           .map(({ key }) => equipmentSlotHtml(m, key))
