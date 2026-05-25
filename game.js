@@ -114,6 +114,7 @@ function equipmentStorageLine(item) {
 function formatEquipmentOptionDetail(option, meta, level) {
   if (typeof meta?.format === "function") return meta.format(level);
   if (option?.id === "attackUp") return `ATK+${level * 2}`;
+  if (option?.id === "attackPercent") return `${level * 5}%`;
   if (option?.id === "hpUp") return `HP+${level * 5}`;
   if (option?.id === "blindStrike") return `${level * 5}%`;
   if (option?.id === "poisonStrike") return `${level * 5}%`;
