@@ -1281,9 +1281,9 @@ function equipmentCandidateList(member, slot) {
     .filter(({ item }) => item?.slot === kind);
 
   const currentChoice = hasItem
-    ? `<div class="equip-choice-current ${rarityClassName(equippedItem.rarity)}" aria-disabled="true">
-        <span class="equip-choice-head"><strong>現在：${equippedItem.name}</strong><span>${normalizeRarity(equippedItem.rarity)}</span></span>
-        <span class="equip-choice-meta">${equipmentStatLine(equippedItem)}</span>
+    ? `<div class="equip-choice-current">
+        <div><strong>現在：</strong><span class="${rarityClassName(equippedItem.rarity)}">${equippedItem.name}</span></div>
+        <div>${equipmentStatLine(equippedItem)}</div>
         ${equipmentOptionsStorageHtml(equippedItem)}
       </div>`
     : "";
