@@ -1260,16 +1260,15 @@ function memberEquipmentBonusValue(member, key) {
 }
 
 function memberStatBreakdownText(total, bonus) {
-  const base = (Number(total) || 0) - (Number(bonus) || 0);
-  const sign = bonus >= 0 ? "＋" : "−";
-  return `${base}${sign}装備${Math.abs(bonus)}`;
+  const sign = bonus >= 0 ? "+" : "-";
+  return `${sign}${Math.abs(Number(bonus) || 0)}`;
 }
 
 function memberStatWithBreakdown(member, key) {
   const total = Number(member?.[key]);
   if (!Number.isFinite(total)) return "-";
   const bonus = memberEquipmentBonusValue(member, key);
-  return `${total}（基礎${memberStatBreakdownText(total, bonus)}）`;
+  return `${total} <small class="member-stat-detail">(${memberStatBreakdownText(total, bonus)})</small>`;
 }
 
 function memberHpWithBreakdown(member) {
@@ -1277,7 +1276,7 @@ function memberHpWithBreakdown(member) {
   const maxHp = Number(member?.maxHp);
   if (!Number.isFinite(hp) || !Number.isFinite(maxHp)) return "-";
   const bonus = memberEquipmentBonusValue(member, "maxHp");
-  return `${hp} / ${maxHp}（基礎${memberStatBreakdownText(maxHp, bonus)}）`;
+  return `${hp} / ${maxHp} <small class="member-stat-detail">(${memberStatBreakdownText(maxHp, bonus)})</small>`;
 }
 
 function memberFormation(member) {
