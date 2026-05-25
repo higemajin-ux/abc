@@ -8,6 +8,7 @@ let storageSortMode = "new";
 let storageFilterMode = "all";
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
+let storageBulkSellMode = false;
 const selectedStorageGroups = new Set();
 const openDetailPartyIds = new Set();
 const SHORTCUT_REDUCTION_RATE = 0.1;
@@ -1752,6 +1753,11 @@ function syncSelectedStorageGroups(visibleGroups) {
   });
 }
 
+function cancelStorageBulkSellMode() {
+  storageBulkSellMode = false;
+  selectedStorageGroups.clear();
+}
+
 function sellSelectedStorageGroups(visibleGroups) {
   const selectedEntries = visibleGroups
     .filter((group) => selectedStorageGroups.has(storageGroupSelectionId(group)))
@@ -1766,7 +1772,7 @@ function sellSelectedStorageGroups(visibleGroups) {
   indices.forEach((index) => {
     sellStorageItemByIndex(index, { deferRender: true });
   });
-  selectedStorageGroups.clear();
+  cancelStorageBulkSellMode();
   storageRenderCount = -1;
   saveGame();
   renderAll();
@@ -1865,7 +1871,13 @@ function storageSortOptionsHtml() {
 
 function storageBulkSellHtml(visibleGroups) {
   const count = selectedStorageSellCount(visibleGroups);
-  return `<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell ${count ? "" : "disabled"}>選択売却${count ? ` (${count})` : ""}</button>`;
+  if (!storageBulkSellMode) {
+    return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell-toggle>選択売却</button>';
+  }
+  return `<div class="storage-bulk-sell-actions">
+    <button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell ${count ? "" : "disabled"}>選択した装備を売却${count ? ` (${count})` : ""}</button>
+    <button type="button" class="storage-bulk-cancel-btn" data-storage-bulk-cancel>キャンセル</button>
+  </div>`;
 }
 
 function storageHeaderHtml(items, visibleGroups = []) {
@@ -1905,7 +1917,7 @@ function storageGroupHtml(group) {
   const selectable = selectableEntries.length > 0;
   const checked = selectable && selectedStorageGroups.has(selectionId);
   return `<li>
-    <label class="storage-select">
+    <label class="storage-select" ${storageBulkSellMode ? "" : "hidden"}>
       <input type="checkbox" class="storage-select-checkbox" data-storage-select="${selectionId}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
     </label>
     <div class="storage-info">
@@ -1967,9 +1979,20 @@ function bindStorageEvents(root) {
       renderStorage();
     });
   });
+  root.querySelector("[data-storage-bulk-sell-toggle]")?.addEventListener("click", () => {
+    storageBulkSellMode = true;
+    selectedStorageGroups.clear();
+    storageRenderCount = -1;
+    renderStorage();
+  });
   root.querySelector("[data-storage-bulk-sell]")?.addEventListener("click", () => {
     const visibleGroups = storageGroups(filteredStorageEntries(state.storage || []));
     sellSelectedStorageGroups(visibleGroups);
+  });
+  root.querySelector("[data-storage-bulk-cancel]")?.addEventListener("click", () => {
+    cancelStorageBulkSellMode();
+    storageRenderCount = -1;
+    renderStorage();
   });
   root.querySelectorAll(".storage-sell-btn").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1998,7 +2021,7 @@ function renderStorage() {
   const visibleGroups = storageGroups(visibleEntries);
   syncSelectedStorageGroups(visibleGroups);
   const selectedKey = [...selectedStorageGroups].sort().join(",");
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${selectedKey}`;
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${selectedKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
