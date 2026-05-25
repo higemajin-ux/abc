@@ -31,7 +31,7 @@ const JOB_SKILLS = {
   ],
   mage: [
     { id: "firebolt", type: "active", name: "火球", description: "炎で敵を攻撃し、火傷にすることがある" },
-    { id: "lightning", type: "active", name: "雷撃", description: "雷で敵を攻撃し、麻痺にすることがある" },
+    { id: "lightning", type: "active", name: "雷撃", description: "雷で敵を攻撃し、麻痺にすることがある", effect: "paralyze", effectChance: 0.25, effectTurns: 2 },
     { id: "iceLance", type: "active", name: "氷槍", description: "氷で敵を攻撃し、スローにすることがある" },
     { id: "acidMist", type: "active", name: "アシッドミスト", description: "酸の霧で敵を攻撃し、毒や猛毒にすることがある" },
     { id: "magicFocus", type: "active", name: "魔力集中", description: "魔力を高めて威力を上げる" },
