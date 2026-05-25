@@ -111,6 +111,15 @@ function equipmentStorageLine(item) {
   return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
 }
 
+function formatEquipmentOptionDetail(option, meta, level) {
+  if (typeof meta?.format === "function") return meta.format(level);
+  if (option?.id === "attackUp") return `ATK+${level * 2}`;
+  if (option?.id === "hpUp") return `HP+${level * 5}`;
+  if (option?.id === "blindStrike") return `${level * 5}%`;
+  if (option?.id === "poisonStrike") return `${level * 5}%`;
+  return "";
+}
+
 function equipmentOptionsStorageHtml(item) {
   const options = Array.isArray(item?.options) ? item.options : [];
   const lines = options
@@ -118,7 +127,9 @@ function equipmentOptionsStorageHtml(item) {
       const meta = OPTION_MASTER?.[option?.id];
       if (!meta?.name) return "";
       const level = Number(option?.level) || 0;
-      return level > 0 ? `${meta.name}Lv${level}` : meta.name;
+      const detail = level > 0 ? formatEquipmentOptionDetail(option, meta, level) : "";
+      const text = level > 0 ? `${meta.name}Lv${level}` : meta.name;
+      return detail ? `${text}（${detail}）` : text;
     })
     .filter(Boolean);
   return lines.length ? `<div class="storage-effect">${lines.join("<br>")}</div>` : "";
