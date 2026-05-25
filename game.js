@@ -1280,6 +1280,16 @@ function memberHpWithBreakdown(member) {
   return `${hp} / ${maxHp} <small class="member-stat-detail">(${memberStatBreakdownText(maxHp, bonus)})</small>`;
 }
 
+function memberStatusStrikeRateText(member) {
+  const rates = typeof getEquipmentStatusStrikeRates === "function"
+    ? getEquipmentStatusStrikeRates(member)
+    : { poison: 0, blind: 0 };
+  const parts = [];
+  if (rates.poison > 0) parts.push(`毒${Math.round(rates.poison * 100)}%`);
+  if (rates.blind > 0) parts.push(`盲目${Math.round(rates.blind * 100)}%`);
+  return parts.length ? `付与率：${parts.join(" / ")}` : "";
+}
+
 function memberFormation(member) {
   return member.formation || "中衛";
 }
@@ -1418,6 +1428,7 @@ function memberDetails(party) {
           <div class="member-stat-row"><span>DEX</span><strong>${memberStatWithBreakdown(m, "dex")}</strong></div>
           <div class="member-stat-row"><span>LUC</span><strong>${memberStatWithBreakdown(m, "luc")}</strong></div>
         </div>
+        ${memberStatusStrikeRateText(m) ? `<div class="member-stat-detail">${memberStatusStrikeRateText(m)}</div>` : ""}
         <div class="member-stat-detail">※（+）は装備とオプションの合計補正です。</div>
         ${memberSkillListHtml(m)}
         <div class="member-equipment">${EQUIPMENT_SLOTS
