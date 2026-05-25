@@ -73,6 +73,17 @@ function getActiveSetBonuses(character) {
   );
 }
 
+function applyEquipmentOptionBonus(bonus, item) {
+  const options = Array.isArray(item?.options) ? item.options : [];
+  for (const option of options) {
+    const level = Number(option?.level) || 0;
+    if (level <= 0) continue;
+    if (option.id === "attackUp") bonus.atk += level * 2;
+    if (option.id === "hpUp") bonus.maxHp += level * 5;
+  }
+  return bonus;
+}
+
 function getEquipmentBonus(character) {
   if (!character) return emptyEquipmentBonus();
   const equipment = ensureCharacterEquipment(character);
@@ -85,6 +96,7 @@ function getEquipmentBonus(character) {
       bonus.def += item.def || 0;
       bonus.dex += item.dex || 0;
       bonus.luc += item.luc || 0;
+      applyEquipmentOptionBonus(bonus, item);
       return bonus;
     },
     emptyEquipmentBonus()
