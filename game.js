@@ -1255,6 +1255,31 @@ function memberStatValue(value) {
   return value == null ? "-" : value;
 }
 
+function memberEquipmentBonusValue(member, key) {
+  return getEquipmentBonus(member)?.[key] || 0;
+}
+
+function memberStatBreakdownText(total, bonus) {
+  const base = (Number(total) || 0) - (Number(bonus) || 0);
+  const sign = bonus >= 0 ? "＋" : "−";
+  return `${base}${sign}装備${Math.abs(bonus)}`;
+}
+
+function memberStatWithBreakdown(member, key) {
+  const total = Number(member?.[key]);
+  if (!Number.isFinite(total)) return "-";
+  const bonus = memberEquipmentBonusValue(member, key);
+  return `${total}（基礎${memberStatBreakdownText(total, bonus)}）`;
+}
+
+function memberHpWithBreakdown(member) {
+  const hp = Number(member?.hp);
+  const maxHp = Number(member?.maxHp);
+  if (!Number.isFinite(hp) || !Number.isFinite(maxHp)) return "-";
+  const bonus = memberEquipmentBonusValue(member, "maxHp");
+  return `${hp} / ${maxHp}（基礎${memberStatBreakdownText(maxHp, bonus)}）`;
+}
+
 function memberFormation(member) {
   return member.formation || "中衛";
 }
@@ -1387,11 +1412,11 @@ function memberDetails(party) {
           <span class="member-formation">【${memberFormation(m)}】</span>
         </div>
         <div class="member-stat-grid">
-          <div class="member-stat-row"><span>HP</span><strong>${m.hp} / ${m.maxHp}</strong></div>
-          <div class="member-stat-row"><span>ATK</span><strong>${memberStatValue(m.atk)}</strong></div>
-          <div class="member-stat-row"><span>DEF</span><strong>${memberStatValue(m.def)}</strong></div>
-          <div class="member-stat-row"><span>DEX</span><strong>${memberStatValue(m.dex)}</strong></div>
-          <div class="member-stat-row"><span>LUC</span><strong>${memberStatValue(m.luc)}</strong></div>
+          <div class="member-stat-row"><span>HP</span><strong>${memberHpWithBreakdown(m)}</strong></div>
+          <div class="member-stat-row"><span>ATK</span><strong>${memberStatWithBreakdown(m, "atk")}</strong></div>
+          <div class="member-stat-row"><span>DEF</span><strong>${memberStatWithBreakdown(m, "def")}</strong></div>
+          <div class="member-stat-row"><span>DEX</span><strong>${memberStatWithBreakdown(m, "dex")}</strong></div>
+          <div class="member-stat-row"><span>LUC</span><strong>${memberStatWithBreakdown(m, "luc")}</strong></div>
         </div>
         ${memberSkillListHtml(m)}
         <div class="member-equipment">${EQUIPMENT_SLOTS
