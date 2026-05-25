@@ -1,5 +1,28 @@
 "use strict";
 
+const STATUS_EFFECTS = {
+  poison: {
+    turnKey: "poisonTurns",
+    label: "毒",
+  },
+  burn: {
+    turnKey: "burnTurns",
+    label: "火傷",
+  },
+  paralyze: {
+    turnKey: "paralyzeTurns",
+    label: "麻痺",
+  },
+  blind: {
+    turnKey: "blindTurns",
+    label: "盲目",
+  },
+  slow: {
+    turnKey: "slowTurns",
+    label: "鈍化",
+  },
+};
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -47,6 +70,10 @@ function normalizeSkillSettings(member) {
 
 function isSkillEnabled(member, skillId) {
   return normalizeSkillSettings(member)[skillId] !== false;
+}
+
+function getSkillDefinition(member, skillId) {
+  return (JOB_SKILLS?.[member?.job] || []).find((skill) => skill.id === skillId) || null;
 }
 
 function tryMageMagicSense(members, monster, area) {
@@ -208,12 +235,13 @@ function hpClass(unit) {
 
 function statusLabels(unit) {
   const labels = [];
-  if (unit.poisonTurns > 0 && unit.poisonTier !== "venom") labels.push(`毒${unit.poisonTurns}`);
-  if (unit.poisonTurns > 0 && unit.poisonTier === "venom") labels.push(`猛毒${unit.poisonTurns}`);
-  if (unit.burnTurns > 0) labels.push(`火傷${unit.burnTurns}`);
-  if (unit.paralyzeTurns > 0) labels.push(`麻痺${unit.paralyzeTurns}`);
-  if (unit.blindTurns > 0) labels.push(`盲目${unit.blindTurns}`);
-  if (unit.slowTurns > 0) labels.push(`スロー${unit.slowTurns}`);
+  const poisonTurns = unit[STATUS_EFFECTS.poison.turnKey] || 0;
+  if (poisonTurns > 0 && unit.poisonTier !== "venom") labels.push(`${STATUS_EFFECTS.poison.label}${poisonTurns}`);
+  if (poisonTurns > 0 && unit.poisonTier === "venom") labels.push(`猛毒${poisonTurns}`);
+  if (unit[STATUS_EFFECTS.burn.turnKey] > 0) labels.push(`${STATUS_EFFECTS.burn.label}${unit[STATUS_EFFECTS.burn.turnKey]}`);
+  if (unit[STATUS_EFFECTS.paralyze.turnKey] > 0) labels.push(`${STATUS_EFFECTS.paralyze.label}${unit[STATUS_EFFECTS.paralyze.turnKey]}`);
+  if (unit[STATUS_EFFECTS.blind.turnKey] > 0) labels.push(`${STATUS_EFFECTS.blind.label}${unit[STATUS_EFFECTS.blind.turnKey]}`);
+  if (unit[STATUS_EFFECTS.slow.turnKey] > 0) labels.push(`スロー${unit[STATUS_EFFECTS.slow.turnKey]}`);
   return labels;
 }
 
@@ -392,20 +420,20 @@ function clearTempHp(party) {
 
 function hasBadStatus(member) {
   return (
-    member.poisonTurns > 0 ||
+    member[STATUS_EFFECTS.poison.turnKey] > 0 ||
     member.poisonTier === "venom" ||
-    member.paralyzeTurns > 0 ||
-    member.burnTurns > 0 ||
-    member.slowTurns > 0
+    member[STATUS_EFFECTS.paralyze.turnKey] > 0 ||
+    member[STATUS_EFFECTS.burn.turnKey] > 0 ||
+    member[STATUS_EFFECTS.slow.turnKey] > 0
   );
 }
 
 function clearBadStatus(member) {
-  member.poisonTurns = 0;
+  member[STATUS_EFFECTS.poison.turnKey] = 0;
   member.poisonTier = null;
-  member.paralyzeTurns = 0;
-  member.burnTurns = 0;
-  member.slowTurns = 0;
+  member[STATUS_EFFECTS.paralyze.turnKey] = 0;
+  member[STATUS_EFFECTS.burn.turnKey] = 0;
+  member[STATUS_EFFECTS.slow.turnKey] = 0;
 }
 
 function consumeReviveEquipment(member) {
@@ -654,6 +682,10 @@ function applyEnemyBurn(enemy, events) {
   events.push({ kind: "spell", text: `${enemy.name}は火傷を負った。` });
 }
 
+// 注意:
+// 敵専用ではない
+// 味方にも使用中
+// 名称変更禁止
 function tickEnemyDots(enemy, events, kind = "enemy-action") {
   if (enemy.hp <= 0) return;
 
@@ -685,6 +717,7 @@ function tickEnemyDots(enemy, events, kind = "enemy-action") {
 }
 
 function performMageAction(actor, enemy, events) {
+  const lightningSkill = getSkillDefinition(actor, "lightning");
   if (isSkillEnabled(actor, "acidMist") && Math.random() < 0.35) {
     const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
@@ -715,8 +748,13 @@ function performMageAction(actor, enemy, events) {
     const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
-    if (enemy.hp > 0 && actor.name === "ガルド" && !enemy.paralyzeTurns && Math.random() < 0.25) {
-      enemy.paralyzeTurns = 2;
+    if (
+      enemy.hp > 0 &&
+      lightningSkill?.effect === "paralyze" &&
+      !enemy.paralyzeTurns &&
+      Math.random() < (lightningSkill.effectChance || 0)
+    ) {
+      enemy.paralyzeTurns = lightningSkill.effectTurns || 0;
       events.push({ kind: "spell", text: `${enemy.name}の体がしびれた。` });
     }
     pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
