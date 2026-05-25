@@ -111,6 +111,25 @@ function getActiveSetBonuses(character) {
   );
 }
 
+function getEquipmentStatusStrikeRates(character) {
+  if (!character) return { blind: 0, poison: 0 };
+  const equipment = ensureCharacterEquipment(character);
+  return Object.values(equipment).reduce(
+    (rates, entry) => {
+      const item = resolveEquippedItem(entry);
+      if (!item) return rates;
+      for (const option of item.options || []) {
+        const level = Number(option?.level) || 0;
+        if (level <= 0) continue;
+        if (option.id === "blindStrike") rates.blind += level * 0.05;
+        if (option.id === "poisonStrike") rates.poison += level * 0.05;
+      }
+      return rates;
+    },
+    { blind: 0, poison: 0 }
+  );
+}
+
 function applyEquipmentOptionBonus(optionBonus, item) {
   const options = Array.isArray(item?.options) ? item.options : [];
   for (const option of options) {
