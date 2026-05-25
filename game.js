@@ -1572,6 +1572,7 @@ function renderStatsSection() {
 
 function storageGroupKey(item, fallback) {
   if (typeof fallback === "string" && fallback.startsWith("equipped-")) return fallback;
+  if (item?.options?.length) return `optioned-${fallback}`;
   if (item?.locked) return `locked-${fallback}`;
   return item?.id || `item-${fallback}`;
 }
