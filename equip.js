@@ -92,6 +92,13 @@ function emptyEquipmentBonus() {
   return { maxHp: 0, atk: 0, def: 0, dex: 0, luc: 0 };
 }
 
+function characterBaseAtk(character, fallback = 0) {
+  const jobAtk = JOB_STATS?.[character?.job]?.atk;
+  if (!Number.isFinite(jobAtk)) return Number(fallback) || 0;
+  const level = Math.max(1, Number(character?.level) || 1);
+  return jobAtk + Math.floor((level - 1) * 1.5);
+}
+
 function equipmentIds(character) {
   const equipment = ensureCharacterEquipment(character || {});
   return EQUIPMENT_SLOTS.map(({ key }) => equipmentEntryId(equipment[key])).filter(Boolean);
@@ -104,20 +111,22 @@ function getActiveSetBonuses(character) {
   );
 }
 
-function applyEquipmentOptionBonus(bonus, item) {
+function applyEquipmentOptionBonus(optionBonus, item) {
   const options = Array.isArray(item?.options) ? item.options : [];
   for (const option of options) {
     const level = Number(option?.level) || 0;
     if (level <= 0) continue;
-    if (option.id === "attackUp") bonus.atk += level * 2;
-    if (option.id === "hpUp") bonus.maxHp += level * 5;
+    if (option.id === "attackUp") optionBonus.attackUpAtk += level * 2;
+    if (option.id === "attackPercent") optionBonus.attackPercentRate += level * 0.05;
+    if (option.id === "hpUp") optionBonus.maxHp += level * 5;
   }
-  return bonus;
+  return optionBonus;
 }
 
-function getEquipmentBonus(character) {
+function getEquipmentBonus(character, baseAtkOverride = null) {
   if (!character) return emptyEquipmentBonus();
   const equipment = ensureCharacterEquipment(character);
+  const optionBonus = { maxHp: 0, attackUpAtk: 0, attackPercentRate: 0 };
   const bonus = Object.values(equipment).reduce(
     (bonus, entry) => {
       const item = resolveEquippedItem(entry);
@@ -127,7 +136,7 @@ function getEquipmentBonus(character) {
       bonus.def += item.def || 0;
       bonus.dex += item.dex || 0;
       bonus.luc += item.luc || 0;
-      applyEquipmentOptionBonus(bonus, item);
+      applyEquipmentOptionBonus(optionBonus, item);
       return bonus;
     },
     emptyEquipmentBonus()
@@ -140,6 +149,13 @@ function getEquipmentBonus(character) {
     bonus.dex += set.bonus.dex || 0;
     bonus.luc += set.bonus.luc || 0;
   }
+
+  const baseAtk = characterBaseAtk(character, baseAtkOverride);
+  if (optionBonus.attackPercentRate > 0 && baseAtk > 0) {
+    bonus.atk += Math.round(baseAtk * optionBonus.attackPercentRate);
+  }
+  bonus.atk += optionBonus.attackUpAtk;
+  bonus.maxHp += optionBonus.maxHp;
 
   return bonus;
 }
