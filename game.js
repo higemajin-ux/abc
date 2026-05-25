@@ -1285,6 +1285,7 @@ function equipmentCandidateList(member, slot) {
       return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
         <span class="equip-choice-head"><strong>${item.name}</strong><span>${rarity}</span></span>
         <span class="equip-choice-meta">${equipmentStorageLine(item)}</span>
+        ${equipmentOptionsStorageHtml(item)}
       </button>`;
     })
     .join("");
