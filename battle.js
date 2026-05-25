@@ -1237,6 +1237,7 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
   }
   let target = pickEnemyTarget(party);
   if (!target) {
+    tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
     return;
   }
