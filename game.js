@@ -88,7 +88,13 @@ function storageItemFromEquipment(item) {
 
 function storageItemFromEquipmentId(itemId) {
   if (!itemId) return null;
+  if (typeof itemId === "object") return storageItemFromEquipment(itemId);
   return storageItemFromEquipment(EQUIPMENT_ITEMS[itemId] || EQUIPMENT_DROPS.find((drop) => drop.id === itemId));
+}
+
+function hasItemInstanceData(item) {
+  if (!item || typeof item !== "object") return false;
+  return Array.isArray(item.options) && item.options.length > 0;
 }
 
 function equipmentStatLine(item) {
@@ -170,9 +176,9 @@ function recordEquippedEquipment(party, target = state) {
   for (const member of party?.members || []) {
     const equipment = ensureCharacterEquipment(member);
     for (const { key } of EQUIPMENT_SLOTS) {
-      const itemId = equipment?.[key];
-      if (!itemId || !EQUIPMENT_ITEMS[itemId]) continue;
-      recordEquipment(EQUIPMENT_ITEMS[itemId], target);
+      const item = storageItemFromEquipmentId(equipment?.[key]);
+      if (!item?.id) continue;
+      recordEquipment(item, target);
     }
   }
 }
@@ -837,7 +843,7 @@ function equipStorageItem(index, memberId, targetSlot) {
   const equipment = ensureCharacterEquipment(member);
   const previousItem = storageItemFromEquipmentId(equipment[slot]);
   state.storage.splice(index, 1);
-  equipment[slot] = storedItem.id;
+  equipment[slot] = hasItemInstanceData(storedItem) ? storageItemFromEquipment(storedItem) : storedItem.id;
   if (previousItem) state.storage.push(previousItem);
   syncMemberStats(member);
   storageRenderCount = -1;
@@ -1257,7 +1263,7 @@ function isEquipmentSlot(slot) {
 function equipmentCandidateList(member, slot) {
   const kind = equipmentSlotKind(slot);
   const equipment = ensureCharacterEquipment(member);
-  const hasItem = !!EQUIPMENT_ITEMS[equipment[slot]];
+  const hasItem = !!storageItemFromEquipmentId(equipment[slot]);
   const candidates = (state.storage || [])
     .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index }))
     .filter(({ item }) => item?.slot === kind);
@@ -1286,7 +1292,7 @@ function equipmentCandidateList(member, slot) {
 
 function equipmentSlotHtml(member, slot) {
   const equipment = ensureCharacterEquipment(member);
-  const item = EQUIPMENT_ITEMS[equipment[slot]];
+  const item = storageItemFromEquipmentId(equipment[slot]);
   const rarity = normalizeRarity(item?.rarity);
   const name = item ? formatEquipmentLine(item) : "なし";
   return `<div class="member-equipment-slot">
