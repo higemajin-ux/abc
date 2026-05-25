@@ -853,6 +853,32 @@ h1 {
   opacity: 0.45;
 }
 
+.storage-bulk-sell-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.storage-bulk-cancel-btn {
+  flex: 0 0 auto;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-on-dark);
+  cursor: pointer;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.storage-bulk-cancel-btn:hover {
+  border-color: var(--line-bright);
+  color: var(--accent);
+  background: rgba(214, 168, 79, 0.06);
+}
+
 .storage-popover {
   display: flex;
   align-items: center;
