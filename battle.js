@@ -156,6 +156,7 @@ function createEnemy(monster, area, heroLevel) {
     gold: monster.gold + scale * 3,
     rare: !!monster.rare,
     boss: !!monster.boss,
+    special: monster.special || null,
   };
 }
 
@@ -1240,6 +1241,10 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
     return;
+  }
+
+  if (enemy.special === "selfDestruct") {
+    events.push({ kind: "enemy-action", text: "selfDestruct未実装" });
   }
 
   if (enemy.boss && !enemy.heavyAttackReady && round % 3 === 2) {
