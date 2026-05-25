@@ -555,6 +555,20 @@ h1 {
   text-align: left;
 }
 
+.equip-choice-current {
+  display: grid;
+  gap: 3px;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 4px 9px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: default;
+}
+
 .equip-choice-btn:hover {
   border-color: var(--line-bright);
   background: rgba(214, 168, 79, 0.08);
