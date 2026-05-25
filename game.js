@@ -340,9 +340,8 @@ function buildDeliveryBoxHtml(rewards) {
     .filter(Boolean)
     .map((drop) => {
       const item = storageItemFromEquipment(drop) || drop;
-      const name = item?.name || "装備";
       const suffix = wasAutoSoldDrop(drop) ? "（売却）" : "";
-      return `<span class="${rarityClassName(item?.rarity)}">${name}</span>${suffix}`;
+      return `${dropNameHtml(item)}${suffix}`;
     });
   if (!names.length) return "";
   return `今回の冒険で装備を持ち帰った。<br>納品箱：<br>${names.map((name) => `・${name}`).join("<br>")}`;
