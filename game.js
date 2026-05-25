@@ -1274,10 +1274,19 @@ function isEquipmentSlot(slot) {
 function equipmentCandidateList(member, slot) {
   const kind = equipmentSlotKind(slot);
   const equipment = ensureCharacterEquipment(member);
-  const hasItem = !!storageItemFromEquipmentId(equipment[slot]);
+  const equippedItem = storageItemFromEquipmentId(equipment[slot]);
+  const hasItem = !!equippedItem;
   const candidates = (state.storage || [])
     .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index }))
     .filter(({ item }) => item?.slot === kind);
+
+  const currentChoice = hasItem
+    ? `<div class="equip-choice-current ${rarityClassName(equippedItem.rarity)}" aria-disabled="true">
+        <span class="equip-choice-head"><strong>現在：${equippedItem.name}</strong><span>${normalizeRarity(equippedItem.rarity)}</span></span>
+        <span class="equip-choice-meta">${equipmentStatLine(equippedItem)}</span>
+        ${equipmentOptionsStorageHtml(equippedItem)}
+      </div>`
+    : "";
 
   const removeChoice = hasItem
     ? `<button type="button" class="equip-choice-btn unequip-choice-btn" data-unequip="true" data-member-id="${member.id}" data-slot="${slot}">
@@ -1290,7 +1299,7 @@ function equipmentCandidateList(member, slot) {
     return '<p class="equipment-empty">保管庫に候補はありません</p>';
   }
 
-  return removeChoice + candidates
+  return currentChoice + removeChoice + candidates
     .map(({ item, index }) => {
       const rarity = normalizeRarity(item.rarity);
       return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
