@@ -105,9 +105,17 @@ function equipmentStatLine(item) {
   if (!item) return "";
   const labels = { maxHp: "HP", atk: "ATK", def: "DEF", dex: "DEX", luc: "LUC" };
   const parts = ["maxHp", "atk", "def", "dex", "luc"]
-    .filter((key) => item[key])
-    .map((key) => `${labels[key]}${item[key] > 0 ? "+" : ""}${item[key]}`);
+    .map((key) => ({ key, value: equipmentStatValue(item, key) }))
+    .filter(({ value }) => value)
+    .map(({ key, value }) => `${labels[key]}${value > 0 ? "+" : ""}${value}`);
   return parts.length ? parts.join(" / ") : "性能なし";
+}
+
+function equipmentStatValue(item, key) {
+  const baseValue = Number(item?.[key]) || 0;
+  const plus = Math.max(0, Number(item?.plus) || 0);
+  if (!baseValue || plus <= 0) return baseValue;
+  return baseValue + plus;
 }
 
 function equipmentDisplayName(item) {
@@ -1367,7 +1375,7 @@ function equipmentSlotHtml(member, slot) {
   const equipment = ensureCharacterEquipment(member);
   const item = storageItemFromEquipmentId(equipment[slot]);
   const rarity = normalizeRarity(item?.rarity);
-  const name = item ? formatEquipmentLine({ ...item, name: equipmentDisplayName(item) }) : "なし";
+  const name = item ? `${equipmentDisplayName(item)} / ${equipmentStatLine(item)}` : "なし";
   return `<div class="member-equipment-slot">
     <button type="button" class="equip-slot-btn" data-member-id="${member.id}" data-slot="${slot}">
       <span>${equipmentSlotLabel(slot)}</span>
@@ -1660,10 +1668,10 @@ function renderStatsSection() {
 function storageGroupKey(item, fallback) {
   if (typeof fallback === "string" && fallback.startsWith("equipped-")) return fallback;
   if (item?.options?.length) return `optioned-${fallback}`;
+  if (item?.locked) return `locked-${fallback}`;
   if (Number(item?.plus) > 0 || Number(item?.enhance) > 0) {
     return `${item?.id || "item"}:plus-${Number(item?.plus) || 0}:enhance-${Number(item?.enhance) || 0}`;
   }
-  if (item?.locked) return `locked-${fallback}`;
   return item?.id || `item-${fallback}`;
 }
 
@@ -1776,9 +1784,9 @@ function isStorageFusionEntrySelectable(entry) {
     !entry?.locked &&
     !entry?.equippedBy &&
     !(Array.isArray(item?.options) && item.options.length > 0) &&
-    !Number(item?.plus) &&
     !Number(item?.enhance) &&
-    normalizeRarity(item?.rarity) !== "artifact"
+    normalizeRarity(item?.rarity) !== "artifact" &&
+    Math.max(0, Number(item?.plus) || 0) < 10
   );
 }
 
@@ -1816,7 +1824,7 @@ function fuseSelectedStorageGroup(visibleGroups) {
   state.storage.push(
     storageItemFromEquipment({
       ...baseItem,
-      plus: 1,
+      plus: Math.max(0, Number(baseItem.plus) || 0) + 1,
       locked: false,
       options: undefined,
     })
