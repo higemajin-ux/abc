@@ -142,6 +142,13 @@ function applyEquipmentOptionBonus(optionBonus, item) {
   return optionBonus;
 }
 
+function equipmentPlusValue(item, key) {
+  const baseValue = Number(item?.[key]) || 0;
+  const plus = Math.max(0, Number(item?.plus) || 0);
+  if (!baseValue || plus <= 0) return baseValue;
+  return baseValue + plus;
+}
+
 function getEquipmentBonus(character, baseAtkOverride = null) {
   if (!character) return emptyEquipmentBonus();
   const equipment = ensureCharacterEquipment(character);
@@ -150,11 +157,11 @@ function getEquipmentBonus(character, baseAtkOverride = null) {
     (bonus, entry) => {
       const item = resolveEquippedItem(entry);
       if (!item) return bonus;
-      bonus.maxHp += item.maxHp || 0;
-      bonus.atk += item.atk || 0;
-      bonus.def += item.def || 0;
-      bonus.dex += item.dex || 0;
-      bonus.luc += item.luc || 0;
+      bonus.maxHp += equipmentPlusValue(item, "maxHp");
+      bonus.atk += equipmentPlusValue(item, "atk");
+      bonus.def += equipmentPlusValue(item, "def");
+      bonus.dex += equipmentPlusValue(item, "dex");
+      bonus.luc += equipmentPlusValue(item, "luc");
       applyEquipmentOptionBonus(optionBonus, item);
       return bonus;
     },
