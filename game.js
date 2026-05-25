@@ -42,15 +42,28 @@ function defaultStats() {
   return { gold: 0, kills: 0, missionsStarted: 0, missionsCleared: 0 };
 }
 
+function cloneEquipmentOptions(options) {
+  return Array.isArray(options) ? options.map((option) => ({ ...option })) : undefined;
+}
+
+function normalizeEquipmentItem(item, base = {}) {
+  if (!item?.id && !base?.id) return null;
+  const merged = {
+    ...base,
+    ...item,
+    options: cloneEquipmentOptions(item?.options) ?? cloneEquipmentOptions(base?.options),
+  };
+  return {
+    ...merged,
+    rarity: normalizeRarity(merged.rarity || base.rarity),
+    sellGold: merged.sellGold || base.sellGold || 0,
+  };
+}
+
 function registerEquipmentItem(item) {
   if (!item?.id) return null;
   const base = EQUIPMENT_ITEMS[item.id] || EQUIPMENT_DROPS.find((drop) => drop.id === item.id) || {};
-  const normalized = {
-    ...base,
-    ...item,
-    rarity: normalizeRarity(item.rarity || base.rarity),
-    sellGold: item.sellGold || base.sellGold || 0,
-  };
+  const normalized = normalizeEquipmentItem(item, base);
   EQUIPMENT_ITEMS[normalized.id] = normalized;
   return normalized;
 }
@@ -60,10 +73,12 @@ function registerDropEquipmentItems() {
 }
 
 function storageItemFromEquipment(item) {
-  const normalized = registerEquipmentItem(item);
+  const base = EQUIPMENT_ITEMS[item?.id] || EQUIPMENT_DROPS.find((drop) => drop.id === item?.id) || {};
+  const normalized = normalizeEquipmentItem(item, base);
   if (!normalized) return null;
   return {
     ...normalized,
+    ...(normalized.options ? { options: cloneEquipmentOptions(normalized.options) } : {}),
     rarity: normalizeRarity(normalized.rarity),
     sellGold: normalized.sellGold || 0,
     locked: !!item.locked,
