@@ -174,16 +174,6 @@ const EQUIPMENT_DROPS = [
     sellGold: 10,
     // Example future option payload:
     // chippedSword+3 -> 攻撃Lv4 / 盲目Lv2
-    options: [
-      {
-        id: "attackUp",
-        level: 4,
-      },
-      {
-        id: "blindStrike",
-        level: 2,
-      },
-    ],
   },
   { id: "oldCharm", name: "古い護符", slot: "accessory", rarity: "uncommon", luc: 1, sellGold: 12 },
   { id: "crackedRing", name: "ひび割れた指輪", slot: "accessory", rarity: "uncommon", dex: 1, sellGold: 9 },
