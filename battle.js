@@ -1175,11 +1175,27 @@ function pickWeightedKey(weights) {
 
 function resolveDropCandidate(candidate) {
   if (typeof candidate === "string") {
-    return EQUIPMENT_DROPS.find((item) => item.id === candidate) || null;
+    const found = EQUIPMENT_DROPS.find((item) => item.id === candidate);
+    return found
+      ? {
+          ...found,
+          ...(found.options ? { options: found.options.map((option) => ({ ...option })) } : {}),
+        }
+      : null;
   }
   if (!candidate?.id) return candidate || null;
   const base = EQUIPMENT_DROPS.find((item) => item.id === candidate.id);
-  return base ? { ...base, ...candidate } : candidate;
+  if (base) {
+    const merged = { ...base, ...candidate };
+    if (base.options || candidate.options) {
+      merged.options = (candidate.options || base.options || []).map((option) => ({ ...option }));
+    }
+    return merged;
+  }
+  return {
+    ...candidate,
+    ...(candidate.options ? { options: candidate.options.map((option) => ({ ...option })) } : {}),
+  };
 }
 
 function pickDropFromPool(pool, rarity) {
