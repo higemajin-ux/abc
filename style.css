@@ -829,6 +829,30 @@ h1 {
   flex-wrap: wrap;
 }
 
+.storage-bulk-sell-btn {
+  flex: 0 0 auto;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted-on-dark);
+  cursor: pointer;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.storage-bulk-sell-btn:hover {
+  border-color: var(--line-bright);
+  color: var(--accent);
+  background: rgba(214, 168, 79, 0.06);
+}
+
+.storage-bulk-sell-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .storage-popover {
   display: flex;
   align-items: center;
@@ -914,9 +938,30 @@ h1 {
   padding: 8px 10px;
 }
 
+.storage-select {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+.storage-select-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.storage-select-checkbox:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .storage-info {
   display: grid;
   gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .storage-head {
