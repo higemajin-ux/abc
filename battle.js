@@ -1187,6 +1187,16 @@ function pickDropFromPool(pool, rarity) {
   return pick(matching.length ? matching : pool);
 }
 
+function buildDropOption() {
+  const optionIds = ["attackUp", "hpUp", "blindStrike", "poisonStrike"]
+    .filter((id) => OPTION_MASTER?.[id]);
+  if (!optionIds.length || Math.random() >= 0.1) return [];
+  return [{
+    id: pick(optionIds),
+    level: roll(1, 3),
+  }];
+}
+
 function rollEquipmentDrop(party, monster) {
   const kind = dropKindForMonster(monster);
   if (!EQUIPMENT_DROPS?.length || Math.random() >= (DROP_RATES[kind] ?? DROP_RATES.normal)) return null;
@@ -1197,7 +1207,12 @@ function rollEquipmentDrop(party, monster) {
   const item = pickDropFromPool(pool, rarity);
   if (!item) return null;
   const finder = livingScouts(party)[0] || livingMembers(party)[0] || party[0];
-  return { ...item, finderName: finder?.name || "隊員" };
+  const options = buildDropOption();
+  return {
+    ...item,
+    ...(options.length ? { options } : {}),
+    finderName: finder?.name || "隊員",
+  };
 }
 
 const RARITY_NAMES = new Set(["common", "uncommon", "rare", "epic", "legendary", "artifact"]);
