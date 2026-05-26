@@ -10,6 +10,7 @@ let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 let storageBulkSellMode = false;
 let storageFusionMode = false;
+let storageFusionMessage = "";
 const selectedStorageGroups = new Set();
 let selectedStorageFusionGroupId = null;
 const openDetailPartyIds = new Set();
@@ -1849,6 +1850,7 @@ function fuseSelectedStorageGroup(visibleGroups) {
       options: undefined,
     })
   );
+  storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: Math.max(0, Number(baseItem.plus) || 0) + 1 })} を作成した`;
   selectedStorageFusionGroupId = null;
   storageRenderCount = -1;
   saveGame();
@@ -1993,7 +1995,8 @@ function storageFusionHtml(visibleGroups) {
 }
 
 function storageHeaderHtml(items, visibleGroups = []) {
-  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleGroups)}</div>`;
+  const messageHtml = storageFusionMessage ? `<span class="muted">${storageFusionMessage}</span>` : "";
+  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleGroups)}${messageHtml}</div>`;
 }
 
 function storageGroups(entries) {
