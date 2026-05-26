@@ -157,6 +157,7 @@ function formatEquipmentOptionDetail(option, meta, level) {
   if (option?.id === "hpUp") return `HP+${level * 5}`;
   if (option?.id === "hpPercent") return `${level * 5}%`;
   if (option?.id === "criticalRate") return `${level}%`;
+  if (option?.id === "criticalDamage") return `${level * 10}%`;
   if (option?.id === "blindStrike") return `${level * 5}%`;
   if (option?.id === "poisonStrike") return `${level * 5}%`;
   return "";
@@ -189,7 +190,7 @@ function equipmentOptionCandidatesStorageHtml(item, context = {}) {
     })
     .filter(Boolean);
   if (!lines.length) return "";
-  return `<div class="storage-effect">成長候補<br>（1つ選んでください）<br><br>${lines.join("<br>")}</div>`;
+  return `<div class="storage-effect">成長候補<br>1つ選んでください<br><br>${lines.join("<br>")}</div>`;
 }
 
 function equipmentOptionsStorageHtml(item, context = {}) {
