@@ -115,6 +115,7 @@ function createMember(template, level = 1) {
     baseLuc,
     dex: baseDex + bonus.dex,
     luc: baseLuc + bonus.luc,
+    criticalRate: bonus.criticalRate || 0,
     skillSettings: normalizeSkillSettings(template),
   };
 }
@@ -203,8 +204,9 @@ function physicalCriticalChance(attacker, focused = false) {
   const dex = effectiveDex(attacker);
   const luc = attacker.luc || 0;
   const baseChance = (5 + dex * 0.3 + luc * 0.5) / 100;
+  const equipmentBonus = Math.max(0, Number(attacker?.criticalRate) || 0);
   const focusBonus = focused ? 0.25 : 0;
-  return Math.min(0.5, baseChance + focusBonus);
+  return Math.min(0.5, baseChance + equipmentBonus + focusBonus);
 }
 
 function rollPhysicalHit(damage, attacker, focused = false) {
