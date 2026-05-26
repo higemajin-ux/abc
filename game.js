@@ -1930,7 +1930,7 @@ function fuseSelectedStorageGroup(visibleEntries) {
   state.storage[targetIndex] = storageItemFromEquipment({
     ...baseItem,
     plus: nextPlus,
-    locked: false,
+    locked: !!baseItem.locked,
   });
   materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
