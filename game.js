@@ -2109,6 +2109,9 @@ function storageFusionTargetPreviewHtml(entry) {
           <div class="storage-effect">${equipmentStorageLine(item)}</div>
           ${equipmentOptionsStorageHtml(item)}
         </div>
+        <div class="storage-actions">
+          <button type="button" class="storage-fusion-change-btn" data-storage-fusion-target-reset>変更</button>
+        </div>
       </li>
     </ul>
   </div>`;
@@ -2308,6 +2311,12 @@ function bindStorageEvents(root) {
   root.querySelector("[data-storage-fusion-run]")?.addEventListener("click", () => {
     const visibleEntries = filteredStorageEntries(state.storage || []);
     fuseSelectedStorageGroup(visibleEntries);
+  });
+  root.querySelector("[data-storage-fusion-target-reset]")?.addEventListener("click", () => {
+    selectedStorageFusionTargetIndex = null;
+    selectedStorageFusionMaterialGroupIds.clear();
+    storageRenderCount = -1;
+    renderStorage();
   });
   root.querySelector("[data-storage-fusion-cancel]")?.addEventListener("click", () => {
     cancelStorageFusionMode();
