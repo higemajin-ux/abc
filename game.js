@@ -2948,6 +2948,53 @@ function saveGame() {
   }
 }
 
+function exportSaveData() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) {
+    $("save-hint").textContent = "書き出すセーブがありません";
+    return;
+  }
+  try {
+    JSON.parse(raw);
+  } catch {
+    $("save-hint").textContent = "セーブ書き出し失敗";
+    return;
+  }
+  const blob = new Blob([raw], { type: "application/json" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = `dispatch-hero-save-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  $("save-hint").textContent = "セーブを書き出しました";
+}
+
+function isValidSaveData(data) {
+  return !!data && typeof data === "object" && Array.isArray(data.parties);
+}
+
+function importSaveData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ""));
+      if (!isValidSaveData(parsed)) throw new Error("invalid save data");
+      localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
+      window.location.reload();
+    } catch {
+      $("save-hint").textContent = "セーブ読み込み失敗";
+    }
+  });
+  reader.addEventListener("error", () => {
+    $("save-hint").textContent = "セーブ読み込み失敗";
+  });
+  reader.readAsText(file);
+}
+
 function loadGame() {
   try {
     const raw =
@@ -3028,6 +3075,13 @@ function setupQuickNav() {
 
 $("reset-btn").addEventListener("click", resetGame);
 $("developer-btn")?.addEventListener("click", toggleDeveloperMode);
+$("save-export-btn")?.addEventListener("click", exportSaveData);
+$("save-import-btn")?.addEventListener("click", () => $("save-import-input")?.click());
+$("save-import-input")?.addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  importSaveData(file);
+});
 setupQuickNav();
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
