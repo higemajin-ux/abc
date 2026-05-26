@@ -2103,9 +2103,10 @@ function fuseSelectedStorageGroup(visibleEntries) {
   materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
   });
+  const updatedTarget = storageStateEntryByUid(targetUid);
   guildStats.gold -= goldCost;
   storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: nextPlus })} を作成した`;
-  selectedStorageFusionTargetUid = targetUid;
+  selectedStorageFusionTargetUid = storageEntryUid(updatedTarget) || targetUid;
   selectedStorageFusionMaterialUids.clear();
   storageRenderCount = -1;
   saveGame();
