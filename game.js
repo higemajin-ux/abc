@@ -155,6 +155,8 @@ function formatEquipmentOptionDetail(option, meta, level) {
   if (option?.id === "attackUp") return `ATK+${level * 2}`;
   if (option?.id === "attackPercent") return `${level * 5}%`;
   if (option?.id === "hpUp") return `HP+${level * 5}`;
+  if (option?.id === "hpPercent") return `${level * 5}%`;
+  if (option?.id === "criticalRate") return `${level}%`;
   if (option?.id === "blindStrike") return `${level * 5}%`;
   if (option?.id === "poisonStrike") return `${level * 5}%`;
   return "";
@@ -171,18 +173,28 @@ function formatEquipmentOptionCandidate(optionId) {
   return OPTION_MASTER?.[optionId]?.name || String(optionId);
 }
 
-function equipmentOptionCandidatesStorageHtml(item) {
+function canFixEquipmentOption(item) {
+  return (Array.isArray(item?.options) ? item.options.length : 0) < 3;
+}
+
+function equipmentOptionCandidatesStorageHtml(item, context = {}) {
   const optionCandidates = Array.isArray(item?.optionCandidates) ? item.optionCandidates : [];
   if (!optionCandidates.length) return "";
+  const canFix = canFixEquipmentOption(item);
+  const storageIndex = typeof context?.storageIndex === "number" ? context.storageIndex : null;
   const lines = optionCandidates
-    .map((optionId) => formatEquipmentOptionCandidate(optionId))
-    .filter(Boolean)
-    .map((text) => `・${text}`);
+    .map((optionId) => {
+      const text = formatEquipmentOptionCandidate(optionId);
+      if (!text) return "";
+      if (storageIndex == null) return `・${text}`;
+      return `<span class="storage-option-candidate-line">・${text} <button type="button" class="storage-lock-btn" data-storage-option-fix="${storageIndex}" data-option-id="${String(optionId)}" ${canFix ? "" : "disabled"}>固定する</button></span>`;
+    })
+    .filter(Boolean);
   if (!lines.length) return "";
   return `<div class="storage-effect">候補OP<br>（次の強化時に選択可能）<br><br>${lines.join("<br>")}</div>`;
 }
 
-function equipmentOptionsStorageHtml(item) {
+function equipmentOptionsStorageHtml(item, context = {}) {
   const options = Array.isArray(item?.options) ? item.options : [];
   const lines = options
     .map((option) => {
@@ -195,7 +207,7 @@ function equipmentOptionsStorageHtml(item) {
     })
     .filter(Boolean);
   const optionsHtml = lines.length ? `<div class="storage-effect">${lines.join("<br>")}</div>` : "";
-  return `${optionsHtml}${equipmentOptionCandidatesStorageHtml(item)}`;
+  return `${optionsHtml}${equipmentOptionCandidatesStorageHtml(item, context)}`;
 }
 
 function defaultAutoSellSettings() {
@@ -973,6 +985,28 @@ function sellStorageItemByIndex(index, { deferRender = false } = {}) {
   return true;
 }
 
+function fixStorageItemOptionCandidate(index, optionId) {
+  if (!state.storage?.length || typeof index !== "number") return false;
+  const storedItem = storageItemFromEquipment(state.storage[index]);
+  if (!storedItem) return false;
+  const optionCandidates = Array.isArray(storedItem.optionCandidates) ? storedItem.optionCandidates.map((id) => String(id)) : [];
+  if (!optionCandidates.includes(String(optionId))) return false;
+  if (!canFixEquipmentOption(storedItem)) return false;
+
+  const nextOptions = Array.isArray(storedItem.options) ? storedItem.options.map((option) => ({ ...option })) : [];
+  nextOptions.push({ id: String(optionId), level: 1 });
+  const nextCandidates = optionCandidates.filter((id) => id !== String(optionId));
+  state.storage[index] = storageItemFromEquipment({
+    ...storedItem,
+    options: nextOptions,
+    optionCandidates: nextCandidates,
+  });
+  storageRenderCount = -1;
+  saveGame();
+  renderAll();
+  return true;
+}
+
 function toggleStorageLock(index) {
   if (!state.storage?.length || !state.storage[index]) return;
   state.storage[index].locked = !state.storage[index].locked;
@@ -1721,7 +1755,7 @@ function renderStatsSection() {
 
 function storageGroupKey(item, fallback) {
   if (typeof fallback === "string" && fallback.startsWith("equipped-")) return fallback;
-  if (item?.options?.length) return `optioned-${fallback}`;
+  if (item?.options?.length || item?.fixedOptions?.length || item?.optionCandidates?.length) return `optioned-${fallback}`;
   if (item?.locked) return `locked-${fallback}`;
   if (Number(item?.plus) > 0 || Number(item?.enhance) > 0) {
     return `${item?.id || "item"}:plus-${Number(item?.plus) || 0}:enhance-${Number(item?.enhance) || 0}`;
@@ -2104,7 +2138,7 @@ function renderStorageLegacy() {
                 ${locked ? '<span class="storage-lock-label">★ 保護中</span>' : ""}
               </div>
               <div class="storage-effect">${equipmentStorageLine(item)}</div>
-              ${equipmentOptionsStorageHtml(item)}
+              ${equipmentOptionsStorageHtml(item, { storageIndex: index })}
             </div>
             <div class="storage-actions">
               <button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>
@@ -2208,7 +2242,7 @@ function storageFusionTargetPreviewHtml(entry) {
             <span class="storage-fusion-badge">育成対象</span>
           </div>
           <div class="storage-effect">${equipmentStorageLine(item)}</div>
-          ${equipmentOptionsStorageHtml(item)}
+          ${equipmentOptionsStorageHtml(item, { storageIndex: storageEntryIndex(entry) })}
         </div>
         <div class="storage-actions">
           <button type="button" class="storage-fusion-change-btn" data-storage-fusion-target-reset>変更</button>
@@ -2268,7 +2302,7 @@ function storageGroupHtml(group) {
         ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
       </div>
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
-      ${equipmentOptionsStorageHtml(item)}
+      ${equipmentOptionsStorageHtml(item, { storageIndex: index })}
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
@@ -2315,7 +2349,7 @@ function storageFusionEntryHtml(entry) {
         ${fusionLabel}
       </div>
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
-      ${equipmentOptionsStorageHtml(item)}
+      ${equipmentOptionsStorageHtml(item, { storageIndex: index })}
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
@@ -2356,6 +2390,14 @@ function bindStorageEvents(root) {
       storageRenderCount = -1;
       saveGame();
       renderStorage();
+    });
+  });
+  root.querySelectorAll("[data-storage-option-fix]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.storageOptionFix);
+      const optionId = button.dataset.optionId;
+      if (!optionId) return;
+      fixStorageItemOptionCandidate(index, optionId);
     });
   });
   root.querySelectorAll(".storage-select-checkbox").forEach((input) => {
