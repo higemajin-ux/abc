@@ -185,11 +185,11 @@ function equipmentOptionCandidatesStorageHtml(item, context = {}) {
       const text = formatEquipmentOptionCandidate(optionId);
       if (!text) return "";
       if (storageIndex == null) return text;
-      return `<span class="storage-option-candidate-line">${text} <button type="button" class="storage-lock-btn" data-storage-option-fix="${storageIndex}" data-option-id="${String(optionId)}" ${canFix ? "" : "disabled"}>固定する</button></span>`;
+      return `<button type="button" class="storage-lock-btn" data-storage-option-fix="${storageIndex}" data-option-id="${String(optionId)}" ${canFix ? "" : "disabled"}>${text}</button>`;
     })
     .filter(Boolean);
   if (!lines.length) return "";
-  return `<div class="storage-effect">候補OP<br>（次の強化時に選択可能）<br><br>${lines.join("<br>")}</div>`;
+  return `<div class="storage-effect">成長候補<br>（1つ選んでください）<br><br>${lines.join("<br>")}</div>`;
 }
 
 function equipmentOptionsStorageHtml(item, context = {}) {
@@ -993,11 +993,10 @@ function fixStorageItemOptionCandidate(index, optionId) {
 
   const nextOptions = Array.isArray(storedItem.options) ? storedItem.options.map((option) => ({ ...option })) : [];
   nextOptions.push({ id: String(optionId), level: 1 });
-  const nextCandidates = optionCandidates.filter((id) => id !== String(optionId));
   state.storage[index] = storageItemFromEquipment({
     ...storedItem,
     options: nextOptions,
-    optionCandidates: nextCandidates,
+    optionCandidates: [],
   });
   storageRenderCount = -1;
   saveGame();
