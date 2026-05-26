@@ -1814,8 +1814,7 @@ function isStorageFusionMaterialEntrySelectable(entry, itemId) {
     !entry?.equippedBy &&
     item?.id === itemId &&
     !Number(item?.enhance) &&
-    normalizeRarity(item?.rarity) !== "artifact" &&
-    Math.max(0, Number(item?.plus) || 0) === 0
+    normalizeRarity(item?.rarity) !== "artifact"
   );
 }
 
