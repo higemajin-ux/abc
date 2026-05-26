@@ -116,6 +116,8 @@ const OPTION_MASTER = {
 
 // Optional equipment fields:
 // options: []
+// fixedOptions: []
+// optionCandidates: []
 const EQUIPMENT_ITEMS = {
   oldSword: { id: "oldSword", name: "古びた剣", slot: "weapon", atk: 2 },
   tinStaff: { id: "tinStaff", name: "錫杖", slot: "weapon", atk: 1, luc: 1 },
@@ -164,6 +166,8 @@ const DROP_RARITY_WEIGHTS = {
 
 // Optional equipment fields:
 // options: []
+// fixedOptions: []
+// optionCandidates: []
 const EQUIPMENT_DROPS = [
   {
     id: "chippedSword",
