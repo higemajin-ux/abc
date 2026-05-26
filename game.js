@@ -1795,12 +1795,22 @@ function storageFusionRequiredCount(group) {
   return plus >= 10 ? 5 : 3;
 }
 
+function storageFusionGoldCost(group) {
+  const nextPlus = Math.max(0, Number(group?.item?.plus) || 0) + 1;
+  return nextPlus * 100;
+}
+
 function storageFusionSelectableCount(group) {
   return (group?.entries || []).filter(isStorageFusionEntrySelectable).length;
 }
 
+function canAffordStorageFusion(group) {
+  const gold = Math.max(0, Number(state.parties[0]?.stats?.gold) || 0);
+  return gold >= storageFusionGoldCost(group);
+}
+
 function isStorageFusionGroupSelectable(group) {
-  return storageFusionSelectableCount(group) >= storageFusionRequiredCount(group);
+  return storageFusionSelectableCount(group) >= storageFusionRequiredCount(group) && canAffordStorageFusion(group);
 }
 
 function cancelStorageFusionMode() {
@@ -1812,6 +1822,8 @@ function fuseSelectedStorageGroup(visibleGroups) {
   const group = visibleGroups.find((entry) => storageGroupSelectionId(entry) === selectedStorageFusionGroupId);
   if (!group || !isStorageFusionGroupSelectable(group)) return;
   const requiredCount = storageFusionRequiredCount(group);
+  const goldCost = storageFusionGoldCost(group);
+  const stats = state.parties[0]?.stats;
 
   const indices = group.entries
     .filter(isStorageFusionEntrySelectable)
@@ -1823,10 +1835,12 @@ function fuseSelectedStorageGroup(visibleGroups) {
 
   const baseItem = storageItemFromEquipment(state.storage[indices[0]]);
   if (!baseItem) return;
+  if (!stats || Number(stats.gold) < goldCost) return;
 
   indices.forEach((index) => {
     state.storage.splice(index, 1);
   });
+  stats.gold -= goldCost;
   state.storage.push(
     storageItemFromEquipment({
       ...baseItem,
@@ -1971,8 +1985,9 @@ function storageFusionHtml(visibleGroups) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-fusion-toggle>装備合成</button>';
   }
   const requiredCount = selectedGroup ? storageFusionRequiredCount(selectedGroup) : 3;
+  const goldCost = selectedGroup ? storageFusionGoldCost(selectedGroup) : 100;
   return `<div class="storage-bulk-sell-actions">
-    <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup) ? "" : "disabled"}>合成 (${requiredCount})</button>
+    <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup) ? "" : "disabled"}>合成 (${requiredCount} / ${goldCost}G)</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-fusion-cancel>キャンセル</button>
   </div>`;
 }
