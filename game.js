@@ -2232,7 +2232,7 @@ function storageBulkSellHtml(visibleGroups) {
 
 function storageFusionHtml(visibleEntries) {
   if (storageBulkSellMode) return "";
-  const selectedEntry = storageFusionTargetEntry(visibleEntries);
+  const selectedEntry = currentStorageFusionTargetEntry();
   if (!storageFusionMode) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-fusion-toggle>装備合成</button>';
   }
@@ -2525,7 +2525,7 @@ function renderStorage() {
   const equippedKey = equippedStorageEntries().map(({ storageIndex, item }) => `${storageIndex}:${item.id}`).join(",");
   const visibleEntries = filteredStorageEntries(items);
   const visibleGroups = storageGroups(visibleEntries);
-  const fusionTargetEntry = storageFusionTargetEntry(visibleEntries);
+  const fusionTargetEntry = currentStorageFusionTargetEntry();
   syncSelectedStorageGroups(visibleGroups);
   syncSelectedStorageFusionMaterials(visibleEntries, fusionTargetEntry);
   const fusionDisplayEntries = storageFusionMode
