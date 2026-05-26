@@ -2070,8 +2070,13 @@ function fuseSelectedStorageGroup(visibleEntries) {
   const goldCost = storageFusionGoldCost(targetEntry);
   const guildStats = ensureGuildStats();
   const targetIndex = storageEntryIndex(targetEntry);
-  const targetUid = storageEntryUid(targetEntry);
   if (typeof targetIndex !== "number") return;
+  let targetUid = storageEntryUid(targetEntry);
+  if (!targetUid) {
+    targetUid = nextStorageUid();
+    targetEntry.item.storageUid = targetUid;
+    if (state.storage?.[targetIndex]) state.storage[targetIndex].storageUid = targetUid;
+  }
   const materialIndices = visibleEntries
     .filter((entry) =>
       selectedStorageFusionMaterialUids.has(String(storageEntryUid(entry))) &&
