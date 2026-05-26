@@ -2523,6 +2523,29 @@ function bindStorageEvents(root) {
   });
 }
 
+function renderStorageHeaderHtml(items, visibleGroups, visibleEntries) {
+  return storageHeaderHtml(items, visibleGroups, visibleEntries);
+}
+
+function renderStorageNormalHtml(visibleGroups) {
+  return `<ul class="storage-list">${visibleGroups.map(storageGroupHtml).join("")}</ul>`;
+}
+
+function renderStorageFusionStep1Html(fusionDisplayEntries) {
+  return `<ul class="storage-list">${fusionDisplayEntries.map(storageFusionEntryHtml).join("")}</ul>`;
+}
+
+function renderStorageFusionStep2ListHtml(fusionTargetEntry, fusionDisplayEntries) {
+  return storageFusionStep2Html(
+    fusionTargetEntry,
+    `<ul class="storage-list">${fusionDisplayEntries.map(storageFusionEntryHtml).join("")}</ul>`
+  );
+}
+
+function renderStorageFusionStep2EmptyHtml(fusionTargetEntry, emptyText) {
+  return storageFusionStep2Html(fusionTargetEntry, `<p class="log-empty">${emptyText}</p>`);
+}
+
 function renderStorage() {
   const root = $("storage-root");
   if (!root) return;
@@ -2554,18 +2577,20 @@ function renderStorage() {
       : items.length
         ? "条件に合う装備はありません"
         : "保管中の装備はありません";
-    const fusionContentHtml = storageFusionMode
-      ? storageFusionStep2Html(fusionTargetEntry, `<p class="log-empty">${emptyText}</p>`)
+    const fusionContentHtml = storageFusionMode && fusionTargetEntry
+      ? renderStorageFusionStep2EmptyHtml(fusionTargetEntry, emptyText)
       : `<p class="log-empty">${emptyText}</p>`;
-    root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionContentHtml}`;
+    root.innerHTML = `${renderStorageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionContentHtml}`;
     bindStorageEvents(root);
     return;
   }
 
   const fusionListHtml = storageFusionMode
-    ? storageFusionStep2Html(fusionTargetEntry, `<ul class="storage-list">${fusionDisplayEntries.map(storageFusionEntryHtml).join("")}</ul>`)
-    : `<ul class="storage-list">${visibleGroups.map(storageGroupHtml).join("")}</ul>`;
-  root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionListHtml}`;
+    ? fusionTargetEntry
+      ? renderStorageFusionStep2ListHtml(fusionTargetEntry, fusionDisplayEntries)
+      : renderStorageFusionStep1Html(fusionDisplayEntries)
+    : renderStorageNormalHtml(visibleGroups);
+  root.innerHTML = `${renderStorageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionListHtml}`;
   bindStorageEvents(root);
 }
 
