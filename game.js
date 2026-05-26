@@ -2090,6 +2090,31 @@ function storageFusionHtml(visibleEntries) {
   </div>`;
 }
 
+function storageFusionTargetPreviewHtml(entry) {
+  const item = entry?.item;
+  if (!item) return "";
+  const locked = storageEntryLocked(entry);
+  const equippedBy = entry?.equippedBy;
+  const rarity = normalizeRarity(item?.rarity);
+  const name = equipmentDisplayName(item);
+  return `<div class="storage-fusion-section">
+    <div class="storage-fusion-section-title">育成対象</div>
+    <ul class="storage-list">
+      <li class="storage-fusion-target-preview">
+        <div class="storage-info">
+          <div class="storage-head">
+            <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : ""}</span>
+            ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
+            <span class="storage-fusion-badge">育成対象</span>
+          </div>
+          <div class="storage-effect">${equipmentStorageLine(item)}</div>
+          ${equipmentOptionsStorageHtml(item)}
+        </div>
+      </li>
+    </ul>
+  </div>`;
+}
+
 function storageHeaderHtml(items, visibleGroups = [], visibleEntries = []) {
   const messageHtml = storageFusionMessage ? `<span class="muted">${storageFusionMessage}</span>` : "";
   return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleEntries)}${messageHtml}</div>`;
@@ -2174,7 +2199,7 @@ function storageFusionEntryHtml(entry) {
     </label>`;
   const fusionLabel = targetChecked
     ? '<span class="storage-fusion-badge">育成対象</span>'
-    : materialSelectable
+    : materialChecked
       ? '<span class="storage-fusion-badge">素材</span>'
       : "";
   const canSell = typeof index === "number" && !equippedBy && !locked;
@@ -2338,13 +2363,18 @@ function renderStorage() {
       : items.length
         ? "条件に合う装備はありません"
         : "保管中の装備はありません";
-    root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}<p class="log-empty">${emptyText}</p>`;
+    const fusionTargetHtml = storageFusionMode && fusionTargetEntry
+      ? `${storageFusionTargetPreviewHtml(fusionTargetEntry)}<div class="storage-fusion-section-title">素材候補</div>`
+      : "";
+    root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionTargetHtml}<p class="log-empty">${emptyText}</p>`;
     bindStorageEvents(root);
     return;
   }
 
-  root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}
-    <ul class="storage-list">${storageFusionMode ? fusionDisplayEntries.map(storageFusionEntryHtml).join("") : visibleGroups.map(storageGroupHtml).join("")}</ul>`;
+  const fusionListHtml = storageFusionMode
+    ? `${fusionTargetEntry ? `${storageFusionTargetPreviewHtml(fusionTargetEntry)}<div class="storage-fusion-section-title">素材候補</div>` : ""}<ul class="storage-list">${fusionDisplayEntries.map(storageFusionEntryHtml).join("")}</ul>`
+    : `<ul class="storage-list">${visibleGroups.map(storageGroupHtml).join("")}</ul>`;
+  root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionListHtml}`;
   bindStorageEvents(root);
 }
 
