@@ -1032,6 +1032,23 @@ h1 {
   white-space: nowrap;
 }
 
+.storage-fusion-section {
+  margin-top: 10px;
+}
+
+.storage-fusion-section-title {
+  margin: 10px 0 6px;
+  color: var(--muted-on-dark);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.storage-fusion-target-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .storage-actions {
   display: flex;
   align-items: center;
