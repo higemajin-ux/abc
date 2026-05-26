@@ -89,7 +89,7 @@ const SET_BONUSES = [
 ];
 
 function emptyEquipmentBonus() {
-  return { maxHp: 0, atk: 0, def: 0, dex: 0, luc: 0 };
+  return { maxHp: 0, atk: 0, def: 0, dex: 0, luc: 0, criticalRate: 0 };
 }
 
 function characterBaseAtk(character, fallback = 0) {
@@ -138,6 +138,8 @@ function applyEquipmentOptionBonus(optionBonus, item) {
     if (option.id === "attackUp") optionBonus.attackUpAtk += level * 2;
     if (option.id === "attackPercent") optionBonus.attackPercentRate += level * 0.05;
     if (option.id === "hpUp") optionBonus.maxHp += level * 5;
+    if (option.id === "hpPercent") optionBonus.hpPercentRate += level * 0.05;
+    if (option.id === "criticalRate") optionBonus.criticalRate += level * 0.01;
   }
   return optionBonus;
 }
@@ -152,7 +154,7 @@ function equipmentPlusValue(item, key) {
 function getEquipmentBonus(character, baseAtkOverride = null) {
   if (!character) return emptyEquipmentBonus();
   const equipment = ensureCharacterEquipment(character);
-  const optionBonus = { maxHp: 0, attackUpAtk: 0, attackPercentRate: 0 };
+  const optionBonus = { maxHp: 0, attackUpAtk: 0, attackPercentRate: 0, hpPercentRate: 0, criticalRate: 0 };
   const bonus = Object.values(equipment).reduce(
     (bonus, entry) => {
       const item = resolveEquippedItem(entry);
@@ -180,8 +182,14 @@ function getEquipmentBonus(character, baseAtkOverride = null) {
   if (optionBonus.attackPercentRate > 0 && baseAtk > 0) {
     bonus.atk += Math.round(baseAtk * optionBonus.attackPercentRate);
   }
+  const jobBaseMaxHp = (JOB_STATS?.[character?.job]?.maxHp || 0) + (Math.max(1, Number(character?.level) || 1) - 1) * 5;
+  const hpPercentBase = Math.max(0, jobBaseMaxHp + bonus.maxHp + optionBonus.maxHp);
+  if (optionBonus.hpPercentRate > 0 && hpPercentBase > 0) {
+    bonus.maxHp += Math.round(hpPercentBase * optionBonus.hpPercentRate);
+  }
   bonus.atk += optionBonus.attackUpAtk;
   bonus.maxHp += optionBonus.maxHp;
+  bonus.criticalRate += optionBonus.criticalRate;
 
   return bonus;
 }
