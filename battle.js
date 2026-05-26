@@ -1275,6 +1275,14 @@ function rarityClassName(rarity) {
   return `rarity-${normalizeRarity(rarity)}`;
 }
 
+function equipmentSellGoldValue(item) {
+  const baseSellGold = Math.max(0, Number(item?.sellGold) || 0);
+  const plus = Math.max(0, Number(item?.plus) || 0);
+  if (plus <= 0) return baseSellGold;
+  const plusBonus = Math.max(plus, Math.floor(baseSellGold * 0.1 * plus));
+  return baseSellGold + plusBonus;
+}
+
 function shouldAutoSellDrop(item) {
   const rarity = normalizeRarity(item?.rarity);
   const settings = typeof ensureAutoSellSettings === "function"
@@ -1469,6 +1477,7 @@ function runEncounter(members, monster, area, speechState = {}, partyName = "隊
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
     if (equipmentDrop) {
       const dropName = dropNameHtml(equipmentDrop);
+      if (shouldAutoSellDrop(equipmentDrop)) equipmentDrop.sellGold = equipmentSellGoldValue(equipmentDrop);
       events.push({ kind: "voice", text: `${equipmentDrop.finderName}が${dropName}を見つけた。` });
       if (shouldAutoSellDrop(equipmentDrop)) {
         events.push({ kind: "voice", text: `${dropName}を売却した（${equipmentDrop.sellGold || 0}G）。` });
