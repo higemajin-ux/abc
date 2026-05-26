@@ -71,7 +71,6 @@ function normalizeEquipmentItem(item, base = {}) {
     ...base,
     ...item,
     options: cloneEquipmentOptions(item?.options) ?? cloneEquipmentOptions(base?.options),
-    fixedOptions: cloneEquipmentOptionIds(item?.fixedOptions) ?? cloneEquipmentOptionIds(base?.fixedOptions),
     optionCandidates: cloneEquipmentOptionIds(item?.optionCandidates) ?? cloneEquipmentOptionIds(base?.optionCandidates),
   };
   return {
@@ -100,7 +99,6 @@ function storageItemFromEquipment(item) {
   return {
     ...normalized,
     ...(normalized.options ? { options: cloneEquipmentOptions(normalized.options) } : {}),
-    ...(normalized.fixedOptions ? { fixedOptions: cloneEquipmentOptionIds(normalized.fixedOptions) } : {}),
     ...(normalized.optionCandidates ? { optionCandidates: cloneEquipmentOptionIds(normalized.optionCandidates) } : {}),
     rarity: normalizeRarity(normalized.rarity),
     sellGold: normalized.sellGold || 0,
@@ -1766,7 +1764,7 @@ function renderStatsSection() {
 
 function storageGroupKey(item, fallback) {
   if (typeof fallback === "string" && fallback.startsWith("equipped-")) return fallback;
-  if (item?.options?.length || item?.fixedOptions?.length || item?.optionCandidates?.length) return `optioned-${fallback}`;
+  if (item?.options?.length || item?.optionCandidates?.length) return `optioned-${fallback}`;
   if (item?.locked) return `locked-${fallback}`;
   if (Number(item?.plus) > 0 || Number(item?.enhance) > 0) {
     return `${item?.id || "item"}:plus-${Number(item?.plus) || 0}:enhance-${Number(item?.enhance) || 0}`;
@@ -2054,7 +2052,6 @@ function handleEquipmentOptionMilestone(item) {
   console.log("[equipment-option-milestone]", {
     id: item?.id || null,
     plus,
-    fixedOptions: Array.isArray(item?.fixedOptions) ? [...item.fixedOptions] : [],
     optionCandidates: Array.isArray(item?.optionCandidates) ? [...item.optionCandidates] : [],
   });
 }
@@ -2921,6 +2918,12 @@ function migrate(data) {
   ensureDeveloperMode(data);
   ensureGuildStats(data);
   ensureStorageUids(data);
+  data.storage = data.storage.map((item) => {
+    if (!item || !Object.prototype.hasOwnProperty.call(item, "fixedOptions")) return item;
+    const nextItem = { ...item };
+    delete nextItem.fixedOptions;
+    return nextItem;
+  });
   for (const rawItem of data.storage || []) {
     const item = storageItemFromEquipment(rawItem);
     recordEquipment(item, data);
