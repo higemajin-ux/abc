@@ -1060,7 +1060,8 @@ h1 {
 
 .storage-sell-btn,
 .storage-lock-btn,
-.storage-unequip-btn {
+.storage-unequip-btn,
+.storage-fusion-change-btn {
   flex: 0 0 auto;
   min-height: 30px;
   border: 1px solid var(--line);
@@ -1075,7 +1076,8 @@ h1 {
 
 .storage-sell-btn:hover,
 .storage-lock-btn:hover,
-.storage-unequip-btn:hover {
+.storage-unequip-btn:hover,
+.storage-fusion-change-btn:hover {
   border-color: var(--line-bright);
   color: var(--accent);
   background: rgba(214, 168, 79, 0.06);
