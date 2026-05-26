@@ -2088,7 +2088,9 @@ function storageFusionHtml(visibleGroups) {
   const materialNote = selectedGroup && selectedStorageFusionUsesOptionedMaterials(visibleGroups, selectedGroup)
     ? '<span class="muted">※OP付き装備も素材になります</span>'
     : "";
-  const targetNote = selectedGroup ? `<span class="muted">${equipmentDisplayName(selectedGroup.item)} を本体に選択中</span>` : '<span class="muted">強化したい装備を1本選択</span>';
+  const targetNote = selectedGroup
+    ? `<span class="muted">STEP2 素材を選択 (${selectedMaterialCount}/${requiredCount})</span><span class="muted">${equipmentDisplayName(selectedGroup.item)} を本体に選択中</span>`
+    : '<span class="muted">STEP1 強化したい装備を1本選択</span>';
   return `<div class="storage-bulk-sell-actions">
     <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup, visibleGroups) ? "" : "disabled"}>合成 (${selectedMaterialCount}/${requiredCount} / ${goldCost}G)</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-fusion-cancel>キャンセル</button>
@@ -2300,22 +2302,31 @@ function renderStorage() {
   const equippedKey = equippedStorageEntries().map(({ storageIndex, item }) => `${storageIndex}:${item.id}`).join(",");
   const visibleEntries = filteredStorageEntries(items);
   const visibleGroups = storageGroups(visibleEntries);
+  const fusionTargetGroup = storageFusionTargetGroup(visibleGroups);
   syncSelectedStorageGroups(visibleGroups);
-  syncSelectedStorageFusionMaterials(visibleGroups, storageFusionTargetGroup(visibleGroups));
+  syncSelectedStorageFusionMaterials(visibleGroups, fusionTargetGroup);
+  const displayGroups = storageFusionMode && fusionTargetGroup
+    ? visibleGroups.filter((group) => isStorageFusionMaterialGroupSelectable(group, fusionTargetGroup))
+    : visibleGroups;
   const selectedKey = [...selectedStorageGroups].sort().join(",");
   const fusionMaterialKey = [...selectedStorageFusionMaterialGroupIds].sort().join(",");
   const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionGroupId || ""}:${fusionMaterialKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
-  if (!visibleGroups.length) {
-    root.innerHTML = `${storageHeaderHtml(items, visibleGroups)}<p class="log-empty">${items.length ? "条件に合う装備はありません" : "保管中の装備はありません"}</p>`;
+  if (!displayGroups.length) {
+    const emptyText = storageFusionMode && fusionTargetGroup
+      ? "素材候補はありません"
+      : items.length
+        ? "条件に合う装備はありません"
+        : "保管中の装備はありません";
+    root.innerHTML = `${storageHeaderHtml(items, visibleGroups)}<p class="log-empty">${emptyText}</p>`;
     bindStorageEvents(root);
     return;
   }
 
   root.innerHTML = `${storageHeaderHtml(items, visibleGroups)}
-    <ul class="storage-list">${visibleGroups.map(storageGroupHtml).join("")}</ul>`;
+    <ul class="storage-list">${displayGroups.map(storageGroupHtml).join("")}</ul>`;
   bindStorageEvents(root);
 }
 
