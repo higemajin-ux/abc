@@ -2256,6 +2256,11 @@ function storageHeaderHtml(items, visibleGroups = [], visibleEntries = []) {
   return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleEntries)}${messageHtml}</div>`;
 }
 
+function storageFusionStep2Html(targetEntry, contentHtml) {
+  if (!targetEntry) return contentHtml;
+  return `${storageFusionTargetPreviewHtml(targetEntry)}<div class="storage-fusion-section-title">素材候補</div>${contentHtml}`;
+}
+
 function storageGroups(entries) {
   const groups = [];
   const groupByKey = new Map();
@@ -2513,16 +2518,16 @@ function renderStorage() {
       : items.length
         ? "条件に合う装備はありません"
         : "保管中の装備はありません";
-    const fusionTargetHtml = storageFusionMode && fusionTargetEntry
-      ? `${storageFusionTargetPreviewHtml(fusionTargetEntry)}<div class="storage-fusion-section-title">素材候補</div>`
-      : "";
-    root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionTargetHtml}<p class="log-empty">${emptyText}</p>`;
+    const fusionContentHtml = storageFusionMode
+      ? storageFusionStep2Html(fusionTargetEntry, `<p class="log-empty">${emptyText}</p>`)
+      : `<p class="log-empty">${emptyText}</p>`;
+    root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionContentHtml}`;
     bindStorageEvents(root);
     return;
   }
 
   const fusionListHtml = storageFusionMode
-    ? `${fusionTargetEntry ? `${storageFusionTargetPreviewHtml(fusionTargetEntry)}<div class="storage-fusion-section-title">素材候補</div>` : ""}<ul class="storage-list">${fusionDisplayEntries.map(storageFusionEntryHtml).join("")}</ul>`
+    ? storageFusionStep2Html(fusionTargetEntry, `<ul class="storage-list">${fusionDisplayEntries.map(storageFusionEntryHtml).join("")}</ul>`)
     : `<ul class="storage-list">${visibleGroups.map(storageGroupHtml).join("")}</ul>`;
   root.innerHTML = `${storageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionListHtml}`;
   bindStorageEvents(root);
