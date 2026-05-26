@@ -2064,12 +2064,13 @@ function fuseSelectedStorageGroup(visibleEntries) {
     locked: !!baseItem.locked,
   });
   handleEquipmentOptionMilestone(state.storage[targetIndex]);
+  const nextTargetIndex = targetIndex - materialIndices.filter((index) => index < targetIndex).length;
   materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
   });
   guildStats.gold -= goldCost;
   storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: nextPlus })} を作成した`;
-  selectedStorageFusionTargetIndex = null;
+  selectedStorageFusionTargetIndex = nextTargetIndex;
   selectedStorageFusionMaterialGroupIds.clear();
   storageRenderCount = -1;
   saveGame();
