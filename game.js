@@ -57,12 +57,18 @@ function cloneEquipmentOptions(options) {
   return Array.isArray(options) ? options.map((option) => ({ ...option })) : undefined;
 }
 
+function cloneEquipmentOptionIds(optionIds) {
+  return Array.isArray(optionIds) ? optionIds.filter(Boolean).map((id) => String(id)) : undefined;
+}
+
 function normalizeEquipmentItem(item, base = {}) {
   if (!item?.id && !base?.id) return null;
   const merged = {
     ...base,
     ...item,
     options: cloneEquipmentOptions(item?.options) ?? cloneEquipmentOptions(base?.options),
+    fixedOptions: cloneEquipmentOptionIds(item?.fixedOptions) ?? cloneEquipmentOptionIds(base?.fixedOptions),
+    optionCandidates: cloneEquipmentOptionIds(item?.optionCandidates) ?? cloneEquipmentOptionIds(base?.optionCandidates),
   };
   return {
     ...merged,
@@ -90,6 +96,8 @@ function storageItemFromEquipment(item) {
   return {
     ...normalized,
     ...(normalized.options ? { options: cloneEquipmentOptions(normalized.options) } : {}),
+    ...(normalized.fixedOptions ? { fixedOptions: cloneEquipmentOptionIds(normalized.fixedOptions) } : {}),
+    ...(normalized.optionCandidates ? { optionCandidates: cloneEquipmentOptionIds(normalized.optionCandidates) } : {}),
     rarity: normalizeRarity(normalized.rarity),
     sellGold: normalized.sellGold || 0,
     locked: !!item.locked,
@@ -105,7 +113,13 @@ function storageItemFromEquipmentId(itemId) {
 
 function hasItemInstanceData(item) {
   if (!item || typeof item !== "object") return false;
-  return (Array.isArray(item.options) && item.options.length > 0) || Number(item.plus) > 0 || Number(item.enhance) > 0;
+  return (
+    (Array.isArray(item.options) && item.options.length > 0) ||
+    (Array.isArray(item.fixedOptions) && item.fixedOptions.length > 0) ||
+    (Array.isArray(item.optionCandidates) && item.optionCandidates.length > 0) ||
+    Number(item.plus) > 0 ||
+    Number(item.enhance) > 0
+  );
 }
 
 function equipmentStatLine(item) {
