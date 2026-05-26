@@ -116,7 +116,7 @@ const OPTION_MASTER = {
 
 // Optional equipment fields:
 // options: []
-// fixedOptions: []
+// fixedOptions: [] // unused reserved field
 // optionCandidates: []
 OPTION_MASTER.criticalRate = {
   id: "criticalRate",
@@ -184,7 +184,7 @@ const DROP_RARITY_WEIGHTS = {
 
 // Optional equipment fields:
 // options: []
-// fixedOptions: []
+// fixedOptions: [] // unused reserved field
 // optionCandidates: []
 const EQUIPMENT_DROPS = [
   {
