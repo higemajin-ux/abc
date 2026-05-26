@@ -125,7 +125,7 @@ function equipmentDisplayName(item) {
 }
 
 function equipmentStorageLine(item) {
-  const sellGold = item?.sellGold || 0;
+  const sellGold = equipmentSellGoldValue(item);
   return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
 }
 
@@ -324,7 +324,7 @@ function generateBattle(area, party) {
     noRewards,
     kills: noRewards ? 0 : encounters.reduce((sum, e) => sum + e.kills, 0),
     xp: noRewards ? 0 : encounters.reduce((sum, e) => sum + e.xp, 0),
-    gold: noRewards ? 0 : encounters.reduce((sum, e) => sum + e.gold, 0) + extraEquipmentDrops.reduce((sum, item) => sum + (wasAutoSoldDrop(item) ? item.sellGold || 0 : 0), 0),
+    gold: noRewards ? 0 : encounters.reduce((sum, e) => sum + e.gold, 0) + extraEquipmentDrops.reduce((sum, item) => sum + (wasAutoSoldDrop(item) ? equipmentSellGoldValue(item) : 0), 0),
     failed,
     forcedReturn: failed && party.members.every((member) => member.hp <= 0),
     shortcutFound,
@@ -912,7 +912,7 @@ function sellStorageItemByIndex(index, { deferRender = false } = {}) {
   const storedItem = storageItemFromEquipment(state.storage[index]);
   if (!storedItem || storedItem.locked) return false;
 
-  const sellGold = Number(storedItem.sellGold) || 0;
+  const sellGold = equipmentSellGoldValue(storedItem);
   const stats = state.parties[0]?.stats;
   if (stats) stats.gold += sellGold;
   state.storage.splice(index, 1);
