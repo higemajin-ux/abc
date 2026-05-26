@@ -1786,8 +1786,13 @@ function isStorageFusionEntrySelectable(entry) {
     !(Array.isArray(item?.options) && item.options.length > 0) &&
     !Number(item?.enhance) &&
     normalizeRarity(item?.rarity) !== "artifact" &&
-    Math.max(0, Number(item?.plus) || 0) < 10
+    Math.max(0, Number(item?.plus) || 0) < 20
   );
+}
+
+function storageFusionRequiredCount(group) {
+  const plus = Math.max(0, Number(group?.item?.plus) || 0);
+  return plus >= 10 ? 5 : 3;
 }
 
 function storageFusionSelectableCount(group) {
@@ -1795,7 +1800,7 @@ function storageFusionSelectableCount(group) {
 }
 
 function isStorageFusionGroupSelectable(group) {
-  return storageFusionSelectableCount(group) >= 2;
+  return storageFusionSelectableCount(group) >= storageFusionRequiredCount(group);
 }
 
 function cancelStorageFusionMode() {
@@ -1806,14 +1811,15 @@ function cancelStorageFusionMode() {
 function fuseSelectedStorageGroup(visibleGroups) {
   const group = visibleGroups.find((entry) => storageGroupSelectionId(entry) === selectedStorageFusionGroupId);
   if (!group || !isStorageFusionGroupSelectable(group)) return;
+  const requiredCount = storageFusionRequiredCount(group);
 
   const indices = group.entries
     .filter(isStorageFusionEntrySelectable)
     .map((entry) => entry.index)
     .filter((index) => typeof index === "number")
-    .slice(0, 2)
+    .slice(0, requiredCount)
     .sort((a, b) => b - a);
-  if (indices.length < 2) return;
+  if (indices.length < requiredCount) return;
 
   const baseItem = storageItemFromEquipment(state.storage[indices[0]]);
   if (!baseItem) return;
@@ -1829,7 +1835,7 @@ function fuseSelectedStorageGroup(visibleGroups) {
       options: undefined,
     })
   );
-  cancelStorageFusionMode();
+  selectedStorageFusionGroupId = null;
   storageRenderCount = -1;
   saveGame();
   renderAll();
@@ -1849,7 +1855,7 @@ function sellSelectedStorageGroups(visibleGroups) {
   indices.forEach((index) => {
     sellStorageItemByIndex(index, { deferRender: true });
   });
-  cancelStorageBulkSellMode();
+  selectedStorageGroups.clear();
   storageRenderCount = -1;
   saveGame();
   renderAll();
@@ -1964,8 +1970,9 @@ function storageFusionHtml(visibleGroups) {
   if (!storageFusionMode) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-fusion-toggle>装備合成</button>';
   }
+  const requiredCount = selectedGroup ? storageFusionRequiredCount(selectedGroup) : 3;
   return `<div class="storage-bulk-sell-actions">
-    <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup) ? "" : "disabled"}>合成</button>
+    <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup) ? "" : "disabled"}>合成 (${requiredCount})</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-fusion-cancel>キャンセル</button>
   </div>`;
 }
