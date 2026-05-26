@@ -1931,6 +1931,21 @@ function cancelStorageFusionMode() {
   selectedStorageFusionMaterialGroupIds.clear();
 }
 
+function isEquipmentOptionMilestone(plus) {
+  return [3, 6, 9].includes(Math.max(0, Number(plus) || 0));
+}
+
+function handleEquipmentOptionMilestone(item) {
+  const plus = Math.max(0, Number(item?.plus) || 0);
+  if (!isEquipmentOptionMilestone(plus)) return;
+  console.log("[equipment-option-milestone]", {
+    id: item?.id || null,
+    plus,
+    fixedOptions: Array.isArray(item?.fixedOptions) ? [...item.fixedOptions] : [],
+    optionCandidates: Array.isArray(item?.optionCandidates) ? [...item.optionCandidates] : [],
+  });
+}
+
 function fuseSelectedStorageGroup(visibleEntries) {
   const targetEntry = storageFusionTargetEntry(visibleEntries);
   if (!targetEntry || !isStorageFusionTargetReady(targetEntry, visibleEntries)) return;
@@ -1960,6 +1975,7 @@ function fuseSelectedStorageGroup(visibleEntries) {
     plus: nextPlus,
     locked: !!baseItem.locked,
   });
+  handleEquipmentOptionMilestone(state.storage[targetIndex]);
   materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
   });
