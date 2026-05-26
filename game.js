@@ -1791,6 +1791,20 @@ function isStorageFusionEntrySelectable(entry) {
   );
 }
 
+function isStorageFusionMaterialEntrySelectable(entry, itemId) {
+  const item = entry?.item;
+  return (
+    typeof entry?.index === "number" &&
+    !entry?.locked &&
+    !entry?.equippedBy &&
+    item?.id === itemId &&
+    !(Array.isArray(item?.options) && item.options.length > 0) &&
+    !Number(item?.enhance) &&
+    normalizeRarity(item?.rarity) !== "artifact" &&
+    Math.max(0, Number(item?.plus) || 0) === 0
+  );
+}
+
 function storageFusionRequiredCount(group) {
   const plus = Math.max(0, Number(group?.item?.plus) || 0);
   return plus >= 10 ? 5 : 3;
@@ -1802,7 +1816,12 @@ function storageFusionGoldCost(group) {
 }
 
 function storageFusionSelectableCount(group) {
-  return (group?.entries || []).filter(isStorageFusionEntrySelectable).length;
+  const itemId = group?.item?.id;
+  if (!itemId) return 0;
+  return (state.storage || [])
+    .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index, locked: !!rawItem?.locked }))
+    .filter((entry) => isStorageFusionMaterialEntrySelectable(entry, itemId))
+    .length;
 }
 
 function canAffordStorageFusion(group) {
@@ -1811,7 +1830,12 @@ function canAffordStorageFusion(group) {
 }
 
 function isStorageFusionGroupSelectable(group) {
-  return storageFusionSelectableCount(group) >= storageFusionRequiredCount(group) && canAffordStorageFusion(group);
+  const targetEntry = (group?.entries || []).find(isStorageFusionEntrySelectable);
+  if (!targetEntry) return false;
+  const materialCount = storageFusionSelectableCount(group);
+  const requiredCount = storageFusionRequiredCount(group);
+  const needsTargetFromMaterials = Math.max(0, Number(group?.item?.plus) || 0) === 0 ? 1 : 0;
+  return materialCount >= requiredCount + needsTargetFromMaterials && canAffordStorageFusion(group);
 }
 
 function cancelStorageFusionMode() {
@@ -1825,32 +1849,34 @@ function fuseSelectedStorageGroup(visibleGroups) {
   const requiredCount = storageFusionRequiredCount(group);
   const goldCost = storageFusionGoldCost(group);
   const stats = state.parties[0]?.stats;
-
-  const indices = group.entries
-    .filter(isStorageFusionEntrySelectable)
+  const targetEntry = (group.entries || []).find(isStorageFusionEntrySelectable);
+  if (!targetEntry || typeof targetEntry.index !== "number") return;
+  const materialIndices = (state.storage || [])
+    .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index, locked: !!rawItem?.locked }))
+    .filter((entry) => isStorageFusionMaterialEntrySelectable(entry, group.item.id))
     .map((entry) => entry.index)
-    .filter((index) => typeof index === "number")
-    .slice(0, requiredCount)
-    .sort((a, b) => b - a);
-  if (indices.length < requiredCount) return;
+    .filter((index) => index !== targetEntry.index)
+    .slice(0, requiredCount);
+  if (materialIndices.length < requiredCount) return;
 
-  const baseItem = storageItemFromEquipment(state.storage[indices[0]]);
+  const baseItem = storageItemFromEquipment(state.storage[targetEntry.index]);
   if (!baseItem) return;
   if (!stats || Number(stats.gold) < goldCost) return;
 
-  indices.forEach((index) => {
+  [targetEntry.index, ...materialIndices].sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
   });
   stats.gold -= goldCost;
+  const nextPlus = Math.max(0, Number(baseItem.plus) || 0) + 1;
   state.storage.push(
     storageItemFromEquipment({
       ...baseItem,
-      plus: Math.max(0, Number(baseItem.plus) || 0) + 1,
+      plus: nextPlus,
       locked: false,
       options: undefined,
     })
   );
-  storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: Math.max(0, Number(baseItem.plus) || 0) + 1 })} を作成した`;
+  storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: nextPlus })} を作成した`;
   selectedStorageFusionGroupId = null;
   storageRenderCount = -1;
   saveGame();
