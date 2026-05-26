@@ -120,13 +120,19 @@ const OPTION_MASTER = {
 // optionCandidates: []
 OPTION_MASTER.criticalRate = {
   id: "criticalRate",
-  name: "Critical",
+  name: "クリ率",
   maxLevel: 10,
 };
 
 OPTION_MASTER.hpPercent = {
   id: "hpPercent",
   name: "HP%",
+  maxLevel: 10,
+};
+
+OPTION_MASTER.criticalDamage = {
+  id: "criticalDamage",
+  name: "クリダメ",
   maxLevel: 10,
 };
 
