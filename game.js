@@ -1793,7 +1793,6 @@ function isStorageFusionEntrySelectable(entry) {
     typeof entry?.index === "number" &&
     !entry?.locked &&
     !entry?.equippedBy &&
-    !(Array.isArray(item?.options) && item.options.length > 0) &&
     !Number(item?.enhance) &&
     normalizeRarity(item?.rarity) !== "artifact" &&
     Math.max(0, Number(item?.plus) || 0) < 20
@@ -1941,7 +1940,6 @@ function fuseSelectedStorageGroup(visibleGroups) {
     ...baseItem,
     plus: nextPlus,
     locked: false,
-    options: undefined,
   });
   materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
