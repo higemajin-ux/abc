@@ -1798,11 +1798,22 @@ function isStorageFusionMaterialEntrySelectable(entry, itemId) {
     !entry?.locked &&
     !entry?.equippedBy &&
     item?.id === itemId &&
-    !(Array.isArray(item?.options) && item.options.length > 0) &&
     !Number(item?.enhance) &&
     normalizeRarity(item?.rarity) !== "artifact" &&
     Math.max(0, Number(item?.plus) || 0) === 0
   );
+}
+
+function hasOptionedStorageFusionMaterial(group) {
+  const itemId = group?.item?.id;
+  if (!itemId) return false;
+  return (state.storage || [])
+    .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index, locked: !!rawItem?.locked }))
+    .some((entry) =>
+      isStorageFusionMaterialEntrySelectable(entry, itemId) &&
+      Array.isArray(entry.item?.options) &&
+      entry.item.options.length > 0
+    );
 }
 
 function storageFusionRequiredCount(group) {
@@ -2014,9 +2025,13 @@ function storageFusionHtml(visibleGroups) {
   }
   const requiredCount = selectedGroup ? storageFusionRequiredCount(selectedGroup) : 3;
   const goldCost = selectedGroup ? storageFusionGoldCost(selectedGroup) : 100;
+  const materialNote = selectedGroup && hasOptionedStorageFusionMaterial(selectedGroup)
+    ? '<span class="muted">※OP付き装備も素材になります</span>'
+    : "";
   return `<div class="storage-bulk-sell-actions">
     <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup) ? "" : "disabled"}>合成 (${requiredCount} / ${goldCost}G)</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-fusion-cancel>キャンセル</button>
+    ${materialNote}
   </div>`;
 }
 
