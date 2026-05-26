@@ -120,7 +120,6 @@ function hasItemInstanceData(item) {
   if (!item || typeof item !== "object") return false;
   return (
     (Array.isArray(item.options) && item.options.length > 0) ||
-    (Array.isArray(item.fixedOptions) && item.fixedOptions.length > 0) ||
     (Array.isArray(item.optionCandidates) && item.optionCandidates.length > 0) ||
     Number(item.plus) > 0 ||
     Number(item.enhance) > 0
@@ -2021,7 +2020,6 @@ function isEquipmentOptionMilestone(plus) {
 
 function equipmentMilestoneOptionPool(item) {
   const excluded = new Set([
-    ...((Array.isArray(item?.fixedOptions) ? item.fixedOptions : []).map((id) => String(id))),
     ...((Array.isArray(item?.optionCandidates) ? item.optionCandidates : []).map((id) => String(id))),
     ...((Array.isArray(item?.options) ? item.options : []).map((option) => String(option?.id)).filter(Boolean)),
   ]);
@@ -2043,9 +2041,7 @@ function rollEquipmentMilestoneCandidates(item, count = 3) {
 function handleEquipmentOptionMilestone(item) {
   const plus = Math.max(0, Number(item?.plus) || 0);
   if (!isEquipmentOptionMilestone(plus)) return;
-  const usedSlots =
-    (Array.isArray(item?.fixedOptions) ? item.fixedOptions.length : 0) +
-    (Array.isArray(item?.options) ? item.options.length : 0);
+  const usedSlots = Array.isArray(item?.options) ? item.options.length : 0;
   const remainingSlots = Math.max(0, 3 - usedSlots);
   if (remainingSlots <= 0) return;
   const nextCandidates = rollEquipmentMilestoneCandidates(item, remainingSlots);
@@ -2988,8 +2984,10 @@ function exportSaveData() {
   const blob = new Blob([raw], { type: "application/json" });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   link.href = url;
-  link.download = `dispatch-hero-save-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `dispatch-hero-save-${date}.json`;
   document.body.appendChild(link);
   link.click();
   link.remove();
