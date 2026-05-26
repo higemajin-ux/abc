@@ -110,7 +110,7 @@ DEX30以上は70%上限
 ### 装備個体管理
 
 - 装備はベース定義（id / name / slot / rarity / 各種能力値）に加えて、個体ごとの差分を持てる
-- 個体差として扱う主な項目は `plus` / `enhance` / `options` / `optionCandidates` / `fixedOptions` / `locked`
+- 個体差として扱う主な項目は `plus` / `enhance` / `options` / `optionCandidates` / `locked`
 - 個体差のない装備は装備スロット上ではID文字列で保持できる
 - 個体差のある装備は装備スロット上でも装備オブジェクトのまま保持する
 - 保管庫に入る装備は個体単位で正規化される
@@ -137,7 +137,6 @@ DEX30以上は70%上限
 - ただし以下は個別扱いとしてグループを分ける
 - `options` を持つ装備
 - `optionCandidates` を持つ装備
-- `fixedOptions` を持つ装備
 - `plus` / `enhance` が異なる装備
 - 保護状態が異なる装備
 - 装備中装備
@@ -188,9 +187,8 @@ DEX30以上は70%上限
 - 能力計算で参照されるのは `options`
 - `optionCandidates` は成長候補OP
 - 候補表示時は「成長候補」として保管庫に表示する
-- `fixedOptions` は固定済み候補を表現するための予約領域として保持される
-- 現状実装では候補確定時に `fixedOptions` へ移すのではなく、`options` に直接追加している
-- 候補生成時の重複除外では `options` / `optionCandidates` / `fixedOptions` の全てを参照する
+- `fixedOptions` は未使用予約枠
+- 現行ロジックでは `fixedOptions` を表示、能力反映、候補生成、枠計算、グループ化に使わない
 
 ### +3 / +6 / +9 候補生成
 
@@ -198,8 +196,8 @@ DEX30以上は70%上限
 - 節目は `+3` / `+6` / `+9`
 - 節目に到達した場合、空きOP枠ぶんだけ候補を生成する
 - OP枠上限は3
-- 空き枠数は `3 - options数 - fixedOptions数`
-- 候補生成時は `options` / `optionCandidates` / `fixedOptions` に含まれるOPを除外して抽選する
+- 空き枠数は `3 - options数`
+- 候補生成時は `options` / `optionCandidates` に含まれるOPを除外して抽選する
 - 候補は `optionCandidates` に追加される
 
 ### 候補OP固定
@@ -210,7 +208,7 @@ DEX30以上は70%上限
 - 確定可能なのは現在の `options` 数が3未満のとき
 - 確定した候補は `options` に `Lv1` で追加する
 - 確定後、その装備の `optionCandidates` は空にする
-- 現状の固定処理は `fixedOptions` へ移す方式ではなく、`options` へ直接反映する方式
+- 現状の固定処理は `options` へ直接反映する方式
 
 ### セーブ書き出し / 読み込み
 
