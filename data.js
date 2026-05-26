@@ -118,6 +118,18 @@ const OPTION_MASTER = {
 // options: []
 // fixedOptions: []
 // optionCandidates: []
+OPTION_MASTER.criticalRate = {
+  id: "criticalRate",
+  name: "Critical",
+  maxLevel: 10,
+};
+
+OPTION_MASTER.hpPercent = {
+  id: "hpPercent",
+  name: "HP%",
+  maxLevel: 10,
+};
+
 const EQUIPMENT_ITEMS = {
   oldSword: { id: "oldSword", name: "古びた剣", slot: "weapon", atk: 2 },
   tinStaff: { id: "tinStaff", name: "錫杖", slot: "weapon", atk: 1, luc: 1 },
