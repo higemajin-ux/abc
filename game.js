@@ -163,14 +163,12 @@ function formatEquipmentOptionDetail(option, meta, level) {
 }
 
 function formatEquipmentOptionCandidate(optionId) {
-  if (optionId === "attackUp") return "攻撃+1";
-  if (optionId === "attackPercent") return "攻撃%+1";
-  if (optionId === "hpUp") return "HP+1";
-  if (optionId === "blindStrike") return "盲目+1";
-  if (optionId === "poisonStrike") return "毒+1";
-  if (optionId === "criticalRate") return "クリ率+1";
-  if (optionId === "hpPercent") return "HP%+1";
-  return OPTION_MASTER?.[optionId]?.name || String(optionId);
+  const meta = OPTION_MASTER?.[optionId];
+  if (!meta?.name) return String(optionId);
+  const option = { id: optionId, level: 1 };
+  const detail = formatEquipmentOptionDetail(option, meta, 1);
+  const text = `${meta.name}Lv1`;
+  return detail ? `${text}（${detail}）` : text;
 }
 
 function canFixEquipmentOption(item) {
@@ -186,8 +184,8 @@ function equipmentOptionCandidatesStorageHtml(item, context = {}) {
     .map((optionId) => {
       const text = formatEquipmentOptionCandidate(optionId);
       if (!text) return "";
-      if (storageIndex == null) return `・${text}`;
-      return `<span class="storage-option-candidate-line">・${text} <button type="button" class="storage-lock-btn" data-storage-option-fix="${storageIndex}" data-option-id="${String(optionId)}" ${canFix ? "" : "disabled"}>固定する</button></span>`;
+      if (storageIndex == null) return text;
+      return `<span class="storage-option-candidate-line">${text} <button type="button" class="storage-lock-btn" data-storage-option-fix="${storageIndex}" data-option-id="${String(optionId)}" ${canFix ? "" : "disabled"}>固定する</button></span>`;
     })
     .filter(Boolean);
   if (!lines.length) return "";
