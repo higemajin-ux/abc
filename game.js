@@ -13,6 +13,7 @@ let storageFusionMode = false;
 let storageFusionMessage = "";
 const selectedStorageGroups = new Set();
 let selectedStorageFusionGroupId = null;
+const selectedStorageFusionMaterialGroupIds = new Set();
 const openDetailPartyIds = new Set();
 const SHORTCUT_REDUCTION_RATE = 0.1;
 const MIN_MISSION_DURATION_MS = 5000;
@@ -1778,6 +1779,14 @@ function cancelStorageBulkSellMode() {
   selectedStorageGroups.clear();
 }
 
+function storageFusionTargetGroup(visibleGroups) {
+  return visibleGroups.find((group) => storageGroupSelectionId(group) === selectedStorageFusionGroupId) || null;
+}
+
+function currentStorageFusionTargetGroup() {
+  return storageFusionTargetGroup(storageGroups(filteredStorageEntries(state.storage || [])));
+}
+
 function isStorageFusionEntrySelectable(entry) {
   const item = entry?.item;
   return (
@@ -1816,6 +1825,10 @@ function hasOptionedStorageFusionMaterial(group) {
     );
 }
 
+function isStorageFusionTargetGroupSelectable(group) {
+  return !!(group?.entries || []).find(isStorageFusionEntrySelectable);
+}
+
 function storageFusionRequiredCount(group) {
   const plus = Math.max(0, Number(group?.item?.plus) || 0);
   return plus >= 10 ? 5 : 3;
@@ -1835,38 +1848,87 @@ function storageFusionSelectableCount(group) {
     .length;
 }
 
+function storageFusionGroupMaterialCount(group, itemId) {
+  return (group?.entries || []).filter((entry) => isStorageFusionMaterialEntrySelectable(entry, itemId)).length;
+}
+
+function isStorageFusionMaterialGroupSelectable(group, targetGroup) {
+  const targetItemId = targetGroup?.item?.id;
+  if (!targetItemId) return false;
+  return storageGroupMaterialCount(group, targetItemId) > 0 && storageGroupSelectionId(group) !== storageGroupSelectionId(targetGroup);
+}
+
+function selectedStorageFusionMaterialCount(visibleGroups, targetGroup) {
+  const targetItemId = targetGroup?.item?.id;
+  if (!targetItemId) return 0;
+  return visibleGroups
+    .filter((group) => selectedStorageFusionMaterialGroupIds.has(storageGroupSelectionId(group)))
+    .reduce((sum, group) => sum + storageFusionGroupMaterialCount(group, targetItemId), 0);
+}
+
+function syncSelectedStorageFusionMaterials(visibleGroups, targetGroup) {
+  if (!targetGroup) {
+    selectedStorageFusionMaterialGroupIds.clear();
+    return;
+  }
+  const validIds = new Set(
+    visibleGroups
+      .filter((group) => isStorageFusionMaterialGroupSelectable(group, targetGroup))
+      .map(storageGroupSelectionId)
+  );
+  [...selectedStorageFusionMaterialGroupIds].forEach((id) => {
+    if (!validIds.has(id)) selectedStorageFusionMaterialGroupIds.delete(id);
+  });
+}
+
+function selectedStorageFusionUsesOptionedMaterials(visibleGroups, targetGroup) {
+  const targetItemId = targetGroup?.item?.id;
+  if (!targetItemId) return false;
+  return visibleGroups
+    .filter((group) => selectedStorageFusionMaterialGroupIds.has(storageGroupSelectionId(group)))
+    .some((group) =>
+      (group?.entries || []).some((entry) =>
+        isStorageFusionMaterialEntrySelectable(entry, targetItemId) &&
+        Array.isArray(entry.item?.options) &&
+        entry.item.options.length > 0
+      )
+    );
+}
+
 function canAffordStorageFusion(group) {
   const gold = Math.max(0, Number(state.parties[0]?.stats?.gold) || 0);
   return gold >= storageFusionGoldCost(group);
 }
 
-function isStorageFusionGroupSelectable(group) {
-  const targetEntry = (group?.entries || []).find(isStorageFusionEntrySelectable);
-  if (!targetEntry) return false;
-  const materialCount = storageFusionSelectableCount(group);
+function isStorageFusionGroupSelectable(group, visibleGroups = []) {
+  if (!isStorageFusionTargetGroupSelectable(group)) return false;
   const requiredCount = storageFusionRequiredCount(group);
-  const needsTargetFromMaterials = Math.max(0, Number(group?.item?.plus) || 0) === 0 ? 1 : 0;
-  return materialCount >= requiredCount + needsTargetFromMaterials && canAffordStorageFusion(group);
+  const materialCount = selectedStorageFusionMaterialCount(visibleGroups, group);
+  return materialCount >= requiredCount && canAffordStorageFusion(group);
 }
 
 function cancelStorageFusionMode() {
   storageFusionMode = false;
   selectedStorageFusionGroupId = null;
+  selectedStorageFusionMaterialGroupIds.clear();
 }
 
 function fuseSelectedStorageGroup(visibleGroups) {
-  const group = visibleGroups.find((entry) => storageGroupSelectionId(entry) === selectedStorageFusionGroupId);
-  if (!group || !isStorageFusionGroupSelectable(group)) return;
-  const requiredCount = storageFusionRequiredCount(group);
-  const goldCost = storageFusionGoldCost(group);
+  const targetGroup = storageFusionTargetGroup(visibleGroups);
+  if (!targetGroup || !isStorageFusionGroupSelectable(targetGroup, visibleGroups)) return;
+  const requiredCount = storageFusionRequiredCount(targetGroup);
+  const goldCost = storageFusionGoldCost(targetGroup);
   const stats = state.parties[0]?.stats;
-  const targetEntry = (group.entries || []).find(isStorageFusionEntrySelectable);
+  const targetEntry = (targetGroup.entries || []).find(isStorageFusionEntrySelectable);
   if (!targetEntry || typeof targetEntry.index !== "number") return;
-  const materialIndices = (state.storage || [])
-    .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index, locked: !!rawItem?.locked }))
-    .filter((entry) => isStorageFusionMaterialEntrySelectable(entry, group.item.id))
-    .map((entry) => entry.index)
-    .filter((index) => index !== targetEntry.index)
+  const materialIndices = visibleGroups
+    .filter((group) => selectedStorageFusionMaterialGroupIds.has(storageGroupSelectionId(group)))
+    .flatMap((group) =>
+      (group.entries || [])
+        .filter((entry) => isStorageFusionMaterialEntrySelectable(entry, targetGroup.item.id))
+        .map((entry) => entry.index)
+    )
+    .filter((index) => typeof index === "number" && index !== targetEntry.index)
     .slice(0, requiredCount);
   if (materialIndices.length < requiredCount) return;
 
@@ -1874,21 +1936,20 @@ function fuseSelectedStorageGroup(visibleGroups) {
   if (!baseItem) return;
   if (!stats || Number(stats.gold) < goldCost) return;
 
-  [targetEntry.index, ...materialIndices].sort((a, b) => b - a).forEach((index) => {
+  const nextPlus = Math.max(0, Number(baseItem.plus) || 0) + 1;
+  state.storage[targetEntry.index] = storageItemFromEquipment({
+    ...baseItem,
+    plus: nextPlus,
+    locked: false,
+    options: undefined,
+  });
+  materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
   });
   stats.gold -= goldCost;
-  const nextPlus = Math.max(0, Number(baseItem.plus) || 0) + 1;
-  state.storage.push(
-    storageItemFromEquipment({
-      ...baseItem,
-      plus: nextPlus,
-      locked: false,
-      options: undefined,
-    })
-  );
   storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: nextPlus })} を作成した`;
   selectedStorageFusionGroupId = null;
+  selectedStorageFusionMaterialGroupIds.clear();
   storageRenderCount = -1;
   saveGame();
   renderAll();
@@ -2019,18 +2080,21 @@ function storageBulkSellHtml(visibleGroups) {
 
 function storageFusionHtml(visibleGroups) {
   if (storageBulkSellMode) return "";
-  const selectedGroup = visibleGroups.find((group) => storageGroupSelectionId(group) === selectedStorageFusionGroupId);
+  const selectedGroup = storageFusionTargetGroup(visibleGroups);
   if (!storageFusionMode) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-fusion-toggle>装備合成</button>';
   }
   const requiredCount = selectedGroup ? storageFusionRequiredCount(selectedGroup) : 3;
   const goldCost = selectedGroup ? storageFusionGoldCost(selectedGroup) : 100;
-  const materialNote = selectedGroup && hasOptionedStorageFusionMaterial(selectedGroup)
+  const selectedMaterialCount = selectedGroup ? selectedStorageFusionMaterialCount(visibleGroups, selectedGroup) : 0;
+  const materialNote = selectedGroup && selectedStorageFusionUsesOptionedMaterials(visibleGroups, selectedGroup)
     ? '<span class="muted">※OP付き装備も素材になります</span>'
     : "";
+  const targetNote = selectedGroup ? `<span class="muted">${equipmentDisplayName(selectedGroup.item)} を本体に選択中</span>` : '<span class="muted">強化したい装備を1本選択</span>';
   return `<div class="storage-bulk-sell-actions">
-    <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup) ? "" : "disabled"}>合成 (${requiredCount} / ${goldCost}G)</button>
+    <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedGroup && isStorageFusionGroupSelectable(selectedGroup, visibleGroups) ? "" : "disabled"}>合成 (${selectedMaterialCount}/${requiredCount} / ${goldCost}G)</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-fusion-cancel>キャンセル</button>
+    ${targetNote}
     ${materialNote}
   </div>`;
 }
@@ -2072,16 +2136,34 @@ function storageGroupHtml(group) {
   const selectionId = storageGroupSelectionId(group);
   const selectable = selectableEntries.length > 0;
   const checked = selectable && selectedStorageGroups.has(selectionId);
-  const fusionSelectable = isStorageFusionGroupSelectable(group);
-  const fusionChecked = fusionSelectable && selectedStorageFusionGroupId === selectionId;
+  const fusionTargetSelectable = isStorageFusionTargetGroupSelectable(group);
+  const activeTargetGroup = currentStorageFusionTargetGroup();
+  const fusionTargetChecked = selectedStorageFusionGroupId === selectionId;
+  const fusionMaterialSelectable = !!activeTargetGroup && isStorageFusionMaterialGroupSelectable(group, activeTargetGroup);
+  const fusionMaterialChecked = fusionMaterialSelectable && selectedStorageFusionMaterialGroupIds.has(selectionId);
   const checkboxHtml = storageBulkSellMode
     ? `<label class="storage-select">
       <input type="checkbox" class="storage-select-checkbox" data-storage-select="${selectionId}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
     </label>`
     : storageFusionMode
-      ? `<label class="storage-select">
-      <input type="checkbox" class="storage-select-checkbox" data-storage-fusion-select="${selectionId}" ${fusionChecked ? "checked" : ""} ${fusionSelectable ? "" : "disabled"}>
+      ? fusionTargetChecked
+        ? `<label class="storage-select">
+      <input type="checkbox" class="storage-select-checkbox" data-storage-fusion-target="${selectionId}" checked>
     </label>`
+        : selectedStorageFusionGroupId
+          ? `<label class="storage-select">
+      <input type="checkbox" class="storage-select-checkbox" data-storage-fusion-material="${selectionId}" ${fusionMaterialChecked ? "checked" : ""} ${fusionMaterialSelectable ? "" : "disabled"}>
+    </label>`
+          : `<label class="storage-select">
+      <input type="checkbox" class="storage-select-checkbox" data-storage-fusion-target="${selectionId}" ${fusionTargetChecked ? "checked" : ""} ${fusionTargetSelectable ? "" : "disabled"}>
+    </label>`
+    : "";
+  const fusionLabel = storageFusionMode
+    ? fusionTargetChecked
+      ? '<span class="storage-equipped-label">本体</span>'
+      : selectedStorageFusionGroupId && fusionMaterialChecked
+        ? '<span class="storage-equipped-label">素材</span>'
+        : ""
     : "";
   return `<li>
     ${checkboxHtml}
@@ -2089,6 +2171,7 @@ function storageGroupHtml(group) {
       <div class="storage-head">
         <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : count > 1 ? ` ×${count}` : ""}</span>
         ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
+        ${fusionLabel}
       </div>
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
       ${equipmentOptionsStorageHtml(item)}
@@ -2137,9 +2220,18 @@ function bindStorageEvents(root) {
   root.querySelectorAll(".storage-select-checkbox").forEach((input) => {
     input.addEventListener("change", () => {
       if (storageFusionMode) {
-        const selectionId = input.dataset.storageFusionSelect;
-        if (!selectionId) return;
-        selectedStorageFusionGroupId = input.checked ? selectionId : null;
+        const targetId = input.dataset.storageFusionTarget;
+        if (targetId) {
+          selectedStorageFusionGroupId = input.checked ? targetId : null;
+          selectedStorageFusionMaterialGroupIds.clear();
+          storageRenderCount = -1;
+          renderStorage();
+          return;
+        }
+        const materialId = input.dataset.storageFusionMaterial;
+        if (!materialId) return;
+        if (input.checked) selectedStorageFusionMaterialGroupIds.add(materialId);
+        else selectedStorageFusionMaterialGroupIds.delete(materialId);
         storageRenderCount = -1;
         renderStorage();
         return;
@@ -2172,6 +2264,7 @@ function bindStorageEvents(root) {
     storageFusionMode = true;
     cancelStorageBulkSellMode();
     selectedStorageFusionGroupId = null;
+    selectedStorageFusionMaterialGroupIds.clear();
     storageRenderCount = -1;
     renderStorage();
   });
@@ -2210,8 +2303,10 @@ function renderStorage() {
   const visibleEntries = filteredStorageEntries(items);
   const visibleGroups = storageGroups(visibleEntries);
   syncSelectedStorageGroups(visibleGroups);
+  syncSelectedStorageFusionMaterials(visibleGroups, storageFusionTargetGroup(visibleGroups));
   const selectedKey = [...selectedStorageGroups].sort().join(",");
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionGroupId || ""}`;
+  const fusionMaterialKey = [...selectedStorageFusionMaterialGroupIds].sort().join(",");
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionGroupId || ""}:${fusionMaterialKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
