@@ -1799,7 +1799,6 @@ function isStorageFusionEntrySelectable(entry) {
   const item = entry?.item;
   return (
     typeof storageEntryIndex(entry) === "number" &&
-    !storageEntryLocked(entry) &&
     !entry?.equippedBy &&
     !Number(item?.enhance) &&
     normalizeRarity(item?.rarity) !== "artifact" &&
@@ -2081,7 +2080,7 @@ function storageFusionHtml(visibleEntries) {
     ? '<span class="muted">※OP付き装備も素材になります</span>'
     : "";
   const targetNote = selectedEntry
-    ? `<span class="muted">STEP2 素材を選択 (${selectedMaterialCount}/${requiredCount})</span><span class="muted">${equipmentDisplayName(selectedEntry.item)} を本体に選択中</span>`
+    ? `<span class="muted">STEP2 素材を選択 (${selectedMaterialCount}/${requiredCount})</span><span class="muted"><span class="storage-fusion-badge">育成対象</span>${equipmentDisplayName(selectedEntry.item)} を育成対象に選択中</span>`
     : '<span class="muted">STEP1 強化したい装備を1本選択</span>';
   return `<div class="storage-bulk-sell-actions">
     <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedEntry && isStorageFusionTargetReady(selectedEntry, visibleEntries) ? "" : "disabled"}>合成 (${selectedMaterialCount}/${requiredCount} / ${goldCost}G)</button>
@@ -2174,9 +2173,9 @@ function storageFusionEntryHtml(entry) {
       <input type="checkbox" class="storage-select-checkbox" data-storage-fusion-target="${selectionId}" ${targetChecked ? "checked" : ""} ${isStorageFusionTargetEntrySelectable(entry) ? "" : "disabled"}>
     </label>`;
   const fusionLabel = targetChecked
-    ? '<span class="storage-equipped-label">本体</span>'
-    : materialChecked
-      ? '<span class="storage-equipped-label">素材</span>'
+    ? '<span class="storage-fusion-badge">育成対象</span>'
+    : materialSelectable
+      ? '<span class="storage-fusion-badge">素材</span>'
       : "";
   const canSell = typeof index === "number" && !equippedBy && !locked;
   return `<li>
