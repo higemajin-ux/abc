@@ -21,6 +21,7 @@ const DEVELOPER_MISSION_DURATION_MS = 6000;
 registerDropEquipmentItems();
 let state = {
   parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
+  stats: { gold: 0 },
   areaClears: {},
   storage: [],
   autoSell: { common: false, uncommon: false },
@@ -46,6 +47,10 @@ function formatClock(ts) {
 
 function defaultStats() {
   return { gold: 0, kills: 0, missionsStarted: 0, missionsCleared: 0 };
+}
+
+function defaultGuildStats() {
+  return { gold: 0 };
 }
 
 function cloneEquipmentOptions(options) {
@@ -194,6 +199,12 @@ function ensureRecords(target = state) {
 function ensureDeveloperMode(target = state) {
   target.developerMode = target.developerMode === true;
   return target.developerMode;
+}
+
+function ensureGuildStats(target = state) {
+  target.stats = { ...defaultGuildStats(), ...(target.stats || {}) };
+  target.stats.gold = Math.max(0, Number(target.stats.gold) || 0);
+  return target.stats;
 }
 
 function recordEquipment(item, target = state) {
@@ -805,7 +816,7 @@ function applyMemberXp(member, xp, levelUps) {
 
 function applyRewards(party, area, rewards) {
   const s = party.stats;
-  s.gold += rewards.gold;
+  ensureGuildStats().gold += rewards.gold;
   s.kills += rewards.kills;
   if (!rewards.noRewards) s.missionsCleared += 1;
   recordEnemyKills(rewards);
@@ -915,8 +926,7 @@ function sellStorageItemByIndex(index, { deferRender = false } = {}) {
   if (!storedItem || storedItem.locked) return false;
 
   const sellGold = equipmentSellGoldValue(storedItem);
-  const stats = state.parties[0]?.stats;
-  if (stats) stats.gold += sellGold;
+  ensureGuildStats().gold += sellGold;
   state.storage.splice(index, 1);
   storageRenderCount = -1;
   if (!deferRender) {
@@ -1649,18 +1659,23 @@ function renderReportSection() {
 function renderStats() {
   const root = $("stats-root");
   if (!root) return;
-  root.innerHTML = state.parties
+  const guildGold = ensureGuildStats().gold;
+  const guildPanel = `<div class="sub-panel"><h3>ギルド資金</h3>
+        <div class="stats">
+          <div class="stat-cell"><div class="label">ゴールド</div>${guildGold} G</div>
+        </div></div>`;
+  const partyPanels = state.parties
     .map((p) => {
       const s = p.stats;
       return `<div class="sub-panel"><h3>${p.name}</h3>
         <div class="stats">
-          <div class="stat-cell"><div class="label">ゴールド</div>${s.gold} G</div>
           <div class="stat-cell"><div class="label">討伐</div>${s.kills} 体</div>
           <div class="stat-cell"><div class="label">派遣</div>${s.missionsStarted} 回</div>
           <div class="stat-cell"><div class="label">完了</div>${s.missionsCleared} 回</div>
         </div></div>`;
     })
     .join("");
+  root.innerHTML = guildPanel + partyPanels;
 }
 
 function renderStatsSection() {
@@ -1885,7 +1900,7 @@ function selectedStorageFusionUsesOptionedMaterials(visibleEntries, targetEntry)
 }
 
 function canAffordStorageFusion(targetEntry) {
-  const gold = Math.max(0, Number(state.parties[0]?.stats?.gold) || 0);
+  const gold = ensureGuildStats().gold;
   return gold >= storageFusionGoldCost(targetEntry);
 }
 
@@ -1907,7 +1922,7 @@ function fuseSelectedStorageGroup(visibleEntries) {
   if (!targetEntry || !isStorageFusionTargetReady(targetEntry, visibleEntries)) return;
   const requiredCount = storageFusionRequiredCount(targetEntry);
   const goldCost = storageFusionGoldCost(targetEntry);
-  const stats = state.parties[0]?.stats;
+  const guildStats = ensureGuildStats();
   const targetIndex = storageEntryIndex(targetEntry);
   if (typeof targetIndex !== "number") return;
   const materialIndices = visibleEntries
@@ -1923,7 +1938,7 @@ function fuseSelectedStorageGroup(visibleEntries) {
 
   const baseItem = storageItemFromEquipment(state.storage[targetIndex]);
   if (!baseItem) return;
-  if (!stats || Number(stats.gold) < goldCost) return;
+  if (Number(guildStats.gold) < goldCost) return;
 
   const nextPlus = Math.max(0, Number(baseItem.plus) || 0) + 1;
   state.storage[targetIndex] = storageItemFromEquipment({
@@ -1934,7 +1949,7 @@ function fuseSelectedStorageGroup(visibleEntries) {
   materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
   });
-  stats.gold -= goldCost;
+  guildStats.gold -= goldCost;
   storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: nextPlus })} を作成した`;
   selectedStorageFusionTargetIndex = null;
   selectedStorageFusionMaterialGroupIds.clear();
@@ -2714,6 +2729,7 @@ function migrate(data) {
   ensureAutoSellSettings(data);
   ensureRecords(data);
   ensureDeveloperMode(data);
+  ensureGuildStats(data);
   for (const rawItem of data.storage || []) {
     const item = storageItemFromEquipment(rawItem);
     recordEquipment(item, data);
@@ -2736,9 +2752,14 @@ function migrate(data) {
     }
   }
 
+  data.stats.gold += data.parties.reduce((sum, p) => sum + Math.max(0, Number(p?.stats?.gold) || 0), 0);
+  data.parties.forEach((p) => {
+    if (p?.stats) p.stats.gold = 0;
+  });
+
   if (data.gold != null && data.parties[0]) {
     const p0 = data.parties[0].stats;
-    p0.gold += data.gold || 0;
+    data.stats.gold += data.gold || 0;
     p0.kills += data.totalKills || 0;
     p0.missionsStarted += data.missionsStarted || 0;
     p0.missionsCleared += data.missionsCleared || 0;
@@ -2769,12 +2790,14 @@ function loadGame() {
     if (data.parties) {
       state = {
         parties: data.parties,
+        stats: data.stats || defaultGuildStats(),
         areaClears: data.areaClears || {},
         storage: data.storage || [],
         autoSell: data.autoSell || defaultAutoSellSettings(),
         records: data.records || defaultRecords(),
         developerMode: data.developerMode === true,
       };
+      ensureGuildStats();
       ensureAutoSellSettings();
       ensureRecords();
       ensureDeveloperMode();
@@ -2792,6 +2815,7 @@ function resetGame() {
   );
   state = {
     parties: [defaultParty("pt1", "第一小隊"), defaultParty("pt2", "第二小隊")],
+    stats: defaultGuildStats(),
     areaClears: {},
     storage: [],
     autoSell: defaultAutoSellSettings(),
