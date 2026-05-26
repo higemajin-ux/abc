@@ -12,8 +12,8 @@ let storageBulkSellMode = false;
 let storageFusionMode = false;
 let storageFusionMessage = "";
 const selectedStorageGroups = new Set();
-let selectedStorageFusionTargetIndex = null;
-const selectedStorageFusionMaterialGroupIds = new Set();
+let selectedStorageFusionTargetUid = null;
+const selectedStorageFusionMaterialUids = new Set();
 const openDetailPartyIds = new Set();
 const SHORTCUT_REDUCTION_RATE = 0.1;
 const MIN_MISSION_DURATION_MS = 5000;
@@ -51,6 +51,10 @@ function defaultStats() {
 
 function defaultGuildStats() {
   return { gold: 0 };
+}
+
+function nextStorageUid() {
+  return uid("storage");
 }
 
 function cloneEquipmentOptions(options) {
@@ -101,6 +105,7 @@ function storageItemFromEquipment(item) {
     rarity: normalizeRarity(normalized.rarity),
     sellGold: normalized.sellGold || 0,
     locked: !!item.locked,
+    storageUid: item?.storageUid || nextStorageUid(),
     storedAt: Date.now(),
   };
 }
@@ -253,6 +258,15 @@ function ensureGuildStats(target = state) {
   target.stats = { ...defaultGuildStats(), ...(target.stats || {}) };
   target.stats.gold = Math.max(0, Number(target.stats.gold) || 0);
   return target.stats;
+}
+
+function ensureStorageUids(target = state) {
+  if (!Array.isArray(target.storage)) target.storage = [];
+  target.storage = target.storage.map((item) => {
+    if (!item || item.storageUid) return item;
+    return { ...item, storageUid: nextStorageUid() };
+  });
+  return target.storage;
 }
 
 function recordEquipment(item, target = state) {
@@ -1863,6 +1877,10 @@ function cancelStorageBulkSellMode() {
   selectedStorageGroups.clear();
 }
 
+function storageEntryUid(entry) {
+  return entry?.item?.storageUid || entry?.rawItem?.storageUid || null;
+}
+
 function storageEntryIndex(entry) {
   return typeof entry?.storageIndex === "number" ? entry.storageIndex : entry?.index;
 }
@@ -1872,7 +1890,7 @@ function storageEntryLocked(entry) {
 }
 
 function storageFusionTargetEntry(visibleEntries) {
-  return visibleEntries.find((entry) => String(storageEntryIndex(entry)) === String(selectedStorageFusionTargetIndex)) || null;
+  return visibleEntries.find((entry) => String(storageEntryUid(entry)) === String(selectedStorageFusionTargetUid)) || null;
 }
 
 function currentStorageFusionTargetEntry() {
@@ -1932,7 +1950,7 @@ function selectedStorageFusionMaterialCount(visibleEntries, targetEntry) {
   const targetItemId = targetEntry?.item?.id;
   if (!targetItemId) return 0;
   return visibleEntries.filter((entry) =>
-    selectedStorageFusionMaterialGroupIds.has(String(storageEntryIndex(entry))) &&
+    selectedStorageFusionMaterialUids.has(String(storageEntryUid(entry))) &&
     isStorageFusionMaterialEntrySelectable(entry, targetItemId) &&
     storageEntryIndex(entry) !== storageEntryIndex(targetEntry)
   ).length;
@@ -1940,7 +1958,7 @@ function selectedStorageFusionMaterialCount(visibleEntries, targetEntry) {
 
 function syncSelectedStorageFusionMaterials(visibleEntries, targetEntry) {
   if (!targetEntry) {
-    selectedStorageFusionMaterialGroupIds.clear();
+    selectedStorageFusionMaterialUids.clear();
     return;
   }
   const validIds = new Set(
@@ -1949,10 +1967,10 @@ function syncSelectedStorageFusionMaterials(visibleEntries, targetEntry) {
         isStorageFusionMaterialEntrySelectable(entry, targetEntry.item.id) &&
         storageEntryIndex(entry) !== storageEntryIndex(targetEntry)
       )
-      .map((entry) => String(storageEntryIndex(entry)))
+      .map((entry) => String(storageEntryUid(entry)))
   );
-  [...selectedStorageFusionMaterialGroupIds].forEach((id) => {
-    if (!validIds.has(id)) selectedStorageFusionMaterialGroupIds.delete(id);
+  [...selectedStorageFusionMaterialUids].forEach((id) => {
+    if (!validIds.has(id)) selectedStorageFusionMaterialUids.delete(id);
   });
 }
 
@@ -1960,7 +1978,7 @@ function selectedStorageFusionUsesOptionedMaterials(visibleEntries, targetEntry)
   const targetItemId = targetEntry?.item?.id;
   if (!targetItemId) return false;
   return visibleEntries.some((entry) =>
-    selectedStorageFusionMaterialGroupIds.has(String(storageEntryIndex(entry))) &&
+    selectedStorageFusionMaterialUids.has(String(storageEntryUid(entry))) &&
     isStorageFusionMaterialEntrySelectable(entry, targetItemId) &&
     storageEntryIndex(entry) !== storageEntryIndex(targetEntry) &&
     Array.isArray(entry.item?.options) &&
@@ -1982,8 +2000,8 @@ function isStorageFusionTargetReady(targetEntry, visibleEntries = []) {
 
 function cancelStorageFusionMode() {
   storageFusionMode = false;
-  selectedStorageFusionTargetIndex = null;
-  selectedStorageFusionMaterialGroupIds.clear();
+  selectedStorageFusionTargetUid = null;
+  selectedStorageFusionMaterialUids.clear();
 }
 
 function isEquipmentOptionMilestone(plus) {
@@ -2041,10 +2059,11 @@ function fuseSelectedStorageGroup(visibleEntries) {
   const goldCost = storageFusionGoldCost(targetEntry);
   const guildStats = ensureGuildStats();
   const targetIndex = storageEntryIndex(targetEntry);
+  const targetUid = storageEntryUid(targetEntry);
   if (typeof targetIndex !== "number") return;
   const materialIndices = visibleEntries
     .filter((entry) =>
-      selectedStorageFusionMaterialGroupIds.has(String(storageEntryIndex(entry))) &&
+      selectedStorageFusionMaterialUids.has(String(storageEntryUid(entry))) &&
       isStorageFusionMaterialEntrySelectable(entry, targetEntry.item.id) &&
       storageEntryIndex(entry) !== targetIndex
     )
@@ -2062,16 +2081,16 @@ function fuseSelectedStorageGroup(visibleEntries) {
     ...baseItem,
     plus: nextPlus,
     locked: !!baseItem.locked,
+    storageUid: targetUid,
   });
   handleEquipmentOptionMilestone(state.storage[targetIndex]);
-  const nextTargetIndex = targetIndex - materialIndices.filter((index) => index < targetIndex).length;
   materialIndices.sort((a, b) => b - a).forEach((index) => {
     state.storage.splice(index, 1);
   });
   guildStats.gold -= goldCost;
   storageFusionMessage = `${equipmentDisplayName({ ...baseItem, plus: nextPlus })} を作成した`;
-  selectedStorageFusionTargetIndex = nextTargetIndex;
-  selectedStorageFusionMaterialGroupIds.clear();
+  selectedStorageFusionTargetUid = targetUid;
+  selectedStorageFusionMaterialUids.clear();
   storageRenderCount = -1;
   saveGame();
   renderAll();
@@ -2275,7 +2294,7 @@ function storageGroups(entries) {
     }
     group.count += 1;
     if (typeof storageIndex === "number") group.latestIndex = Math.max(group.latestIndex, storageIndex);
-    group.entries.push({ item, index: storageIndex, locked: !!item.locked, equippedBy, equippedMemberId, equippedSlot });
+    group.entries.push({ item, index: storageIndex, storageUid: item.storageUid, locked: !!item.locked, equippedBy, equippedMemberId, equippedSlot });
   });
   return groups.sort(compareStorageGroups);
 }
@@ -2324,13 +2343,13 @@ function storageFusionEntryHtml(entry) {
   const equippedBy = entry?.equippedBy;
   const rarity = normalizeRarity(item?.rarity);
   const name = equipmentDisplayName(item);
-  const selectionId = String(index);
+  const selectionId = String(storageEntryUid(entry));
   const targetEntry = currentStorageFusionTargetEntry();
-  const targetChecked = selectedStorageFusionTargetIndex === selectionId;
+  const targetChecked = selectedStorageFusionTargetUid === selectionId;
   const materialSelectable = !!targetEntry &&
     isStorageFusionMaterialEntrySelectable(entry, targetEntry.item.id) &&
     index !== storageEntryIndex(targetEntry);
-  const materialChecked = materialSelectable && selectedStorageFusionMaterialGroupIds.has(selectionId);
+  const materialChecked = materialSelectable && selectedStorageFusionMaterialUids.has(selectionId);
   const checkboxHtml = targetEntry
     ? `<label class="storage-select">
       <input type="checkbox" class="storage-select-checkbox" data-storage-fusion-material="${selectionId}" ${materialChecked ? "checked" : ""} ${materialSelectable ? "" : "disabled"}>
@@ -2409,16 +2428,16 @@ function bindStorageEvents(root) {
       if (storageFusionMode) {
         const targetId = input.dataset.storageFusionTarget;
         if (targetId) {
-          selectedStorageFusionTargetIndex = input.checked ? Number(targetId) : null;
-          selectedStorageFusionMaterialGroupIds.clear();
+          selectedStorageFusionTargetUid = input.checked ? String(targetId) : null;
+          selectedStorageFusionMaterialUids.clear();
           storageRenderCount = -1;
           renderStorage();
           return;
         }
         const materialId = input.dataset.storageFusionMaterial;
         if (!materialId) return;
-        if (input.checked) selectedStorageFusionMaterialGroupIds.add(String(materialId));
-        else selectedStorageFusionMaterialGroupIds.delete(String(materialId));
+        if (input.checked) selectedStorageFusionMaterialUids.add(String(materialId));
+        else selectedStorageFusionMaterialUids.delete(String(materialId));
         storageRenderCount = -1;
         renderStorage();
         return;
@@ -2450,8 +2469,8 @@ function bindStorageEvents(root) {
   root.querySelector("[data-storage-fusion-toggle]")?.addEventListener("click", () => {
     storageFusionMode = true;
     cancelStorageBulkSellMode();
-    selectedStorageFusionTargetIndex = null;
-    selectedStorageFusionMaterialGroupIds.clear();
+    selectedStorageFusionTargetUid = null;
+    selectedStorageFusionMaterialUids.clear();
     storageRenderCount = -1;
     renderStorage();
   });
@@ -2460,8 +2479,8 @@ function bindStorageEvents(root) {
     fuseSelectedStorageGroup(visibleEntries);
   });
   root.querySelector("[data-storage-fusion-target-reset]")?.addEventListener("click", () => {
-    selectedStorageFusionTargetIndex = null;
-    selectedStorageFusionMaterialGroupIds.clear();
+    selectedStorageFusionTargetUid = null;
+    selectedStorageFusionMaterialUids.clear();
     storageRenderCount = -1;
     renderStorage();
   });
@@ -2507,8 +2526,8 @@ function renderStorage() {
       : visibleEntries.filter(isStorageFusionTargetEntrySelectable)
     : [];
   const selectedKey = [...selectedStorageGroups].sort().join(",");
-  const fusionMaterialKey = [...selectedStorageFusionMaterialGroupIds].sort().join(",");
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionTargetIndex ?? ""}:${fusionMaterialKey}`;
+  const fusionMaterialKey = [...selectedStorageFusionMaterialUids].sort().join(",");
+  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionTargetUid ?? ""}:${fusionMaterialKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
@@ -2816,6 +2835,7 @@ function renderInboxSection() {
 }
 
 function renderAll() {
+  ensureStorageUids();
   state.parties.forEach((p) => {
     ensurePartyShape(p);
     ensureValidSelectedArea(p);
@@ -2862,6 +2882,7 @@ function migrate(data) {
   ensureRecords(data);
   ensureDeveloperMode(data);
   ensureGuildStats(data);
+  ensureStorageUids(data);
   for (const rawItem of data.storage || []) {
     const item = storageItemFromEquipment(rawItem);
     recordEquipment(item, data);
