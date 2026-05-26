@@ -1889,12 +1889,23 @@ function storageEntryLocked(entry) {
   return !!entry?.rawItem?.locked || !!entry?.locked;
 }
 
+function storageStateEntryByUid(uid) {
+  if (!uid) return null;
+  const index = (state.storage || []).findIndex((item) => String(item?.storageUid) === String(uid));
+  if (index < 0) return null;
+  const rawItem = state.storage[index];
+  const item = storageItemFromEquipment(rawItem);
+  if (!item) return null;
+  return { rawItem, storageIndex: index, index, item, locked: !!rawItem?.locked };
+}
+
 function storageFusionTargetEntry(visibleEntries) {
-  return visibleEntries.find((entry) => String(storageEntryUid(entry)) === String(selectedStorageFusionTargetUid)) || null;
+  const visibleEntry = visibleEntries.find((entry) => String(storageEntryUid(entry)) === String(selectedStorageFusionTargetUid));
+  return visibleEntry || storageStateEntryByUid(selectedStorageFusionTargetUid);
 }
 
 function currentStorageFusionTargetEntry() {
-  return storageFusionTargetEntry(filteredStorageEntries(state.storage || []));
+  return storageStateEntryByUid(selectedStorageFusionTargetUid);
 }
 
 function isStorageFusionEntrySelectable(entry) {
