@@ -160,6 +160,28 @@ function formatEquipmentOptionDetail(option, meta, level) {
   return "";
 }
 
+function formatEquipmentOptionCandidate(optionId) {
+  if (optionId === "attackUp") return "攻撃+1";
+  if (optionId === "attackPercent") return "攻撃%+1";
+  if (optionId === "hpUp") return "HP+1";
+  if (optionId === "blindStrike") return "盲目+1";
+  if (optionId === "poisonStrike") return "毒+1";
+  if (optionId === "criticalRate") return "クリ率+1";
+  if (optionId === "hpPercent") return "HP%+1";
+  return OPTION_MASTER?.[optionId]?.name || String(optionId);
+}
+
+function equipmentOptionCandidatesStorageHtml(item) {
+  const optionCandidates = Array.isArray(item?.optionCandidates) ? item.optionCandidates : [];
+  if (!optionCandidates.length) return "";
+  const lines = optionCandidates
+    .map((optionId) => formatEquipmentOptionCandidate(optionId))
+    .filter(Boolean)
+    .map((text) => `・${text}`);
+  if (!lines.length) return "";
+  return `<div class="storage-effect">候補OP<br>（次の強化時に選択可能）<br><br>${lines.join("<br>")}</div>`;
+}
+
 function equipmentOptionsStorageHtml(item) {
   const options = Array.isArray(item?.options) ? item.options : [];
   const lines = options
@@ -172,7 +194,8 @@ function equipmentOptionsStorageHtml(item) {
       return detail ? `${text}（${detail}）` : text;
     })
     .filter(Boolean);
-  return lines.length ? `<div class="storage-effect">${lines.join("<br>")}</div>` : "";
+  const optionsHtml = lines.length ? `<div class="storage-effect">${lines.join("<br>")}</div>` : "";
+  return `${optionsHtml}${equipmentOptionCandidatesStorageHtml(item)}`;
 }
 
 function defaultAutoSellSettings() {
@@ -1935,9 +1958,42 @@ function isEquipmentOptionMilestone(plus) {
   return [3, 6, 9].includes(Math.max(0, Number(plus) || 0));
 }
 
+function equipmentMilestoneOptionPool(item) {
+  const excluded = new Set([
+    ...((Array.isArray(item?.fixedOptions) ? item.fixedOptions : []).map((id) => String(id))),
+    ...((Array.isArray(item?.optionCandidates) ? item.optionCandidates : []).map((id) => String(id))),
+    ...((Array.isArray(item?.options) ? item.options : []).map((option) => String(option?.id)).filter(Boolean)),
+  ]);
+  return Object.keys(OPTION_MASTER || {}).filter((id) => !excluded.has(String(id)));
+}
+
+function rollEquipmentMilestoneCandidates(item, count = 3) {
+  const pool = [...equipmentMilestoneOptionPool(item)];
+  const results = [];
+  const limit = Math.max(0, Number(count) || 0);
+  while (pool.length > 0 && results.length < limit) {
+    const index = roll(0, pool.length - 1);
+    const [picked] = pool.splice(index, 1);
+    if (picked) results.push(picked);
+  }
+  return results;
+}
+
 function handleEquipmentOptionMilestone(item) {
   const plus = Math.max(0, Number(item?.plus) || 0);
   if (!isEquipmentOptionMilestone(plus)) return;
+  const usedSlots =
+    (Array.isArray(item?.fixedOptions) ? item.fixedOptions.length : 0) +
+    (Array.isArray(item?.options) ? item.options.length : 0);
+  const remainingSlots = Math.max(0, 3 - usedSlots);
+  if (remainingSlots <= 0) return;
+  const nextCandidates = rollEquipmentMilestoneCandidates(item, remainingSlots);
+  if (nextCandidates.length) {
+    item.optionCandidates = [
+      ...((Array.isArray(item?.optionCandidates) ? item.optionCandidates : []).map((id) => String(id))),
+      ...nextCandidates,
+    ];
+  }
   console.log("[equipment-option-milestone]", {
     id: item?.id || null,
     plus,
