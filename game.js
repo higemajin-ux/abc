@@ -254,7 +254,7 @@ function showDropToast(items, title = "今回の納品") {
     toast.remove();
   };
   toast.addEventListener("click", closeToast);
-  window.setTimeout(closeToast, 30000);
+  window.setTimeout(closeToast, 7900);
 }
 
 function formatEquipmentOptionDetail(option, meta, level) {
@@ -1502,7 +1502,9 @@ function renderPastDispatchLog(root, party) {
 }
 
 function memberChips(party) {
-  const selectedMemberId = selectedDetailMemberByPartyId.get(party.id) || party.members[0]?.id;
+  const selectedMemberId = selectedDetailMemberByPartyId.has(party.id)
+    ? selectedDetailMemberByPartyId.get(party.id)
+    : party.members[0]?.id;
   return party.members
     .map((m) => {
       const hpRate = m.maxHp > 0 ? (m.hp / m.maxHp) * 100 : 0;
@@ -1944,8 +1946,14 @@ function createPartyCard(party) {
     button.addEventListener("click", () => {
       const memberId = button.dataset.memberDetailOpen;
       if (!memberId) return;
-      selectedDetailMemberByPartyId.set(party.id, memberId);
-      openDetailPartyIds.add(party.id);
+      const selectedMemberId = selectedDetailMemberByPartyId.get(party.id);
+      if (selectedMemberId === memberId && openDetailPartyIds.has(party.id)) {
+        selectedDetailMemberByPartyId.set(party.id, null);
+        openDetailPartyIds.delete(party.id);
+      } else {
+        selectedDetailMemberByPartyId.set(party.id, memberId);
+        openDetailPartyIds.add(party.id);
+      }
       renderPartyCard(party);
     });
   });
