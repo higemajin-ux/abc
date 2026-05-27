@@ -11,6 +11,7 @@ let storageAutoSellOpen = false;
 let storageBulkSellMode = false;
 let storageFusionMode = false;
 let storageFusionMessage = "";
+let dropToastSerial = 1;
 const selectedStorageGroups = new Set();
 let selectedStorageFusionTargetUid = null;
 const selectedStorageFusionMaterialUids = new Set();
@@ -147,9 +148,111 @@ function equipmentDisplayName(item) {
   return plus > 0 ? `${name}+${plus}` : name;
 }
 
+function equipmentSetDisplayName(item) {
+  const setId = item?.setId;
+  if (!setId) return "";
+  if (Array.isArray(SET_BONUSES)) {
+    const matched = SET_BONUSES.find((set) => set?.setId === setId);
+    if (matched?.name) return matched.name;
+  }
+  return String(setId);
+}
+
+function equipmentSetLabelHtml(item) {
+  const label = equipmentSetDisplayName(item);
+  return label ? `<span class="equipment-set-label">${label}</span>` : "";
+}
+
+function equipmentSelectionOptionCount(item) {
+  return Array.isArray(item?.options) ? item.options.length : 0;
+}
+
+function compareEquipmentSelectionEntries(a, b) {
+  const rarityDiff = rarityRank(b?.item?.rarity) - rarityRank(a?.item?.rarity);
+  if (rarityDiff) return rarityDiff;
+  const optionedDiff = Number(equipmentSelectionOptionCount(b?.item) > 0) - Number(equipmentSelectionOptionCount(a?.item) > 0);
+  if (optionedDiff) return optionedDiff;
+  const optionCountDiff = equipmentSelectionOptionCount(b?.item) - equipmentSelectionOptionCount(a?.item);
+  if (optionCountDiff) return optionCountDiff;
+  const plusDiff = (Number(b?.item?.plus) || 0) - (Number(a?.item?.plus) || 0);
+  if (plusDiff) return plusDiff;
+  return String(a?.item?.name || a?.item?.id || "").localeCompare(String(b?.item?.name || b?.item?.id || ""), "ja")
+    || ((Number(a?.index) || 0) - (Number(b?.index) || 0));
+}
+
 function equipmentStorageLine(item) {
   const sellGold = equipmentSellGoldValue(item);
   return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
+}
+
+function isSetEquipmentItem(item) {
+  return !!item?.setId || normalizeRarity(item?.rarity) === "set";
+}
+
+function isRareOrBetterEquipmentItem(item) {
+  return ["rare", "set", "epic", "legendary", "artifact"].includes(normalizeRarity(item?.rarity));
+}
+
+function hasEquipmentOptions(item) {
+  return Array.isArray(item?.options) && item.options.length > 0;
+}
+
+function shouldShowDropToast(item) {
+  return !!item && (isRareOrBetterEquipmentItem(item) || hasEquipmentOptions(item) || isSetEquipmentItem(item));
+}
+
+function equipmentToastName(item) {
+  return `${equipmentDisplayName(item)}${isSetEquipmentItem(item) ? "（S）" : ""}`;
+}
+
+function equipmentToastOptionLine(item) {
+  const options = Array.isArray(item?.options) ? item.options : [];
+  const parts = options
+    .map((option) => {
+      const meta = OPTION_MASTER?.[option?.id];
+      if (!meta?.name) return "";
+      const level = Number(option?.level) || 0;
+      return `【${meta.name}${level > 0 ? `Lv${level}` : ""}】`;
+    })
+    .filter(Boolean);
+  return parts.join("");
+}
+
+function equipmentToastLineHtml(item) {
+  if (!item) return "";
+  const rarityClass = typeof rarityClassName === "function" ? rarityClassName(item.rarity) : "";
+  const optionLine = equipmentToastOptionLine(item);
+  return `<li class="drop-toast-item"><span class="drop-toast-item-name ${rarityClass}">${equipmentToastName(item)}</span>${optionLine ? `<span class="drop-toast-item-option">${optionLine}</span>` : ""}</li>`;
+}
+
+function ensureDropToastRoot() {
+  let root = $("drop-toast-root");
+  if (root) return root;
+  root = document.createElement("div");
+  root.id = "drop-toast-root";
+  root.className = "drop-toast-root";
+  document.body.appendChild(root);
+  return root;
+}
+
+function showDropToast(items, title = "今回の納品") {
+  const list = (Array.isArray(items) ? items : [items]).filter(shouldShowDropToast);
+  if (!list.length) return;
+  const root = ensureDropToastRoot();
+  const toast = document.createElement("div");
+  toast.className = "drop-toast";
+  toast.dataset.toastId = String(dropToastSerial++);
+  toast.innerHTML = `<div class="drop-toast-title">${title}</div><ul class="drop-toast-list">${list.map(equipmentToastLineHtml).join("")}</ul>`;
+  root.appendChild(toast);
+  while (root.children.length > 4) {
+    root.firstElementChild?.remove();
+  }
+  const closeToast = () => {
+    if (!toast.isConnected) return;
+    toast.remove();
+  };
+  toast.addEventListener("click", closeToast);
+  window.setTimeout(closeToast, 30000);
 }
 
 function formatEquipmentOptionDetail(option, meta, level) {
@@ -218,8 +321,22 @@ function defaultAutoSellSettings() {
 function formatMissionDurationLabel(durationMs) {
   const seconds = Math.max(0, Number(durationMs) || 0) / 1000;
   const rounded = Math.round(seconds * 10) / 10;
-  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-  return `${text}秒`;
+  return `${rounded.toFixed(1)}秒`;
+}
+
+function missionDurationReductionRateForParty(party) {
+  if (!party || typeof getActiveSetBonuses !== "function") return 0;
+  const seen = new Set();
+  let rate = 0;
+  for (const member of party.members || []) {
+    for (const set of getActiveSetBonuses(member) || []) {
+      const key = set?.setId || (Array.isArray(set?.items) ? set.items.join("|") : set?.name || "");
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      rate += Math.max(0, Number(set?.missionDurationRate) || 0);
+    }
+  }
+  return Math.min(rate, 0.9);
 }
 
 function ensureAutoSellSettings(target = state) {
@@ -423,15 +540,17 @@ function treasureRarityTagHtml(item) {
   return ` <span class="${rarityClassName(rarity)}">[${rarity.toUpperCase()}]</span>`;
 }
 
-function shortcutMissionReductionMs(area, rewards) {
-  const durationMs = missionDurationMs(area);
+function shortcutMissionReductionMs(area, rewards, party = null) {
+  const durationMs = missionDurationMs(area, party);
   if (!rewards?.shortcutFound || durationMs <= MIN_MISSION_DURATION_MS) return 0;
   return Math.min(Math.floor(durationMs * SHORTCUT_REDUCTION_RATE), durationMs - MIN_MISSION_DURATION_MS);
 }
 
-function missionDurationMs(area) {
+function missionDurationMs(area, party = null) {
   if (state.developerMode) return DEVELOPER_MISSION_DURATION_MS;
-  return Math.max(0, Number(area?.durationMs) || 0);
+  const baseDurationMs = Math.max(0, Number(area?.durationMs) || 0);
+  const reducedDurationMs = Math.round(baseDurationMs * (1 - missionDurationReductionRateForParty(party)));
+  return Math.max(1000, reducedDurationMs);
 }
 
 function battleSummary(encounter) {
@@ -879,7 +998,7 @@ function applyRewards(party, area, rewards) {
   s.kills += rewards.kills;
   if (!rewards.noRewards) s.missionsCleared += 1;
   recordEnemyKills(rewards);
-  if (!rewards.noRewards) storeEquipmentDrops(rewards);
+  if (!rewards.noRewards) storeEquipmentDrops(rewards, party?.name);
 
   const levelUps = [];
   const xpEach = rewards.noRewards ? 0 : Math.max(1, Math.floor(rewards.xp / party.members.length));
@@ -905,18 +1024,21 @@ function recordEnemyKills(rewards) {
   }
 }
 
-function storeEquipmentDrops(rewards) {
+function storeEquipmentDrops(rewards, partyName = "") {
   if (!state.storage) state.storage = [];
   const drops = [
     ...(rewards?.encounters || []).map((encounter) => encounter?.equipmentDrop),
     ...(rewards?.extraEquipmentDrops || []),
   ];
+  const toastItems = [];
   for (const item of drops) {
     const storedItem = storageItemFromEquipment(item);
     recordEquipment(storedItem);
+    if (shouldShowDropToast(storedItem || item)) toastItems.push(storedItem || item);
     if (!item || !storedItem || wasAutoSoldDrop(item)) continue;
     state.storage.push({ ...storedItem, foundBy: item.finderName || "" });
   }
+  showDropToast(toastItems, partyName ? `${partyName}の納品` : "今回の納品");
 }
 
 function findMemberById(memberId) {
@@ -1070,8 +1192,8 @@ function startMission(partyId) {
   const startMembersSnapshot = snapshotMembers(party.members);
   const rewards = generateBattle(area, party);
   const now = Date.now();
-  const plannedEndsAt = now + missionDurationMs(area);
-  const endsAt = plannedEndsAt - shortcutMissionReductionMs(area, rewards);
+  const plannedEndsAt = now + missionDurationMs(area, party);
+  const endsAt = plannedEndsAt - shortcutMissionReductionMs(area, rewards, party);
   const dispatchId = uid("dispatch");
   applyMembersSnapshot(party, startMembersSnapshot);
 
@@ -1410,12 +1532,20 @@ function memberStatBreakdownData(member, key) {
 function memberStatLineHtml(member, key, label) {
   const data = memberStatBreakdownData(member, key);
   if (!data) {
-    return `<div class="member-stat-row"><span>${label}</span><strong>-</strong></div>`;
+    return `<div class="member-stat-row">
+      <span class="member-stat-label">${label}</span>
+      <strong class="member-stat-total">-</strong>
+      <span class="member-stat-part">基礎-</span>
+      <span class="member-stat-part">装備-</span>
+      <span class="member-stat-part">OP-</span>
+    </div>`;
   }
   return `<div class="member-stat-row">
-    <span>${label}</span>
-    <strong>${data.total}</strong>
-    <small class="member-stat-subline">素 ${data.base} / 装備 ${signedValueText(data.equipment)} / OP ${signedValueText(data.option)}</small>
+    <span class="member-stat-label">${label}</span>
+    <strong class="member-stat-total">${data.total}</strong>
+    <span class="member-stat-part">基礎${data.base}</span>
+    <span class="member-stat-part">装備${signedValueText(data.equipment)}</span>
+    <span class="member-stat-part">OP${signedValueText(data.option)}</span>
   </div>`;
 }
 
@@ -1423,13 +1553,19 @@ function memberCriticalStatRowsHtml(member) {
   const breakdown = memberEquipmentBreakdown(member);
   const criticalRate = percentValueText(breakdown?.total?.criticalRate || member?.criticalRate || 0);
   const criticalDamage = percentValueText(breakdown?.total?.criticalDamage || 0);
-  return `<div class="member-stat-row member-stat-row-compact">
-    <span>CRI</span>
-    <strong>${criticalRate}</strong>
+  return `<div class="member-stat-row">
+    <span class="member-stat-label">CRI</span>
+    <strong class="member-stat-total">${criticalRate}</strong>
+    <span class="member-stat-part">基礎0%</span>
+    <span class="member-stat-part">装備+0%</span>
+    <span class="member-stat-part">OP+${criticalRate}</span>
   </div>
-  <div class="member-stat-row member-stat-row-compact">
-    <span>CRD</span>
-    <strong>${criticalDamage}</strong>
+  <div class="member-stat-row">
+    <span class="member-stat-label">CRD</span>
+    <strong class="member-stat-total">${criticalDamage}</strong>
+    <span class="member-stat-part">基礎0%</span>
+    <span class="member-stat-part">装備+0%</span>
+    <span class="member-stat-part">OP+${criticalDamage}</span>
   </div>`;
 }
 
@@ -1441,6 +1577,71 @@ function memberStatusStrikeRateText(member) {
   if (rates.poison > 0) parts.push(`毒${Math.round(rates.poison * 100)}%`);
   if (rates.blind > 0) parts.push(`盲目${Math.round(rates.blind * 100)}%`);
   return parts.length ? `付与率：${parts.join(" / ")}` : "";
+}
+
+function memberExtraInfoItemHtml(label, value) {
+  return `<li><span>${label}</span><strong>${value}</strong></li>`;
+}
+
+function memberStatusAilmentBoxHtml(member) {
+  const rates = typeof getEquipmentStatusStrikeRates === "function"
+    ? getEquipmentStatusStrikeRates(member)
+    : { poison: 0, blind: 0 };
+  const items = [
+    ["毒", percentValueText(rates.poison || 0)],
+    ["麻痺", "0%"],
+    ["盲目", percentValueText(rates.blind || 0)],
+    ["睡眠", "0%"],
+    ["凍結", "0%"],
+    ["出血", "0%"],
+  ];
+  return `<div class="member-extra-box">
+    <div class="member-extra-title">状態異常</div>
+    <ul class="member-extra-list">${items.map(([label, value]) => memberExtraInfoItemHtml(label, value)).join("")}</ul>
+  </div>`;
+}
+
+function memberResistanceBoxHtml() {
+  const items = [
+    ["火耐性", "0%"],
+    ["水耐性", "0%"],
+    ["草耐性", "0%"],
+  ];
+  return `<div class="member-extra-box">
+    <div class="member-extra-title">耐性・装備効果</div>
+    <ul class="member-extra-list">${items.map(([label, value]) => memberExtraInfoItemHtml(label, value)).join("")}</ul>
+  </div>`;
+}
+
+function memberSetSummaryLines(member) {
+  const sets = typeof getActiveSetBonuses === "function" ? getActiveSetBonuses(member) : [];
+  if (!sets.length) return ["なし"];
+  const [set] = sets;
+  const lines = [set.name];
+  if (Array.isArray(set.displayLines) && set.displayLines.length) {
+    return lines.concat(set.displayLines).slice(0, 3);
+  }
+  const labels = { maxHp: "HP", atk: "ATK", def: "DEF", dex: "DEX", luc: "LUC" };
+  for (const key of ["maxHp", "atk", "def", "dex", "luc"]) {
+    if (!set?.bonus?.[key]) continue;
+    lines.push(`${labels[key]} ${signedValueText(set.bonus[key])}`);
+  }
+  return lines.slice(0, 3);
+}
+
+function memberSetBoxHtml(member) {
+  return `<div class="member-extra-box member-extra-box-set">
+    <div class="member-extra-title">セット装備</div>
+    <ul class="member-extra-list member-extra-set-list">${memberSetSummaryLines(member).map((text) => `<li><strong>${text}</strong></li>`).join("")}</ul>
+  </div>`;
+}
+
+function memberExtraInfoGridHtml(member) {
+  return `<div class="member-extra-grid">
+    ${memberStatusAilmentBoxHtml(member)}
+    ${memberResistanceBoxHtml()}
+    ${memberSetBoxHtml(member)}
+  </div>`;
 }
 
 function memberFormation(member) {
@@ -1466,11 +1667,13 @@ function equipmentCandidateList(member, slot) {
   const hasItem = !!equippedItem;
   const candidates = (state.storage || [])
     .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index }))
-    .filter(({ item }) => item?.slot === kind);
+    .filter(({ item }) => item?.slot === kind)
+    .sort(compareEquipmentSelectionEntries);
 
   const currentChoice = hasItem
     ? `<div class="equip-choice-current ${rarityClassName(equippedItem.rarity)}" aria-disabled="true">
         <span class="equip-choice-head"><strong>現在：${equipmentDisplayName(equippedItem)}</strong><span>${normalizeRarity(equippedItem.rarity)}</span></span>
+        ${equipmentSetLabelHtml(equippedItem)}
         <span class="equip-choice-meta">${equipmentStatLine(equippedItem)}</span>
         ${equipmentOptionsStorageHtml(equippedItem)}
       </div>`
@@ -1492,6 +1695,7 @@ function equipmentCandidateList(member, slot) {
       const rarity = normalizeRarity(item.rarity);
       return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
         <span class="equip-choice-head"><strong>${equipmentDisplayName(item)}</strong><span>${rarity}</span></span>
+        ${equipmentSetLabelHtml(item)}
         <span class="equip-choice-meta">${equipmentStorageLine(item)}</span>
         ${equipmentOptionsStorageHtml(item)}
       </button>`;
@@ -1503,11 +1707,15 @@ function equipmentSlotHtml(member, slot) {
   const equipment = ensureCharacterEquipment(member);
   const item = storageItemFromEquipmentId(equipment[slot]);
   const rarity = normalizeRarity(item?.rarity);
-  const name = item ? `${equipmentDisplayName(item)} / ${equipmentStatLine(item)}` : "なし";
+  const name = item ? equipmentDisplayName(item) : "なし";
   return `<div class="member-equipment-slot">
     <button type="button" class="equip-slot-btn" data-member-id="${member.id}" data-slot="${slot}">
       <span>${equipmentSlotLabel(slot)}</span>
-      <strong class="${rarityClassName(rarity)}">${name}</strong>
+      <div class="equip-slot-main">
+        <strong class="${rarityClassName(rarity)}">${name}</strong>
+        ${item ? equipmentSetLabelHtml(item) : ""}
+        ${item ? `<small class="equip-slot-meta">${equipmentStatLine(item)}</small>` : ""}
+      </div>
     </button>
     <div class="equipment-candidates" hidden>${equipmentCandidateList(member, slot)}</div>
   </div>`;
@@ -1582,22 +1790,22 @@ function memberDetails(party) {
           ${memberStatLineHtml(m, "luc", "LUC")}
           ${memberCriticalStatRowsHtml(m)}
         </div>
-        ${memberStatusStrikeRateText(m) ? `<div class="member-stat-detail">${memberStatusStrikeRateText(m)}</div>` : ""}
+        ${memberExtraInfoGridHtml(m)}
         ${memberSkillListHtml(m)}
         <div class="member-equipment">${EQUIPMENT_SLOTS
           .map(({ key }) => equipmentSlotHtml(m, key))
           .join("")}</div>
-        ${formatActiveSetBonuses(m)}
       </div>`
     )
     .join("");
 }
 
-function areaOptions(selected) {
+function areaOptions(party, selected) {
   return AREA_ORDER.map((id) => {
     const a = AREAS[id];
     const unlocked = isAreaUnlocked(id);
-    const label = unlocked ? `${a.name}（${formatMissionDurationLabel(missionDurationMs(a))}）` : `${a.name}（${getUnlockHint(id)}）`;
+    const actualDurationMs = missionDurationMs(a, party);
+    const label = unlocked ? `${a.name}（${formatMissionDurationLabel(actualDurationMs)}）` : `${a.name}（${getUnlockHint(id)}）`;
     return `<option value="${id}" ${id === selected ? "selected" : ""} ${unlocked ? "" : "disabled"}>${label}</option>`;
   }).join("");
 }
@@ -1708,7 +1916,7 @@ function renderExpeditionSection(party, on, area) {
   return `
       <div class="eta">帰還予定：${on ? formatClock(party.mission.endsAt) : "--"}</div>
       <label class="field-label">派遣先</label>
-      <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party.selectedArea)}</select>
+      <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party, party.selectedArea)}</select>
       <div class="dispatch-wrap" data-progress="${party.id}">
         <button type="button" class="primary dispatch-btn ${on ? "on-mission" : ""}" ${on ? "disabled" : ""}>
           <span class="btn-progress ${on ? `progress-${progressStage(missionProgress(party)).key}` : ""}" style="width:${on ? missionProgress(party) : 0}%"></span>
@@ -1809,7 +2017,7 @@ function storageGroupKey(item, fallback) {
 }
 
 function rarityRank(rarity) {
-  return ["common", "uncommon", "rare", "epic", "legendary", "artifact"].indexOf(normalizeRarity(rarity));
+  return ["common", "uncommon", "rare", "set", "epic", "legendary", "artifact"].indexOf(normalizeRarity(rarity));
 }
 
 function storageSlotRank(slot) {
@@ -2250,9 +2458,10 @@ function renderStorageLegacy() {
           return `<li>
             <div class="storage-info">
               <div class="storage-head">
-                <span class="storage-item ${rarityClassName(rarity)}">${name}${count > 1 ? ` ×${count}` : ""}</span>
+                <span class="storage-item ${rarityClassName(rarity)}">${name}</span>${count > 1 ? `<span class="storage-count">×${count}</span>` : ""}
                 ${locked ? '<span class="storage-lock-label">★ 保護中</span>' : ""}
               </div>
+              ${equipmentSetLabelHtml(item)}
               <div class="storage-effect">${equipmentStorageLine(item)}</div>
               ${equipmentOptionsStorageHtml(item, { storageIndex: index })}
             </div>
@@ -2362,6 +2571,7 @@ function storageFusionTargetPreviewHtml(entry) {
             ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
             <span class="storage-fusion-badge">育成対象</span>
           </div>
+          ${equipmentSetLabelHtml(item)}
           <div class="storage-effect">${equipmentStorageLine(item)}</div>
           ${equipmentOptionsStorageHtml(item, { storageIndex: storageEntryIndex(entry) })}
         </div>
@@ -2424,9 +2634,10 @@ function storageGroupHtml(group) {
     ${checkboxHtml}
     <div class="storage-info">
       <div class="storage-head">
-        <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : count > 1 ? ` ×${count}` : ""}</span>
+        <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : ""}</span>${!equippedBy && !locked && count > 1 ? `<span class="storage-count">×${count}</span>` : ""}
         ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
       </div>
+      ${equipmentSetLabelHtml(item)}
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
       ${equipmentOptionsStorageHtml(item, { storageIndex: index })}
     </div>
@@ -2474,6 +2685,7 @@ function storageFusionEntryHtml(entry) {
         ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
         ${fusionLabel}
       </div>
+      ${equipmentSetLabelHtml(item)}
       <div class="storage-effect">${equipmentStorageLine(item)}</div>
       ${equipmentOptionsStorageHtml(item, { storageIndex: index })}
     </div>
