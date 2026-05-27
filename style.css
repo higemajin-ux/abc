@@ -1851,6 +1851,13 @@ h1 {
     min-width: min(100%, 156px);
   }
 
+  .member-detail-tab {
+    min-height: 31px;
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 0.94rem;
+  }
+
   .member-stat-row strong {
     font-size: 0.8rem;
   }
