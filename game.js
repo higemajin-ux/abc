@@ -2614,30 +2614,59 @@ function renderStorageLegacy() {
   });
 }
 
-function storageSortOptionsHtml() {
-  const autoSell = ensureAutoSellSettings();
+function storageSortOptionsHtml(actionHtml = "") {
   return `<div class="storage-controls">
-    <button type="button" class="storage-organize-btn" data-storage-filter-toggle aria-expanded="${storageFilterOpen}">整理</button>
-    <button type="button" class="storage-organize-btn" data-storage-auto-sell-toggle aria-expanded="${storageAutoSellOpen}">自動売却</button>
-    <label>並び替え
-      <select class="storage-sort-select">
-        <option value="new" ${storageSortMode === "new" ? "selected" : ""}>新しい順</option>
-        <option value="rarity" ${storageSortMode === "rarity" ? "selected" : ""}>rarity順</option>
-        <option value="type" ${storageSortMode === "type" ? "selected" : ""}>種類順</option>
-        <option value="name" ${storageSortMode === "name" ? "selected" : ""}>名前順</option>
-      </select>
-    </label>
-    <div class="storage-popover storage-filters" ${storageFilterOpen ? "" : "hidden"} aria-label="フィルター">
+    <div class="storage-top-row">
+      <label class="storage-sort-control">並び替え
+        <select class="storage-sort-select">
+          <option value="new" ${storageSortMode === "new" ? "selected" : ""}>新しい順</option>
+          <option value="rarity" ${storageSortMode === "rarity" ? "selected" : ""}>rarity順</option>
+          <option value="type" ${storageSortMode === "type" ? "selected" : ""}>種類順</option>
+          <option value="name" ${storageSortMode === "name" ? "selected" : ""}>名前順</option>
+        </select>
+      </label>
+      <button type="button" class="storage-organize-btn" data-storage-filter-toggle aria-expanded="${storageFilterOpen}">整理</button>
+    </div>
+    <div class="storage-action-row">
+      <button type="button" class="storage-organize-btn" data-storage-auto-sell-toggle aria-expanded="${storageAutoSellOpen}">自動売却</button>
+      ${actionHtml}
+    </div>
+  </div>`;
+}
+
+function storageFilterPanelHtml() {
+  const autoSell = ensureAutoSellSettings();
+  return `<div class="storage-popover storage-filter-panel" ${storageFilterOpen ? "" : "hidden"} aria-label="整理条件">
+    <div class="storage-filter-panel-title">整理条件</div>
+    <div class="storage-filter-panel-group">
+      <div class="storage-filter-panel-label">種類：</div>
+      <div class="storage-filters">
         ${storageFilterButton("all", "すべて")}
         ${storageFilterButton("weapon", "武器")}
         ${storageFilterButton("armor", "防具")}
         ${storageFilterButton("accessory", "装飾")}
         ${storageFilterButton("artifact", "アーティファクト")}
+      </div>
     </div>
-    <div class="storage-popover storage-auto-sell" ${storageAutoSellOpen ? "" : "hidden"} aria-label="自動売却設定">
-      <label><input type="checkbox" data-auto-sell="common" ${autoSell.common ? "checked" : ""}> common</label>
-      <label><input type="checkbox" data-auto-sell="uncommon" ${autoSell.uncommon ? "checked" : ""}> uncommon</label>
+    <div class="storage-filter-panel-group">
+      <div class="storage-filter-panel-label">レアリティ：</div>
+      <div class="storage-auto-sell">
+        <label><input type="checkbox" data-auto-sell="common" ${autoSell.common ? "checked" : ""}> common</label>
+        <label><input type="checkbox" data-auto-sell="uncommon" ${autoSell.uncommon ? "checked" : ""}> uncommon</label>
+        <label><input type="checkbox" disabled> rare</label>
+        <label><input type="checkbox" disabled> epic</label>
+        <label><input type="checkbox" disabled> set</label>
+      </div>
     </div>
+    <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-close>閉じる</button>
+  </div>`;
+}
+
+function storageAutoSellPanelHtml() {
+  const autoSell = ensureAutoSellSettings();
+  return `<div class="storage-popover storage-auto-sell" ${storageAutoSellOpen ? "" : "hidden"} aria-label="自動売却設定">
+    <label><input type="checkbox" data-auto-sell="common" ${autoSell.common ? "checked" : ""}> common</label>
+    <label><input type="checkbox" data-auto-sell="uncommon" ${autoSell.uncommon ? "checked" : ""}> uncommon</label>
   </div>`;
 }
 
@@ -2712,7 +2741,8 @@ function storageFusionTargetPreviewHtml(entry) {
 
 function storageHeaderHtml(items, visibleGroups = [], visibleEntries = []) {
   const messageHtml = storageFusionMessage ? `<span class="muted">${storageFusionMessage}</span>` : "";
-  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml()}${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleEntries)}${messageHtml}</div>`;
+  const actionHtml = `${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleEntries)}`;
+  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml(actionHtml)}${storageFilterPanelHtml()}${storageAutoSellPanelHtml()}${messageHtml}</div>`;
 }
 
 function storageFusionStep2Html(targetEntry, contentHtml) {
@@ -2827,6 +2857,11 @@ function storageFusionEntryHtml(entry) {
 function bindStorageEvents(root) {
   root.querySelector("[data-storage-filter-toggle]")?.addEventListener("click", () => {
     storageFilterOpen = !storageFilterOpen;
+    storageRenderCount = -1;
+    renderStorage();
+  });
+  root.querySelector("[data-storage-filter-close]")?.addEventListener("click", () => {
+    storageFilterOpen = false;
     storageRenderCount = -1;
     renderStorage();
   });
