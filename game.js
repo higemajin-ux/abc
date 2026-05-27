@@ -2599,6 +2599,14 @@ function equipmentRecordInfoValue(value, lookup = null) {
   return labels.join("、") || "？？？";
 }
 
+function equipmentRecordConfiguredInfoValue(value, lookup = null) {
+  const values = Array.isArray(value) ? value : value ? [value] : [];
+  const labels = values
+    .filter(Boolean)
+    .map((item) => lookup?.[item]?.name || item);
+  return labels.join("、") || "未設定";
+}
+
 function equipmentRecordDropEnemyIds(item) {
   if (item?.dropEnemies) return Array.isArray(item.dropEnemies) ? item.dropEnemies : [item.dropEnemies];
   if (!item?.id) return [];
@@ -2633,39 +2641,19 @@ function equipmentRecordKindLabel(slot) {
   }[slot] || slot || "？？？";
 }
 
-function equipmentRecordSortText(item) {
-  return `${item?.id || ""} ${item?.name || ""}`.toLowerCase();
-}
-
-function equipmentRecordTypeRank(item) {
-  const slot = item?.slot || "";
-  const text = equipmentRecordSortText(item);
-  if (slot === "weapon") {
-    if (text.includes("sword") || text.includes("blade") || text.includes("剣")) return 0;
-    if (text.includes("dagger") || text.includes("短剣")) return 1;
-    if (text.includes("staff") || text.includes("杖")) return 2;
-    return 3;
-  }
-  if (slot === "armor") {
-    if (text.includes("armor") || text.includes("mail") || text.includes("breastplate") || text.includes("鎧")) return 4;
-    if (text.includes("robe") || text.includes("wear") || text.includes("法衣") || text.includes("服")) return 5;
-    if (text.includes("cloak") || text.includes("外套")) return 6;
-    return 7;
-  }
-  if (slot === "accessory") return 8;
-  if (slot === "relic") return 9;
-  return 10 + storageSlotRank(slot);
+function equipmentRecordBasePower(item) {
+  return ["maxHp", "atk", "def", "dex", "luc"].reduce((sum, key) => sum + (Number(item?.[key]) || 0), 0);
 }
 
 function compareEquipmentRecords(a, b) {
   return (
-    equipmentRecordTypeRank(a) - equipmentRecordTypeRank(b) ||
-    rarityRank(b?.rarity) - rarityRank(a?.rarity) ||
-    (a?.name || "").localeCompare(b?.name || "", "ja")
+    equipmentRecordBasePower(a) - equipmentRecordBasePower(b) ||
+    rarityRank(a?.rarity) - rarityRank(b?.rarity) ||
+    String(a?.id || "").localeCompare(String(b?.id || ""), "ja")
   );
 }
 
-function equipmentRecordHtml(item) {
+function equipmentRecordHtml(item, discovered = false) {
   const rarity = normalizeRarity(item?.rarity);
   const slot = item?.slot || "unknown";
   const slotKind = EQUIPMENT_SLOTS.find(({ key, kind }) => key === slot || kind === slot)?.kind || slot;
@@ -2673,16 +2661,23 @@ function equipmentRecordHtml(item) {
   const dropEnemyIds = equipmentRecordDropEnemyIds(item);
   const dropAreaIds = equipmentRecordDropAreaIds(item, dropEnemyIds);
   const flavor = item?.flavor || item?.description || "未記録";
+  const name = discovered ? item?.name || "名称不明の装備" : "？？？";
+  const statText = discovered ? equipmentStatLine(item) : "？？？";
+  const appearanceText = equipmentRecordConfiguredInfoValue(dropAreaIds, AREAS);
+  const dropText = discovered
+    ? equipmentRecordConfiguredInfoValue(dropEnemyIds, MONSTERS)
+    : (dropEnemyIds.length ? "？？？" : "未設定");
+  const descriptionHtml = discovered ? `<p class="records-flavor">説明：${flavor}</p>` : "";
   return `<li>
     <div class="records-info">
       <div class="records-head">
-        <span class="records-item ${rarityClassName(rarity)}">${item?.name || "名称不明の装備"}</span>
+        <span class="records-item ${discovered ? rarityClassName(rarity) : ""}">${name}</span>
         <span class="records-meta">${rarity} / ${slotLabel}</span>
       </div>
-      <div class="records-effect">ドロップ：${equipmentRecordInfoValue(dropEnemyIds, MONSTERS)}</div>
-      <div class="records-effect">出現：${equipmentRecordInfoValue(dropAreaIds, AREAS)}</div>
-      <div class="records-effect">性能：${equipmentStatLine(item)}</div>
-      <p class="records-flavor">説明：${flavor}</p>
+      <div class="records-effect">性能：${statText}</div>
+      <div class="records-effect">出現：${appearanceText}</div>
+      <div class="records-effect">ドロップ：${dropText}</div>
+      ${descriptionHtml}
     </div>
   </li>`;
 }
@@ -2772,18 +2767,18 @@ function renderRecords() {
   const root = $("records-root");
   if (!root) return;
   const records = ensureRecords();
-  const ids = records.equipment;
+  const discoveredIds = new Set(records.equipment);
   const equipmentTotal = Object.keys(EQUIPMENT_ITEMS || {}).length;
   const enemyTotal = Object.keys(MONSTERS || {}).length;
-  const items = ids.map((id) => EQUIPMENT_ITEMS[id]).filter(Boolean).sort(compareEquipmentRecords);
+  const items = Object.values(EQUIPMENT_ITEMS || {}).filter(Boolean).sort(compareEquipmentRecords);
   const enemies = enemyRecordEntries(records);
 
   root.innerHTML = `
     <div class="records-section">
-      <p class="records-count">装備図録 ${items.length} / ${equipmentTotal}</p>
+      <p class="records-count">装備図録 ${discoveredIds.size} / ${equipmentTotal}</p>
       ${
         items.length
-          ? `<ul class="records-list">${items.map(equipmentRecordHtml).join("")}</ul>`
+          ? `<ul class="records-list">${items.map((item) => equipmentRecordHtml(item, discoveredIds.has(item.id))).join("")}</ul>`
           : '<p class="log-empty">記録された装備はありません</p>'
       }
     </div>
