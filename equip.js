@@ -83,6 +83,7 @@ const SET_BONUSES = [
     setId: "traveler",
     requiredCount: 3,
     displayLines: ["放置時間 -10%", "LUC +10"],
+    missionDurationKey: "traveler",
     missionDurationRate: 0.1,
     bonus: {
       luc: 10,
