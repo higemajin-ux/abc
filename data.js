@@ -198,6 +198,9 @@ const EQUIPMENT_DROPS = [
     // chippedSword+3 -> 攻撃Lv4 / 盲目Lv2
   },
   { id: "oldCharm", name: "古い護符", slot: "accessory", rarity: "uncommon", luc: 1, sellGold: 12 },
+  { id: "travelerHat", name: "旅人の帽子", slot: "accessory", rarity: "set", luc: 1, sellGold: 10, setId: "traveler", dropAreas: ["plain"], dropEnemies: ["slime", "goblin"] },
+  { id: "travelerCloak", name: "旅人の外套", slot: "armor", rarity: "set", def: 1, luc: 1, sellGold: 12, setId: "traveler", dropAreas: ["forest"], dropEnemies: ["wolf", "mossMage"] },
+  { id: "travelerShoes", name: "旅人の靴", slot: "accessory", rarity: "set", dex: 1, luc: 1, sellGold: 11, setId: "traveler", dropAreas: ["forest"], dropEnemies: ["wolf", "mossMage"] },
   { id: "crackedRing", name: "ひび割れた指輪", slot: "accessory", rarity: "uncommon", dex: 1, sellGold: 9 },
   { id: "silverBuckle", name: "銀留めの帯具", slot: "accessory", rarity: "rare", def: 1, luc: 1, sellGold: 28 },
   { id: "emberPendant", name: "燠火の首飾り", slot: "accessory", rarity: "epic", atk: 2, luc: 1, sellGold: 70, flavor: "火は消えている。それでも、胸元だけが夜に温かい。" },
@@ -749,11 +752,11 @@ const WORLD_SITUATIONS = {
 // Optional monster fields:
 // special: "selfDestruct"
 const MONSTERS = {
-  slime: { id: "slime", name: "スライム", hp: 18, atk: 5, xp: 8, gold: 7, drops: ["oldCharm"] },
-  goblin: { id: "goblin", name: "小鬼", hp: 24, atk: 7, xp: 11, gold: 10, drops: ["chippedSword"] },
+  slime: { id: "slime", name: "スライム", hp: 18, atk: 5, xp: 8, gold: 7, drops: ["oldCharm", "travelerHat"] },
+  goblin: { id: "goblin", name: "小鬼", hp: 24, atk: 7, xp: 11, gold: 10, drops: ["chippedSword", "travelerHat"] },
   goblinChief: { id: "goblinChief", name: "小鬼頭", hp: 46, atk: 10, xp: 28, gold: 34, rare: true, boss: true, drops: ["silverBuckle", "emberPendant"] },
-  wolf: { id: "wolf", name: "森狼", hp: 30, atk: 9, xp: 15, gold: 13, drops: ["patchedCloak"] },
-  mossMage: { id: "mossMage", name: "苔の術師", hp: 26, atk: 11, xp: 18, gold: 16, rare: true, drops: ["oldCharm", "emberPendant"] },
+  wolf: { id: "wolf", name: "森狼", hp: 30, atk: 9, xp: 15, gold: 13, drops: ["patchedCloak", "travelerCloak", "travelerShoes"] },
+  mossMage: { id: "mossMage", name: "苔の術師", hp: 26, atk: 11, xp: 18, gold: 16, rare: true, drops: ["oldCharm", "emberPendant", "travelerCloak", "travelerShoes"] },
   forestWarden: { id: "forestWarden", name: "森の番獣", hp: 62, atk: 14, xp: 46, gold: 52, rare: true, boss: true, drops: ["blackLeatherArmor"] },
   mudSlime: { id: "mudSlime", name: "沼泥スライム", hp: 36, atk: 12, xp: 24, gold: 20 },
   bogLeech: { id: "bogLeech", name: "沼大蛭", hp: 42, atk: 13, xp: 28, gold: 24 },
