@@ -79,11 +79,13 @@ const SET_BONUSES = [
     },
   },
   {
-    name: "巡礼の誓い",
-    items: ["pilgrimStaff", "pilgrimVestment", "pilgrimShoes"],
+    name: "旅人一式",
+    setId: "traveler",
+    requiredCount: 3,
+    displayLines: ["放置時間 -10%", "LUC +10"],
+    missionDurationRate: 0.1,
     bonus: {
-      maxHp: 5,
-      luc: 2,
+      luc: 10,
     },
   },
 ];
@@ -105,10 +107,21 @@ function equipmentIds(character) {
 }
 
 function getActiveSetBonuses(character) {
-  const equipped = new Set(equipmentIds(character));
-  return SET_BONUSES.filter((set) =>
-    set.items.every((itemId) => equipped.has(itemId))
-  );
+  const equipment = ensureCharacterEquipment(character || {});
+  const equippedItems = Object.values(equipment)
+    .map((entry) => resolveEquippedItem(entry))
+    .filter(Boolean);
+  const equippedIds = new Set(equippedItems.map((item) => item.id).filter(Boolean));
+  return SET_BONUSES.filter((set) => {
+    if (Array.isArray(set.items) && set.items.length) {
+      return set.items.every((itemId) => equippedIds.has(itemId));
+    }
+    if (set.setId) {
+      const count = equippedItems.filter((item) => item.setId === set.setId).length;
+      return count >= Math.max(1, Number(set.requiredCount) || 1);
+    }
+    return false;
+  });
 }
 
 function getEquipmentStatusStrikeRates(character) {
