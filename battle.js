@@ -1267,7 +1267,7 @@ function rollEquipmentDrop(party, monster) {
   };
 }
 
-const RARITY_NAMES = new Set(["common", "uncommon", "rare", "epic", "legendary", "artifact"]);
+const RARITY_NAMES = new Set(["common", "uncommon", "rare", "set", "epic", "legendary", "artifact"]);
 
 function normalizeRarity(rarity) {
   return RARITY_NAMES.has(rarity) ? rarity : "common";
@@ -1310,7 +1310,10 @@ function dropOptionLabels(item) {
 
 function dropNameHtml(item) {
   if (!item?.name) return "";
-  return `<span class="${rarityClassName(item.rarity)}">${item.name}</span>${dropOptionLabels(item)}`;
+  const setMark = item?.setId || normalizeRarity(item?.rarity) === "set"
+    ? '<span class="set-item">（S）</span>'
+    : "";
+  return `<span class="${rarityClassName(item.rarity)}">${item.name}${setMark}</span>${dropOptionLabels(item)}`;
 }
 
 function performEnemyAction(enemy, party, events, speechState, round = 1) {
