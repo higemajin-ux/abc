@@ -374,7 +374,21 @@ h1 {
   border-radius: 7px;
   padding: 6px 9px;
   background: var(--bg);
+  appearance: none;
+  font-family: inherit;
   font-size: 0.85rem;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.member-chip:hover {
+  border-color: var(--line-bright);
+}
+
+.member-chip.active {
+  border-color: rgba(185, 145, 88, 0.58);
+  background: rgba(166, 126, 70, 0.12);
 }
 
 .member-name {
@@ -439,7 +453,7 @@ h1 {
 
 .member-detail-card {
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   background: rgba(20, 16, 12, 0.72);
   padding: 10px;
 }
@@ -456,6 +470,33 @@ h1 {
   margin-bottom: 8px;
 }
 
+.member-detail-head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.member-detail-close {
+  flex: 0 0 auto;
+  border: 1px solid rgba(166, 126, 70, 0.34);
+  border-radius: 7px;
+  background: rgba(255, 248, 232, 0.04);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.94rem;
+  font-weight: 700;
+  min-height: 40px;
+  line-height: 1;
+  padding: 8px 16px;
+}
+
+.member-detail-close:hover {
+  border-color: rgba(185, 145, 88, 0.48);
+  background: rgba(166, 126, 70, 0.1);
+}
+
 .member-detail-head span {
   color: var(--muted-on-dark);
   font-size: 0.84rem;
@@ -466,6 +507,46 @@ h1 {
   font-weight: 700;
 }
 
+.member-detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+
+.member-detail-tab {
+  border: 1px solid rgba(166, 126, 70, 0.26);
+  border-radius: 7px;
+  background: rgba(255, 248, 232, 0.025);
+  color: rgba(215, 199, 167, 0.82);
+  min-height: 29px;
+  padding: 3px 10px;
+  line-height: 1.05;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.member-detail-tab:hover {
+  border-color: rgba(185, 145, 88, 0.38);
+  color: var(--ink-on-dark);
+}
+
+.member-detail-tab.active {
+  border-color: rgba(185, 145, 88, 0.58);
+  background: rgba(166, 126, 70, 0.12);
+  color: var(--accent);
+}
+
+.member-detail-tab-panel[hidden] {
+  display: none;
+}
+
+.member-detail-panel {
+  display: grid;
+  gap: 10px;
+}
+
 .member-stat-grid {
   display: grid;
   gap: 3px;
@@ -473,17 +554,21 @@ h1 {
 
 .member-stat-row {
   display: grid;
-  grid-template-columns: 48px 56px minmax(64px, 1fr) minmax(70px, 1fr) minmax(58px, 1fr);
-  gap: 8px;
+  grid-template-columns: 44px 50px minmax(58px, 1fr) minmax(62px, 1fr) minmax(52px, 1fr);
+  gap: 6px;
   align-items: center;
   padding: 2px 0;
   min-height: 22px;
   border-bottom: 1px solid rgba(138, 106, 61, 0.12);
 }
 
+.member-stat-grid .member-stat-row:last-child {
+  border-bottom: none;
+}
+
 .member-stat-label {
   color: var(--muted-on-dark);
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 700;
 }
 
@@ -494,12 +579,12 @@ h1 {
   text-align: right;
   font-variant-numeric: tabular-nums;
   border-right: 1px solid rgba(176, 134, 74, 0.42);
-  padding-right: 10px;
+  padding-right: 7px;
 }
 
 .member-stat-part {
   color: var(--muted-on-dark);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 700;
   line-height: 1.2;
   text-align: right;
@@ -509,7 +594,7 @@ h1 {
 
 .member-stat-part:not(:last-child) {
   border-right: 1px dashed rgba(166, 126, 70, 0.28);
-  padding-right: 8px;
+  padding-right: 5px;
 }
 
 .member-stat-detail {
@@ -522,22 +607,25 @@ h1 {
 .member-extra-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
+  gap: 0;
+  margin-top: 3px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(176, 134, 74, 0.3);
 }
 
 .member-extra-box {
-  border: 1px solid rgba(138, 106, 61, 0.34);
-  border-radius: 6px;
-  background: linear-gradient(180deg, rgba(38, 28, 19, 0.78), rgba(23, 17, 12, 0.82));
-  box-shadow: inset 0 1px 0 rgba(214, 168, 79, 0.05);
-  padding: 8px 9px;
+  min-width: 0;
+  padding: 0 7px;
+}
+
+.member-extra-box:not(:first-child) {
+  border-left: 1px solid rgba(176, 134, 74, 0.26);
 }
 
 .member-extra-title {
   margin-bottom: 6px;
   color: var(--paper-light);
-  font-size: 0.76rem;
+  font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -556,20 +644,19 @@ h1 {
   justify-content: space-between;
   gap: 8px;
   color: var(--muted-on-dark);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
 .member-extra-list strong {
   color: var(--ink-on-dark);
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .member-extra-box-set {
-  border-color: rgba(181, 154, 104, 0.48);
-  box-shadow: inset 0 1px 0 rgba(181, 154, 104, 0.08);
+  padding-right: 0;
 }
 
 .member-extra-box-set .member-extra-title {
@@ -596,6 +683,14 @@ h1 {
   font-weight: 600;
   line-height: 1.15;
   color: #8f7a52;
+}
+
+.member-extra-set-note {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.1;
+  color: #8f7a52;
+  opacity: 0.7;
 }
 
 .member-skills {
@@ -675,6 +770,19 @@ h1 {
   color: var(--accent);
 }
 
+.skill-description-line {
+  display: block;
+}
+
+.skill-description-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.1;
+  color: var(--paper-dark);
+  opacity: 0.7;
+}
+
 .member-equipment {
   display: grid;
   gap: 6px;
@@ -683,7 +791,7 @@ h1 {
 
 .member-equipment-slot {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 
 .equip-slot-btn {
@@ -692,13 +800,13 @@ h1 {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  min-height: 34px;
+  min-height: 30px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg);
   color: var(--ink-on-dark);
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 4px 8px;
   text-align: left;
 }
 
@@ -718,7 +826,7 @@ h1 {
   min-width: 0;
   display: grid;
   justify-items: end;
-  gap: 1px;
+  gap: 0;
 }
 
 .equip-slot-btn strong {
@@ -729,8 +837,16 @@ h1 {
 
 .equip-slot-meta {
   color: var(--muted-on-dark);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.equip-slot-option {
+  color: var(--paper-dark);
   font-size: 0.7rem;
   font-weight: 600;
+  line-height: 1.1;
 }
 
 .equipment-candidates {
@@ -1746,7 +1862,18 @@ h1 {
 
   .member-extra-grid {
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 8px;
+    padding-top: 6px;
+  }
+
+  .member-extra-box {
+    padding: 0;
+  }
+
+  .member-extra-box:not(:first-child) {
+    border-left: none;
+    border-top: 1px solid rgba(176, 134, 74, 0.18);
+    padding-top: 6px;
   }
 
   .member-stat-total {
