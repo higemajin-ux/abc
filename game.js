@@ -16,6 +16,8 @@ const selectedStorageGroups = new Set();
 let selectedStorageFusionTargetUid = null;
 const selectedStorageFusionMaterialUids = new Set();
 const openDetailPartyIds = new Set();
+const selectedDetailTabByMemberId = new Map();
+const selectedDetailMemberByPartyId = new Map();
 const SHORTCUT_REDUCTION_RATE = 0.1;
 const MIN_MISSION_DURATION_MS = 5000;
 const DEVELOPER_MISSION_DURATION_MS = 6000;
@@ -314,6 +316,19 @@ function equipmentOptionsStorageHtml(item, context = {}) {
   return `${optionsHtml}${equipmentOptionCandidatesStorageHtml(item, context)}`;
 }
 
+function equipmentOptionNameLevelLine(item) {
+  const options = Array.isArray(item?.options) ? item.options : [];
+  const lines = options
+    .map((option) => {
+      const meta = OPTION_MASTER?.[option?.id];
+      if (!meta?.name) return "";
+      const level = Number(option?.level) || 0;
+      return level > 0 ? `${meta.name}Lv${level}` : meta.name;
+    })
+    .filter(Boolean);
+  return lines.join(" / ");
+}
+
 function defaultAutoSellSettings() {
   return { common: false, uncommon: false };
 }
@@ -324,19 +339,40 @@ function formatMissionDurationLabel(durationMs) {
   return `${rounded.toFixed(1)}秒`;
 }
 
-function missionDurationReductionRateForParty(party) {
-  if (!party || typeof getActiveSetBonuses !== "function") return 0;
+function missionDurationEffectsForParty(party) {
+  if (!party) return [];
+  const effects = [];
   const seen = new Set();
-  let rate = 0;
   for (const member of party.members || []) {
-    for (const set of getActiveSetBonuses(member) || []) {
-      const key = set?.setId || (Array.isArray(set?.items) ? set.items.join("|") : set?.name || "");
+    for (const set of (typeof getActiveSetBonuses === "function" ? getActiveSetBonuses(member) : []) || []) {
+      const key = set?.missionDurationKey || set?.setId || (Array.isArray(set?.items) ? set.items.join("|") : set?.name || "");
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      rate += Math.max(0, Number(set?.missionDurationRate) || 0);
+      const rate = Math.max(0, Number(set?.missionDurationRate) || 0);
+      if (rate > 0) effects.push({ key, rate });
     }
   }
+  const shortcutEffect = missionDurationShortcutRateForParty(party);
+  if (shortcutEffect && !seen.has(shortcutEffect.key) && shortcutEffect.rate > 0) effects.push(shortcutEffect);
+  return effects;
+}
+
+function missionDurationReductionRateForParty(party) {
+  const rate = missionDurationEffectsForParty(party).reduce((sum, effect) => sum + effect.rate, 0);
   return Math.min(rate, 0.9);
+}
+
+function missionDurationShortcutRateForParty(party) {
+  if (!party || typeof isSkillEnabled !== "function") return null;
+  const area = getArea(party.selectedArea);
+  const areaShortcutRate = Number.isFinite(area?.shortcutRate) ? area.shortcutRate : 1;
+  if (areaShortcutRate <= 0) return null;
+  const hasShortcutScout = (party.members || []).some((member) => member?.hp > 0 && isSkillEnabled(member, "shortcutFind"));
+  if (!hasShortcutScout) return null;
+  return {
+    key: "shortcutFind",
+    rate: SHORTCUT_REDUCTION_RATE * areaShortcutRate,
+  };
 }
 
 function ensureAutoSellSettings(target = state) {
@@ -541,14 +577,13 @@ function treasureRarityTagHtml(item) {
 }
 
 function shortcutMissionReductionMs(area, rewards, party = null) {
-  const durationMs = missionDurationMs(area, party);
-  if (!rewards?.shortcutFound || durationMs <= MIN_MISSION_DURATION_MS) return 0;
-  return Math.min(Math.floor(durationMs * SHORTCUT_REDUCTION_RATE), durationMs - MIN_MISSION_DURATION_MS);
+  return 0;
 }
 
 function missionDurationMs(area, party = null) {
-  if (state.developerMode) return DEVELOPER_MISSION_DURATION_MS;
-  const baseDurationMs = Math.max(0, Number(area?.durationMs) || 0);
+  const baseDurationMs = state.developerMode
+    ? DEVELOPER_MISSION_DURATION_MS
+    : Math.max(0, Number(area?.durationMs) || 0);
   const reducedDurationMs = Math.round(baseDurationMs * (1 - missionDurationReductionRateForParty(party)));
   return Math.max(1000, reducedDurationMs);
 }
@@ -1467,6 +1502,7 @@ function renderPastDispatchLog(root, party) {
 }
 
 function memberChips(party) {
+  const selectedMemberId = selectedDetailMemberByPartyId.get(party.id) || party.members[0]?.id;
   return party.members
     .map((m) => {
       const hpRate = m.maxHp > 0 ? (m.hp / m.maxHp) * 100 : 0;
@@ -1482,11 +1518,11 @@ function memberChips(party) {
       } else if (hpRate < 70) {
         hpClass = "hp-warn";
       }
-      return `<span class="member-chip ${hpClass}">
+      return `<button type="button" class="member-chip ${hpClass}${selectedMemberId === m.id ? " active" : ""}" data-member-detail-open="${m.id}" aria-pressed="${selectedMemberId === m.id ? "true" : "false"}">
         <span class="member-name">${m.name}</span>
         <span class="member-job">${JOB_LABELS[m.job]}</span>
         <span class="member-hp">${hpText}</span>
-      </span>`;
+      </button>`;
     })
     .join("");
 }
@@ -1630,9 +1666,11 @@ function memberSetSummaryLines(member) {
 }
 
 function memberSetBoxHtml(member) {
+  const lines = memberSetSummaryLines(member);
+  const noteHtml = lines[0] !== "なし" ? '<li class="member-extra-set-note">※重複不可</li>' : "";
   return `<div class="member-extra-box member-extra-box-set">
     <div class="member-extra-title">セット装備</div>
-    <ul class="member-extra-list member-extra-set-list">${memberSetSummaryLines(member).map((text) => `<li><strong>${text}</strong></li>`).join("")}</ul>
+    <ul class="member-extra-list member-extra-set-list">${lines.map((text) => `<li><strong>${text}</strong></li>`).join("")}${noteHtml}</ul>
   </div>`;
 }
 
@@ -1646,6 +1684,68 @@ function memberExtraInfoGridHtml(member) {
 
 function memberFormation(member) {
   return member.formation || "中衛";
+}
+
+function selectedMemberDetailTab(memberId) {
+  return selectedDetailTabByMemberId.get(memberId) || "status";
+}
+
+function selectedDetailMember(party) {
+  const selectedMemberId = selectedDetailMemberByPartyId.get(party.id);
+  return party.members.find((member) => member.id === selectedMemberId) || party.members[0] || null;
+}
+
+function memberOverviewHtml(member, partyId) {
+  return `<div class="member-detail-head">
+    <div class="member-detail-head-top">
+      <strong>${member.name}　Lv${member.level || 1}</strong>
+      <button type="button" class="member-detail-close" data-party-detail-close="${partyId}">閉じる</button>
+    </div>
+    <span>${JOB_LABELS[member.job] || member.job}</span>
+    <span class="member-formation">【${memberFormation(member)}】</span>
+  </div>`;
+}
+
+function memberStatusPanelHtml(member) {
+  return `<div class="member-detail-panel member-detail-panel-status">
+    <div class="member-stat-grid">
+      ${memberStatLineHtml(member, "maxHp", "HP")}
+      ${memberStatLineHtml(member, "atk", "ATK")}
+      ${memberStatLineHtml(member, "def", "DEF")}
+      ${memberStatLineHtml(member, "dex", "DEX")}
+      ${memberStatLineHtml(member, "luc", "LUC")}
+      ${memberCriticalStatRowsHtml(member)}
+    </div>
+    ${memberExtraInfoGridHtml(member)}
+  </div>`;
+}
+
+function memberEquipmentPanelHtml(member) {
+  return `<div class="member-detail-panel member-detail-panel-equipment">
+    <div class="member-equipment">${EQUIPMENT_SLOTS.map(({ key }) => equipmentSlotHtml(member, key)).join("")}</div>
+  </div>`;
+}
+
+function memberSkillPanelHtml(member) {
+  return `<div class="member-detail-panel member-detail-panel-skills">
+    ${memberSkillListHtml(member)}
+  </div>`;
+}
+
+function memberDetailTabsHtml(member) {
+  const selectedTab = selectedMemberDetailTab(member.id);
+  const tabs = [
+    { key: "status", label: "ステータス" },
+    { key: "equipment", label: "装備" },
+    { key: "skills", label: "スキル" },
+  ];
+  return `<div class="member-detail-tabs" role="tablist" aria-label="${member.name}の詳細切替">
+    ${tabs
+      .map(
+        (tab) => `<button type="button" class="member-detail-tab${selectedTab === tab.key ? " active" : ""}" data-member-id="${member.id}" data-detail-tab="${tab.key}" role="tab" aria-selected="${selectedTab === tab.key ? "true" : "false"}">${tab.label}</button>`
+      )
+      .join("")}
+  </div>`;
 }
 
 function equipmentSlotLabel(slot) {
@@ -1708,6 +1808,7 @@ function equipmentSlotHtml(member, slot) {
   const item = storageItemFromEquipmentId(equipment[slot]);
   const rarity = normalizeRarity(item?.rarity);
   const name = item ? equipmentDisplayName(item) : "なし";
+  const optionLine = item ? equipmentOptionNameLevelLine(item) : "";
   return `<div class="member-equipment-slot">
     <button type="button" class="equip-slot-btn" data-member-id="${member.id}" data-slot="${slot}">
       <span>${equipmentSlotLabel(slot)}</span>
@@ -1715,6 +1816,7 @@ function equipmentSlotHtml(member, slot) {
         <strong class="${rarityClassName(rarity)}">${name}</strong>
         ${item ? equipmentSetLabelHtml(item) : ""}
         ${item ? `<small class="equip-slot-meta">${equipmentStatLine(item)}</small>` : ""}
+        ${optionLine ? `<small class="equip-slot-option">${optionLine}</small>` : ""}
       </div>
     </button>
     <div class="equipment-candidates" hidden>${equipmentCandidateList(member, slot)}</div>
@@ -1725,12 +1827,16 @@ function skillDebugHtml(skill) {
   const debugInfo = typeof SKILL_DEBUG_INFO === "object" ? SKILL_DEBUG_INFO : {};
   const lines = skill?.debug || debugInfo[skill?.id] || [];
   if (!state.developerMode || !lines.length) return "";
-  return `<div class="skill-debug"><strong>[DEBUG]</strong>${lines.map((line) => `<span>${line}</span>`).join("")}</div>`;
+  return `<div class="skill-debug"><strong>[詳細条件]</strong>${lines.map((line) => `<span>${line}</span>`).join("")}</div>`;
 }
 
 function skillDescriptionHtml(skill) {
-  if (!skill?.description) return "";
-  return `<div class="skill-description"><strong>説明：</strong><span>${skill.description}</span></div>`;
+  const effectLines = Array.isArray(skill?.effectLines) ? skill.effectLines.filter(Boolean) : [];
+  const fallbackLines = effectLines.length ? effectLines : skill?.description ? [skill.description] : [];
+  if (!fallbackLines.length && !skill?.noteLine) return "";
+  const linesHtml = fallbackLines.map((line) => `<span class="skill-description-line">${line}</span>`).join("");
+  const noteHtml = skill?.noteLine ? `<span class="skill-description-note">${skill.noteLine}</span>` : "";
+  return `<div class="skill-description">${linesHtml}${noteHtml}</div>`;
 }
 
 function skillTypeHtml(skill) {
@@ -1773,31 +1879,17 @@ function setMemberSkillSetting(memberId, skillId, enabled) {
 }
 
 function memberDetails(party) {
-  return party.members
-    .map(
-      (m) => `<div class="member-detail-card ${!party.mission && m.hp <= 0 ? "down" : ""}">
-        <div class="member-detail-head">
-          <strong>${m.name}</strong>
-          <span>${JOB_LABELS[m.job] || m.job}</span>
-          <span>Lv${m.level || 1}</span>
-          <span class="member-formation">【${memberFormation(m)}】</span>
+  const m = selectedDetailMember(party);
+  if (!m) return "";
+  return `<div class="member-detail-card ${!party.mission && m.hp <= 0 ? "down" : ""}">
+        ${memberOverviewHtml(m, party.id)}
+        ${memberDetailTabsHtml(m)}
+        <div class="member-detail-panels">
+          <div class="member-detail-tab-panel" ${selectedMemberDetailTab(m.id) === "status" ? "" : "hidden"} data-member-id="${m.id}" data-detail-panel="status">${memberStatusPanelHtml(m)}</div>
+          <div class="member-detail-tab-panel" ${selectedMemberDetailTab(m.id) === "equipment" ? "" : "hidden"} data-member-id="${m.id}" data-detail-panel="equipment">${memberEquipmentPanelHtml(m)}</div>
+          <div class="member-detail-tab-panel" ${selectedMemberDetailTab(m.id) === "skills" ? "" : "hidden"} data-member-id="${m.id}" data-detail-panel="skills">${memberSkillPanelHtml(m)}</div>
         </div>
-        <div class="member-stat-grid">
-          ${memberStatLineHtml(m, "maxHp", "HP")}
-          ${memberStatLineHtml(m, "atk", "ATK")}
-          ${memberStatLineHtml(m, "def", "DEF")}
-          ${memberStatLineHtml(m, "dex", "DEX")}
-          ${memberStatLineHtml(m, "luc", "LUC")}
-          ${memberCriticalStatRowsHtml(m)}
-        </div>
-        ${memberExtraInfoGridHtml(m)}
-        ${memberSkillListHtml(m)}
-        <div class="member-equipment">${EQUIPMENT_SLOTS
-          .map(({ key }) => equipmentSlotHtml(m, key))
-          .join("")}</div>
-      </div>`
-    )
-    .join("");
+      </div>`;
 }
 
 function areaOptions(party, selected) {
@@ -1838,10 +1930,10 @@ function createPartyCard(party) {
   }
   const detailToggle = card.querySelector(".detail-toggle");
   const memberDetailsRoot = card.querySelector(".member-details");
-  if (detailToggle && memberDetailsRoot && openDetailPartyIds.has(party.id)) {
+  if (memberDetailsRoot && openDetailPartyIds.has(party.id)) {
     memberDetailsRoot.removeAttribute("hidden");
-    detailToggle.setAttribute("aria-expanded", "true");
-    detailToggle.textContent = "閉じる";
+    detailToggle?.setAttribute("aria-expanded", "true");
+    if (detailToggle) detailToggle.textContent = "閉じる";
   }
   detailToggle?.addEventListener("click", () => {
     if (!memberDetailsRoot) return;
@@ -1851,6 +1943,21 @@ function createPartyCard(party) {
     detailToggle.textContent = open ? "閉じる" : "詳細";
     if (open) openDetailPartyIds.add(party.id);
     else openDetailPartyIds.delete(party.id);
+  });
+  card.querySelectorAll("[data-member-detail-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const memberId = button.dataset.memberDetailOpen;
+      if (!memberId) return;
+      selectedDetailMemberByPartyId.set(party.id, memberId);
+      openDetailPartyIds.add(party.id);
+      renderPartyCard(party);
+    });
+  });
+  card.querySelectorAll("[data-party-detail-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openDetailPartyIds.delete(party.id);
+      renderPartyCard(party);
+    });
   });
   card.querySelectorAll(".equip-slot-btn").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1862,6 +1969,23 @@ function createPartyCard(party) {
         if (list !== candidates) list.setAttribute("hidden", "");
       });
       candidates.toggleAttribute("hidden", !open);
+    });
+  });
+  card.querySelectorAll(".member-detail-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+      const memberId = button.dataset.memberId;
+      const tab = button.dataset.detailTab || "status";
+      selectedDetailTabByMemberId.set(memberId, tab);
+      const memberCard = button.closest(".member-detail-card");
+      if (!memberCard) return;
+      memberCard.querySelectorAll(".member-detail-tab").forEach((tabButton) => {
+        const active = tabButton === button;
+        tabButton.classList.toggle("active", active);
+        tabButton.setAttribute("aria-selected", String(active));
+      });
+      memberCard.querySelectorAll(".member-detail-tab-panel").forEach((panel) => {
+        panel.toggleAttribute("hidden", panel.dataset.detailPanel !== tab);
+      });
     });
   });
   card.querySelectorAll(".equip-choice-btn").forEach((button) => {
@@ -1895,7 +2019,6 @@ function renderPartySummarySection(party, on, area) {
   return `
       <div class="party-card-head">
         <h3>${party.name}</h3>
-        <button type="button" class="detail-toggle" aria-expanded="false">詳細</button>
       </div>
       <div class="row"><span>隊長 ${leader.name || "-"}</span><span class="muted">Lv.${leader.level || 1}</span></div>
       <div class="row">
