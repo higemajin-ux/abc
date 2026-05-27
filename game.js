@@ -1377,24 +1377,60 @@ function memberEquipmentBonusValue(member, key) {
   return getEquipmentBonus(member)?.[key] || 0;
 }
 
-function memberStatBreakdownText(total, bonus) {
-  const sign = bonus >= 0 ? "+" : "-";
-  return `${sign}${Math.abs(Number(bonus) || 0)}`;
+function memberEquipmentBreakdown(member) {
+  return typeof getEquipmentStatBreakdown === "function"
+    ? getEquipmentStatBreakdown(member)
+    : null;
 }
 
-function memberStatWithBreakdown(member, key) {
-  const total = Number(member?.[key]);
-  if (!Number.isFinite(total)) return "-";
-  const bonus = memberEquipmentBonusValue(member, key);
-  return `${total} <small class="member-stat-detail">(${memberStatBreakdownText(total, bonus)})</small>`;
+function signedValueText(value, suffix = "") {
+  const num = Number(value) || 0;
+  const sign = num >= 0 ? "+" : "-";
+  return `${sign}${Math.abs(num)}${suffix}`;
 }
 
-function memberHpWithBreakdown(member) {
-  const hp = Number(member?.hp);
-  const maxHp = Number(member?.maxHp);
-  if (!Number.isFinite(hp) || !Number.isFinite(maxHp)) return "-";
-  const bonus = memberEquipmentBonusValue(member, "maxHp");
-  return `${hp} / ${maxHp} <small class="member-stat-detail">(${memberStatBreakdownText(maxHp, bonus)})</small>`;
+function percentValueText(value) {
+  return `${Math.round((Number(value) || 0) * 100)}%`;
+}
+
+function memberStatBreakdownData(member, key) {
+  const breakdown = memberEquipmentBreakdown(member);
+  if (!breakdown) {
+    const total = Number(member?.[key]);
+    return Number.isFinite(total) ? { total, base: total, equipment: 0, option: 0 } : null;
+  }
+  const total = Number(breakdown.total?.[key]);
+  const base = Number(breakdown.base?.[key]);
+  const equipment = Number(breakdown.equipment?.[key]);
+  const option = Number(breakdown.option?.[key]);
+  if (![total, base, equipment, option].every(Number.isFinite)) return null;
+  return { total, base, equipment, option };
+}
+
+function memberStatLineHtml(member, key, label) {
+  const data = memberStatBreakdownData(member, key);
+  if (!data) {
+    return `<div class="member-stat-row"><span>${label}</span><strong>-</strong></div>`;
+  }
+  return `<div class="member-stat-row">
+    <span>${label}</span>
+    <strong>${data.total}</strong>
+    <small class="member-stat-subline">素 ${data.base} / 装備 ${signedValueText(data.equipment)} / OP ${signedValueText(data.option)}</small>
+  </div>`;
+}
+
+function memberCriticalStatRowsHtml(member) {
+  const breakdown = memberEquipmentBreakdown(member);
+  const criticalRate = percentValueText(breakdown?.total?.criticalRate || member?.criticalRate || 0);
+  const criticalDamage = percentValueText(breakdown?.total?.criticalDamage || 0);
+  return `<div class="member-stat-row member-stat-row-compact">
+    <span>CRI</span>
+    <strong>${criticalRate}</strong>
+  </div>
+  <div class="member-stat-row member-stat-row-compact">
+    <span>CRD</span>
+    <strong>${criticalDamage}</strong>
+  </div>`;
 }
 
 function memberStatusStrikeRateText(member) {
@@ -1539,14 +1575,14 @@ function memberDetails(party) {
           <span class="member-formation">【${memberFormation(m)}】</span>
         </div>
         <div class="member-stat-grid">
-          <div class="member-stat-row"><span>HP</span><strong>${memberHpWithBreakdown(m)}</strong></div>
-          <div class="member-stat-row"><span>ATK</span><strong>${memberStatWithBreakdown(m, "atk")}</strong></div>
-          <div class="member-stat-row"><span>DEF</span><strong>${memberStatWithBreakdown(m, "def")}</strong></div>
-          <div class="member-stat-row"><span>DEX</span><strong>${memberStatWithBreakdown(m, "dex")}</strong></div>
-          <div class="member-stat-row"><span>LUC</span><strong>${memberStatWithBreakdown(m, "luc")}</strong></div>
+          ${memberStatLineHtml(m, "maxHp", "HP")}
+          ${memberStatLineHtml(m, "atk", "ATK")}
+          ${memberStatLineHtml(m, "def", "DEF")}
+          ${memberStatLineHtml(m, "dex", "DEX")}
+          ${memberStatLineHtml(m, "luc", "LUC")}
+          ${memberCriticalStatRowsHtml(m)}
         </div>
         ${memberStatusStrikeRateText(m) ? `<div class="member-stat-detail">${memberStatusStrikeRateText(m)}</div>` : ""}
-        <div class="member-stat-detail">※（+）は装備とオプションの合計補正です。</div>
         ${memberSkillListHtml(m)}
         <div class="member-equipment">${EQUIPMENT_SLOTS
           .map(({ key }) => equipmentSlotHtml(m, key))
@@ -1944,9 +1980,61 @@ function isStorageFusionTargetEntrySelectable(entry) {
   return isStorageFusionEntrySelectable(entry);
 }
 
+function storageFusionOptionLevelTotal(item) {
+  return (Array.isArray(item?.options) ? item.options : []).reduce(
+    (sum, option) => sum + Math.max(0, Number(option?.level) || 0),
+    0
+  );
+}
+
+function storageFusionSlotRank(slot) {
+  if (slot === "weapon") return 0;
+  if (slot === "armor") return 1;
+  if (slot === "accessory") return 2;
+  return 99;
+}
+
+function compareStorageFusionTargetEntries(a, b) {
+  const lockedDiff = Number(!!b?.item?.locked) - Number(!!a?.item?.locked);
+  if (lockedDiff) return lockedDiff;
+  const slotDiff = storageFusionSlotRank(a?.item?.slot) - storageFusionSlotRank(b?.item?.slot);
+  if (slotDiff) return slotDiff;
+  const rarityDiff = rarityRank(b?.item?.rarity) - rarityRank(a?.item?.rarity);
+  if (rarityDiff) return rarityDiff;
+  const optionDiff = storageFusionOptionLevelTotal(b?.item) - storageFusionOptionLevelTotal(a?.item);
+  if (optionDiff) return optionDiff;
+  const plusDiff = (Number(b?.item?.plus) || 0) - (Number(a?.item?.plus) || 0);
+  if (plusDiff) return plusDiff;
+  return String(a?.item?.id || "").localeCompare(String(b?.item?.id || ""), "ja");
+}
+
+function compareStorageFusionMaterialEntries(a, b) {
+  const rarityDiff = rarityRank(a?.item?.rarity) - rarityRank(b?.item?.rarity);
+  if (rarityDiff) return rarityDiff;
+  const optionDiff = storageFusionOptionLevelTotal(a?.item) - storageFusionOptionLevelTotal(b?.item);
+  if (optionDiff) return optionDiff;
+  const plusDiff = (Number(a?.item?.plus) || 0) - (Number(b?.item?.plus) || 0);
+  if (plusDiff) return plusDiff;
+  return String(a?.item?.id || "").localeCompare(String(b?.item?.id || ""), "ja");
+}
+
 function storageFusionRequiredCount(targetEntry) {
   const plus = Math.max(0, Number(targetEntry?.item?.plus) || 0);
   return plus >= 10 ? 5 : 3;
+}
+
+function storageFusionAvailableMaterialCount(visibleEntries, targetEntry) {
+  const targetItemId = targetEntry?.item?.id;
+  if (!targetItemId) return 0;
+  return visibleEntries.filter((entry) =>
+    isStorageFusionMaterialEntrySelectable(entry, targetItemId) &&
+    storageEntryIndex(entry) !== storageEntryIndex(targetEntry)
+  ).length;
+}
+
+function hasStorageFusionRequiredMaterials(targetEntry, visibleEntries = []) {
+  if (!isStorageFusionTargetEntrySelectable(targetEntry)) return false;
+  return storageFusionAvailableMaterialCount(visibleEntries, targetEntry) >= storageFusionRequiredCount(targetEntry);
 }
 
 function storageFusionGoldCost(targetEntry) {
@@ -2238,8 +2326,12 @@ function storageFusionHtml(visibleEntries) {
   const requiredCount = selectedEntry ? storageFusionRequiredCount(selectedEntry) : 3;
   const goldCost = selectedEntry ? storageFusionGoldCost(selectedEntry) : 100;
   const selectedMaterialCount = selectedEntry ? selectedStorageFusionMaterialCount(visibleEntries, selectedEntry) : 0;
+  const availableMaterialCount = selectedEntry ? storageFusionAvailableMaterialCount(visibleEntries, selectedEntry) : 0;
   const materialNote = selectedEntry && selectedStorageFusionUsesOptionedMaterials(visibleEntries, selectedEntry)
     ? '<span class="muted">※OP付き装備も素材になります</span>'
+    : "";
+  const shortageNote = selectedEntry && availableMaterialCount < requiredCount
+    ? `<span class="muted">素材候補が足りません (${availableMaterialCount}/${requiredCount})</span>`
     : "";
   const targetNote = selectedEntry
     ? `<span class="muted">STEP2 素材を選択 (${selectedMaterialCount}/${requiredCount})</span><span class="muted"><span class="storage-fusion-badge">育成対象</span>${equipmentDisplayName(selectedEntry.item)} を育成対象に選択中</span>`
@@ -2248,6 +2340,7 @@ function storageFusionHtml(visibleEntries) {
     <button type="button" class="storage-bulk-sell-btn" data-storage-fusion-run ${selectedEntry && isStorageFusionTargetReady(selectedEntry, visibleEntries) ? "" : "disabled"}>合成 (${selectedMaterialCount}/${requiredCount} / ${goldCost}G)</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-fusion-cancel>キャンセル</button>
     ${targetNote}
+    ${shortageNote}
     ${materialNote}
   </div>`;
 }
@@ -2555,8 +2648,11 @@ function renderStorage() {
       ? visibleEntries.filter((entry) =>
           isStorageFusionMaterialEntrySelectable(entry, fusionTargetEntry.item.id) &&
           storageEntryIndex(entry) !== storageEntryIndex(fusionTargetEntry)
-        )
-      : visibleEntries.filter(isStorageFusionTargetEntrySelectable)
+        ).sort(compareStorageFusionMaterialEntries)
+      : visibleEntries
+        .filter(isStorageFusionTargetEntrySelectable)
+        .filter((entry) => hasStorageFusionRequiredMaterials(entry, visibleEntries))
+        .sort(compareStorageFusionTargetEntries)
     : [];
   const selectedKey = [...selectedStorageGroups].sort().join(",");
   const fusionMaterialKey = [...selectedStorageFusionMaterialUids].sort().join(",");
