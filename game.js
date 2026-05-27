@@ -2705,6 +2705,14 @@ function equipmentRecordHtml(item, discovered = false) {
   </li>`;
 }
 
+function shouldDisplayEquipmentRecord(item, discoveredIds) {
+  if (!item?.id) return false;
+  if (discoveredIds.has(item.id)) return true;
+  const dropEnemyIds = equipmentRecordDropEnemyIds(item);
+  const dropAreaIds = equipmentRecordDropAreaIds(item, dropEnemyIds);
+  return dropEnemyIds.length > 0 || dropAreaIds.length > 0;
+}
+
 function enemyRecordInfoValue(value, lookup = null) {
   const values = Array.isArray(value) ? value : value ? [value] : [];
   const labels = values
@@ -2747,6 +2755,24 @@ function enemyRecordAreaIds(enemyId) {
     .filter(Boolean);
 }
 
+function enemyRecordStageRank(enemyId, enemy) {
+  const areaIds = Array.isArray(enemy?.recordInfo?.appearance) && enemy.recordInfo.appearance.length
+    ? enemy.recordInfo.appearance
+    : enemyRecordAreaIds(enemyId);
+  if (!areaIds.length) return Number.MAX_SAFE_INTEGER;
+  return areaIds.reduce((best, areaId) => {
+    const index = AREA_ORDER.indexOf(areaId);
+    const rank = index >= 0 ? index : Number.MAX_SAFE_INTEGER;
+    return Math.min(best, rank);
+  }, Number.MAX_SAFE_INTEGER);
+}
+
+function enemyRecordTypeRank(enemy) {
+  if (enemy?.boss) return 2;
+  if (enemy?.rare) return 1;
+  return 0;
+}
+
 function enemyRecordHtml(enemyId, record) {
   const enemy = MONSTERS?.[enemyId];
   const kills = Math.max(0, Number(record?.kills) || 0);
@@ -2780,9 +2806,13 @@ function enemyRecordEntries(records) {
   return Object.entries(records.enemies || {})
     .filter(([enemyId, record]) => MONSTERS?.[enemyId] && (record?.kills || 0) > 0)
     .sort((a, b) => {
-      const nameA = MONSTERS[a[0]]?.name || a[0];
-      const nameB = MONSTERS[b[0]]?.name || b[0];
-      return nameA.localeCompare(nameB, "ja");
+      const enemyA = MONSTERS[a[0]];
+      const enemyB = MONSTERS[b[0]];
+      return (
+        enemyRecordStageRank(a[0], enemyA) - enemyRecordStageRank(b[0], enemyB) ||
+        enemyRecordTypeRank(enemyA) - enemyRecordTypeRank(enemyB) ||
+        String(a[0]).localeCompare(String(b[0]), "ja")
+      );
     });
 }
 
@@ -2793,7 +2823,9 @@ function renderRecords() {
   const discoveredIds = new Set(records.equipment);
   const equipmentTotal = Object.keys(EQUIPMENT_ITEMS || {}).length;
   const enemyTotal = Object.keys(MONSTERS || {}).length;
-  const items = Object.values(EQUIPMENT_ITEMS || {}).filter(Boolean).sort(compareEquipmentRecords);
+  const items = Object.values(EQUIPMENT_ITEMS || {})
+    .filter((item) => shouldDisplayEquipmentRecord(item, discoveredIds))
+    .sort(compareEquipmentRecords);
   const enemies = enemyRecordEntries(records);
 
   root.innerHTML = `
