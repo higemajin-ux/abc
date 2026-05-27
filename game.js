@@ -1906,11 +1906,7 @@ function updatePartyCards() {
   document.querySelectorAll("[data-party-card]").forEach((card) => {
     const party = getParty(card.dataset.partyCard);
     if (!party) return;
-    const leader = party.members[0];
-    const leaderHp = card.querySelector(".leader-hp");
-    if (leaderHp) leaderHp.textContent = `HP ${leader.hp}/${leader.maxHp}`;
-    const memberList = card.querySelector(".member-list");
-    if (memberList) memberList.innerHTML = memberChips(party);
+    renderPartyCard(party);
   });
 }
 
