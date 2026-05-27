@@ -2645,10 +2645,33 @@ function equipmentRecordBasePower(item) {
   return ["maxHp", "atk", "def", "dex", "luc"].reduce((sum, key) => sum + (Number(item?.[key]) || 0), 0);
 }
 
+function equipmentRecordTypeRank(item) {
+  const slot = item?.slot || "";
+  const slotKind = EQUIPMENT_SLOTS.find(({ key, kind }) => key === slot || kind === slot)?.kind || slot;
+  return {
+    weapon: 0,
+    armor: 1,
+    accessory: 2,
+    relic: 3,
+  }[slotKind] ?? 99;
+}
+
+function equipmentRecordStageRank(item) {
+  const areaIds = equipmentRecordDropAreaIds(item, equipmentRecordDropEnemyIds(item));
+  if (!areaIds.length) return Number.MAX_SAFE_INTEGER;
+  return areaIds.reduce((best, areaId) => {
+    const index = AREA_ORDER.indexOf(areaId);
+    const rank = index >= 0 ? index : Number.MAX_SAFE_INTEGER;
+    return Math.min(best, rank);
+  }, Number.MAX_SAFE_INTEGER);
+}
+
 function compareEquipmentRecords(a, b) {
   return (
-    equipmentRecordBasePower(a) - equipmentRecordBasePower(b) ||
+    equipmentRecordTypeRank(a) - equipmentRecordTypeRank(b) ||
     rarityRank(a?.rarity) - rarityRank(b?.rarity) ||
+    equipmentRecordStageRank(a) - equipmentRecordStageRank(b) ||
+    equipmentRecordBasePower(a) - equipmentRecordBasePower(b) ||
     String(a?.id || "").localeCompare(String(b?.id || ""), "ja")
   );
 }
