@@ -153,6 +153,8 @@ function applyEquipmentOptionBonus(optionBonus, item) {
     if (option.id === "attackPercent") optionBonus.attackPercentRate += level * 0.05;
     if (option.id === "hpUp") optionBonus.maxHp += level * 5;
     if (option.id === "hpPercent") optionBonus.hpPercentRate += level * 0.05;
+    if (option.id === "defenseUp") optionBonus.defenseUpDef += level;
+    if (option.id === "defensePercent") optionBonus.defensePercentRate += (1 + level * 2) * 0.01;
     if (option.id === "criticalRate") optionBonus.criticalRate += level * 0.01;
     if (option.id === "criticalDamage") optionBonus.criticalDamage += level * 0.1;
   }
@@ -193,6 +195,8 @@ function getEquipmentStatBreakdown(character, baseAtkOverride = null) {
     maxHp: 0,
     attackUpAtk: 0,
     attackPercentRate: 0,
+    defenseUpDef: 0,
+    defensePercentRate: 0,
     hpPercentRate: 0,
     criticalRate: 0,
     criticalDamage: 0,
@@ -223,6 +227,8 @@ function getEquipmentStatBreakdown(character, baseAtkOverride = null) {
   const optionStatBonus = emptyEquipmentBonus();
   optionStatBonus.atk += Math.round(base.atk * optionBonus.attackPercentRate);
   optionStatBonus.atk += optionBonus.attackUpAtk;
+  optionStatBonus.def += optionBonus.defenseUpDef;
+  optionStatBonus.def += Math.round(base.def * optionBonus.defensePercentRate);
   optionStatBonus.maxHp += optionBonus.maxHp;
   const hpPercentBase = Math.max(0, base.maxHp + equipmentBonus.maxHp + optionBonus.maxHp);
   optionStatBonus.maxHp += Math.round(hpPercentBase * optionBonus.hpPercentRate);
