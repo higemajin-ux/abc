@@ -228,6 +228,52 @@ function equipmentToastLineHtml(item) {
   return `<li class="drop-toast-item"><span class="drop-toast-item-name ${rarityClass}">${equipmentToastName(item)}</span>${optionLine ? `<span class="drop-toast-item-option">${optionLine}</span>` : ""}</li>`;
 }
 
+function equipmentToastSummaryKey(item) {
+  if (!item) return "";
+  return JSON.stringify({
+    id: item.id || "",
+    rarity: normalizeRarity(item.rarity),
+    plus: Math.max(0, Number(item.plus) || 0),
+    setId: item.setId || "",
+    options: Array.isArray(item.options)
+      ? item.options.map((option) => ({
+        id: String(option?.id || ""),
+        level: Number(option?.level) || 0,
+      }))
+      : [],
+  });
+}
+
+function summarizeToastItems(items, sold = false) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  const grouped = new Map();
+  for (const item of list) {
+    const normalized = storageItemFromEquipment(item) || item;
+    const key = equipmentToastSummaryKey(normalized);
+    const current = grouped.get(key);
+    if (current) {
+      current.count += 1;
+      if (sold) current.gold += equipmentSellGoldValue(item);
+      continue;
+    }
+    grouped.set(key, {
+      item: normalized,
+      count: 1,
+      gold: sold ? equipmentSellGoldValue(item) : 0,
+    });
+  }
+  return [...grouped.values()];
+}
+
+function equipmentToastSummaryLineHtml(summary, sold = false) {
+  if (!summary?.item) return "";
+  const rarityClass = typeof rarityClassName === "function" ? rarityClassName(summary.item.rarity) : "";
+  const optionLine = equipmentToastOptionLine(summary.item);
+  const countText = ` ×${summary.count}`;
+  const goldText = sold ? ` +${summary.gold}G` : "";
+  return `<li class="drop-toast-item"><span class="drop-toast-item-name ${rarityClass}">${equipmentToastName(summary.item)}</span>${optionLine ? `<span class="drop-toast-item-option">${optionLine}</span>` : ""}<span class="drop-toast-item-option">${countText}${goldText}</span></li>`;
+}
+
 function ensureDropToastRoot() {
   let root = $("drop-toast-root");
   if (root) return root;
@@ -239,13 +285,23 @@ function ensureDropToastRoot() {
 }
 
 function showDropToast(items, title = "今回の納品") {
-  const list = (Array.isArray(items) ? items : [items]).filter(shouldShowDropToast);
-  if (!list.length) return;
+  const deliveryItems = Array.isArray(items?.deliveryItems) ? items.deliveryItems : Array.isArray(items) ? items : [items];
+  const autoSellItems = Array.isArray(items?.autoSellItems) ? items.autoSellItems : [];
+  const deliverySummary = summarizeToastItems(deliveryItems, false);
+  const autoSellSummary = summarizeToastItems(autoSellItems, true);
+  if (!deliverySummary.length && !autoSellSummary.length) return;
   const root = ensureDropToastRoot();
   const toast = document.createElement("div");
   toast.className = "drop-toast";
   toast.dataset.toastId = String(dropToastSerial++);
-  toast.innerHTML = `<div class="drop-toast-title">${title}</div><ul class="drop-toast-list">${list.map(equipmentToastLineHtml).join("")}</ul>`;
+  const sections = [];
+  if (deliverySummary.length) {
+    sections.push(`<div class="drop-toast-subtitle">納品：</div><ul class="drop-toast-list">${deliverySummary.map((entry) => equipmentToastSummaryLineHtml(entry, false)).join("")}</ul>`);
+  }
+  if (autoSellSummary.length) {
+    sections.push(`<div class="drop-toast-subtitle">自動売却：</div><ul class="drop-toast-list">${autoSellSummary.map((entry) => equipmentToastSummaryLineHtml(entry, true)).join("")}</ul>`);
+  }
+  toast.innerHTML = `<div class="drop-toast-title">${title}</div>${sections.join("")}`;
   root.appendChild(toast);
   while (root.children.length > 4) {
     root.firstElementChild?.remove();
@@ -1066,15 +1122,23 @@ function storeEquipmentDrops(rewards, partyName = "") {
     ...(rewards?.encounters || []).map((encounter) => encounter?.equipmentDrop),
     ...(rewards?.extraEquipmentDrops || []),
   ];
-  const toastItems = [];
+  const deliveryItems = [];
+  const autoSellItems = [];
   for (const item of drops) {
     const storedItem = storageItemFromEquipment(item);
     recordEquipment(storedItem);
-    if (shouldShowDropToast(storedItem || item)) toastItems.push(storedItem || item);
-    if (!item || !storedItem || wasAutoSoldDrop(item)) continue;
+    if (!item || !storedItem) continue;
+    if (wasAutoSoldDrop(item)) {
+      autoSellItems.push(storedItem);
+      continue;
+    }
+    deliveryItems.push(storedItem);
     state.storage.push({ ...storedItem, foundBy: item.finderName || "" });
   }
-  showDropToast(toastItems, partyName ? `${partyName}の納品` : "今回の納品");
+  showDropToast(
+    { deliveryItems, autoSellItems },
+    partyName ? `${partyName}が帰還した。` : "小隊が帰還した。"
+  );
 }
 
 function findMemberById(memberId) {
