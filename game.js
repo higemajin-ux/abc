@@ -188,6 +188,44 @@ function equipmentStorageLine(item) {
   return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
 }
 
+function equipmentCandidateCategoryLabel(item) {
+  return equipmentSlotLabel(item?.slot || "");
+}
+
+function equipmentCandidateHeaderHtml(item) {
+  const rarity = normalizeRarity(item?.rarity);
+  const category = equipmentCandidateCategoryLabel(item);
+  const sellGold = equipmentSellGoldValue(item);
+  return `<span class="equip-choice-head equip-choice-head-split">
+    <span class="equip-choice-head-main">
+      <strong>${equipmentDisplayName(item)}</strong>
+      <span>${rarity}${category ? ` / ${category}` : ""}</span>
+    </span>
+    <span class="equip-choice-head-side">
+      <span>${rarity}</span>
+      <span>売却 ${sellGold}G</span>
+    </span>
+  </span>`;
+}
+
+function equipmentPrimaryStatKey(slot) {
+  return slot === "weapon" ? "atk" : slot === "armor" ? "def" : slot === "accessory" ? "luc" : "";
+}
+
+function equipmentPrimaryStatLabel(slot) {
+  return slot === "weapon" ? "ATK" : slot === "armor" ? "DEF" : slot === "accessory" ? "LUC" : "";
+}
+
+function equipmentPrimaryStatCandidateHtml(item, equippedItem, slot) {
+  const statKey = equipmentPrimaryStatKey(slot);
+  const statLabel = equipmentPrimaryStatLabel(slot);
+  if (!item || !statKey || !statLabel) return equipmentStatLine(item);
+  const itemValue = Number(equipmentStatValue(item, statKey)) || 0;
+  const currentValue = equippedItem ? (Number(equipmentStatValue(equippedItem, statKey)) || 0) : 0;
+  const itemValueText = `${statLabel}${itemValue > 0 ? "+" : ""}${itemValue}`;
+  return `${itemValueText} <span class="equip-choice-compare">[${currentValue}→${itemValue}]</span>`;
+}
+
 function isSetEquipmentItem(item) {
   return !!item?.setId || normalizeRarity(item?.rarity) === "set";
 }
@@ -338,6 +376,47 @@ function formatEquipmentOptionCandidate(optionId) {
   return detail ? `${text}（${detail}）` : text;
 }
 
+function equipmentOptionCompareValue(option) {
+  const level = Math.max(0, Number(option?.level) || 0);
+  if (option?.id === "attackUp") return level * 2;
+  if (option?.id === "attackPercent") return level * 5;
+  if (option?.id === "hpUp") return level * 5;
+  if (option?.id === "hpPercent") return level * 5;
+  if (option?.id === "defenseUp") return level;
+  if (option?.id === "defensePercent") return 1 + level * 2;
+  if (option?.id === "criticalRate") return level;
+  if (option?.id === "criticalDamage") return level * 10;
+  if (option?.id === "blindStrike") return level * 5;
+  if (option?.id === "poisonStrike") return level * 5;
+  return 0;
+}
+
+function equipmentOptionCompareHtml(option, equippedItem) {
+  if (!option || !equippedItem) return "";
+  const equippedOptions = Array.isArray(equippedItem?.options) ? equippedItem.options : [];
+  const currentOption = equippedOptions.find((entry) => String(entry?.id || "") === String(option?.id || ""));
+  const currentValue = equipmentOptionCompareValue(currentOption);
+  const nextValue = equipmentOptionCompareValue(option);
+  return ` <span class="equip-choice-compare">[${currentValue}→${nextValue}]</span>`;
+}
+
+function equipmentOptionLineText(option) {
+  const meta = OPTION_MASTER?.[option?.id];
+  if (!meta?.name) return "";
+  const level = Number(option?.level) || 0;
+  const detail = level > 0 ? formatEquipmentOptionDetail(option, meta, level) : "";
+  const text = level > 0 ? `${meta.name}Lv${level}` : meta.name;
+  return detail ? `${text}（${detail}）` : text;
+}
+
+function equipmentOptionLostHtml(option) {
+  if (!option) return "";
+  const text = equipmentOptionLineText(option);
+  if (!text) return "";
+  const currentValue = equipmentOptionCompareValue(option);
+  return `<span class="equip-choice-option-lost">${text} <span class="equip-choice-compare">[${currentValue}→0]</span></span>`;
+}
+
 function canFixEquipmentOption(item) {
   return (Array.isArray(item?.options) ? item.options.length : 0) < 3;
 }
@@ -361,17 +440,22 @@ function equipmentOptionCandidatesStorageHtml(item, context = {}) {
 
 function equipmentOptionsStorageHtml(item, context = {}) {
   const options = Array.isArray(item?.options) ? item.options : [];
+  const compareEquippedItem = context?.compareEquippedItem || null;
+  const compareEquippedOptions = Array.isArray(compareEquippedItem?.options) ? compareEquippedItem.options : [];
   const lines = options
     .map((option) => {
-      const meta = OPTION_MASTER?.[option?.id];
-      if (!meta?.name) return "";
-      const level = Number(option?.level) || 0;
-      const detail = level > 0 ? formatEquipmentOptionDetail(option, meta, level) : "";
-      const text = level > 0 ? `${meta.name}Lv${level}` : meta.name;
-      return detail ? `${text}（${detail}）` : text;
+      const text = equipmentOptionLineText(option);
+      if (!text) return "";
+      const compareHtml = equipmentOptionCompareHtml(option, compareEquippedItem);
+      return `${text}${compareHtml}`;
     })
     .filter(Boolean);
-  const optionsHtml = lines.length ? `<div class="storage-effect">${lines.join("<br>")}</div>` : "";
+  const currentOnlyLines = compareEquippedOptions
+    .filter((equippedOption) => !options.some((option) => String(option?.id || "") === String(equippedOption?.id || "")))
+    .map((option) => equipmentOptionLostHtml(option))
+    .filter(Boolean);
+  const mergedLines = [...lines, ...currentOnlyLines];
+  const optionsHtml = mergedLines.length ? `<div class="storage-effect">${mergedLines.join("<br>")}</div>` : "";
   return `${optionsHtml}${equipmentOptionCandidatesStorageHtml(item, context)}`;
 }
 
@@ -1870,12 +1954,11 @@ function equipmentCandidateList(member, slot) {
 
   return currentChoice + removeChoice + candidates
     .map(({ item, index }) => {
-      const rarity = normalizeRarity(item.rarity);
-      return `<button type="button" class="equip-choice-btn ${rarityClassName(rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
-        <span class="equip-choice-head"><strong>${equipmentDisplayName(item)}</strong><span>${rarity}</span></span>
+      return `<button type="button" class="equip-choice-btn ${rarityClassName(item.rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
+        ${equipmentCandidateHeaderHtml(item)}
         ${equipmentSetLabelHtml(item)}
-        <span class="equip-choice-meta">${equipmentStorageLine(item)}</span>
-        ${equipmentOptionsStorageHtml(item)}
+        <span class="equip-choice-meta">${equipmentPrimaryStatCandidateHtml(item, equippedItem, slot)}</span>
+        ${equipmentOptionsStorageHtml(item, { compareEquippedItem: equippedItem })}
       </button>`;
     })
     .join("");
