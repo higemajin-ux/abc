@@ -5,7 +5,8 @@ let tickId = null;
 let worldTickId = null;
 let storageRenderCount = -1;
 let storageSortMode = "new";
-let storageFilterMode = "all";
+const storageFilterKinds = new Set();
+const storageFilterRarities = new Set();
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 let storageBulkSellMode = false;
@@ -263,6 +264,8 @@ function formatEquipmentOptionDetail(option, meta, level) {
   if (option?.id === "attackPercent") return `${level * 5}%`;
   if (option?.id === "hpUp") return `HP+${level * 5}`;
   if (option?.id === "hpPercent") return `${level * 5}%`;
+  if (option?.id === "defenseUp") return `DEF+${level}`;
+  if (option?.id === "defensePercent") return `${1 + level * 2}%`;
   if (option?.id === "criticalRate") return `${level}%`;
   if (option?.id === "criticalDamage") return `${level * 10}%`;
   if (option?.id === "blindStrike") return `${level * 5}%`;
@@ -581,9 +584,7 @@ function shortcutMissionReductionMs(area, rewards, party = null) {
 }
 
 function missionDurationMs(area, party = null) {
-  const baseDurationMs = state.developerMode
-    ? DEVELOPER_MISSION_DURATION_MS
-    : Math.max(0, Number(area?.durationMs) || 0);
+  const baseDurationMs = Math.max(0, Number(area?.durationMs) || 0);
   const reducedDurationMs = Math.round(baseDurationMs * (1 - missionDurationReductionRateForParty(party)));
   return Math.max(1000, reducedDurationMs);
 }
@@ -1287,7 +1288,7 @@ function completeMission(party) {
   party.mission = null;
 
   saveGame();
-  renderPartyCard(party);
+  updatePartyCards();
   renderReports();
   renderStages();
   renderWorldSituation();
@@ -1300,12 +1301,12 @@ function completeMission(party) {
 
 function processMissions() {
   let dirty = false;
-  let partyDirty = false;
+  const dirtyPartyIds = new Set();
   for (const party of state.parties) {
     if (!party.mission) continue;
     if (revealDueEntries(party)) {
       dirty = true;
-      partyDirty = true;
+      dirtyPartyIds.add(party.id);
     }
     if (party.mission.failed) {
       completeMission(party);
@@ -1317,7 +1318,7 @@ function processMissions() {
   }
 
   updateProgressBars();
-  if (partyDirty) updatePartyCards();
+  if (dirtyPartyIds.size) updatePartyCards(dirtyPartyIds);
   if (dirty) renderLogs();
   if (!state.parties.some((p) => p.mission)) stopTick();
 }
@@ -1573,17 +1574,27 @@ function memberStatLineHtml(member, key, label) {
     return `<div class="member-stat-row">
       <span class="member-stat-label">${label}</span>
       <strong class="member-stat-total">-</strong>
-      <span class="member-stat-part">基礎-</span>
-      <span class="member-stat-part">装備-</span>
-      <span class="member-stat-part">OP-</span>
+      <span class="member-stat-part">-</span>
+      <span class="member-stat-part">-</span>
+      <span class="member-stat-part">-</span>
     </div>`;
   }
   return `<div class="member-stat-row">
     <span class="member-stat-label">${label}</span>
     <strong class="member-stat-total">${data.total}</strong>
-    <span class="member-stat-part">基礎${data.base}</span>
-    <span class="member-stat-part">装備${signedValueText(data.equipment)}</span>
-    <span class="member-stat-part">OP${signedValueText(data.option)}</span>
+    <span class="member-stat-part">${data.base}</span>
+    <span class="member-stat-part">${signedValueText(data.equipment)}</span>
+    <span class="member-stat-part">${signedValueText(data.option)}</span>
+  </div>`;
+}
+
+function memberStatHeaderHtml() {
+  return `<div class="member-stat-row member-stat-row-header" aria-hidden="true">
+    <span class="member-stat-label"></span>
+    <span class="member-stat-total"></span>
+    <span class="member-stat-part">基礎</span>
+    <span class="member-stat-part">装備</span>
+    <span class="member-stat-part">OP</span>
   </div>`;
 }
 
@@ -1594,16 +1605,16 @@ function memberCriticalStatRowsHtml(member) {
   return `<div class="member-stat-row">
     <span class="member-stat-label">CRI</span>
     <strong class="member-stat-total">${criticalRate}</strong>
-    <span class="member-stat-part">基礎0%</span>
-    <span class="member-stat-part">装備+0%</span>
-    <span class="member-stat-part">OP+${criticalRate}</span>
+    <span class="member-stat-part">0%</span>
+    <span class="member-stat-part">+0%</span>
+    <span class="member-stat-part">+${criticalRate}</span>
   </div>
   <div class="member-stat-row">
     <span class="member-stat-label">CRD</span>
     <strong class="member-stat-total">${criticalDamage}</strong>
-    <span class="member-stat-part">基礎0%</span>
-    <span class="member-stat-part">装備+0%</span>
-    <span class="member-stat-part">OP+${criticalDamage}</span>
+    <span class="member-stat-part">0%</span>
+    <span class="member-stat-part">+0%</span>
+    <span class="member-stat-part">+${criticalDamage}</span>
   </div>`;
 }
 
@@ -1711,6 +1722,7 @@ function memberOverviewHtml(member, partyId) {
 function memberStatusPanelHtml(member) {
   return `<div class="member-detail-panel member-detail-panel-status">
     <div class="member-stat-grid">
+      ${memberStatHeaderHtml()}
       ${memberStatLineHtml(member, "maxHp", "HP")}
       ${memberStatLineHtml(member, "atk", "ATK")}
       ${memberStatLineHtml(member, "def", "DEF")}
@@ -1856,16 +1868,21 @@ function memberSkillListHtml(member) {
     <ul>
       ${skills
         .map(
-          (skill) =>
-            `<li data-skill-id="${skill.id}">
+          (skill) => {
+            const learned = typeof isSkillLearned === "function" ? isSkillLearned(member, skill) : true;
+            const requiredLevel = Math.max(1, Number(skill?.requiredLevel) || 1);
+            const learnNote = learned ? "" : `<span class="skill-description-note">Lv${requiredLevel}で習得</span>`;
+            return `<li data-skill-id="${skill.id}" class="${learned ? "skill-learned" : "skill-unlearned"}">
               <label>
-                <input type="checkbox" class="skill-toggle" data-member-id="${member.id}" data-skill-id="${skill.id}" ${settings[skill.id] !== false ? "checked" : ""}>
+                <input type="checkbox" class="skill-toggle" data-member-id="${member.id}" data-skill-id="${skill.id}" ${learned && settings[skill.id] !== false ? "checked" : ""} ${learned ? "" : "disabled"}>
                 <strong>${skill.name}</strong>
                 ${skillTypeHtml(skill)}
               </label>
               ${skillDescriptionHtml(skill)}
+              ${learnNote}
               ${skillDebugHtml(skill)}
-            </li>`
+            </li>`;
+          }
         )
         .join("")}
     </ul>
@@ -1904,9 +1921,12 @@ function areaOptions(party, selected) {
   }).join("");
 }
 
-function updatePartyCards() {
+function updatePartyCards(targetPartyIds = null) {
+  const targetIds = targetPartyIds ? new Set([...targetPartyIds].map(String)) : null;
   document.querySelectorAll("[data-party-card]").forEach((card) => {
-    const party = getParty(card.dataset.partyCard);
+    const partyId = String(card.dataset.partyCard || "");
+    if (targetIds && !targetIds.has(partyId)) return;
+    const party = getParty(partyId);
     if (!party) return;
     renderPartyCard(party);
   });
@@ -2166,11 +2186,18 @@ function compareStorageGroups(a, b) {
 }
 
 function storageFilterMatches(item) {
-  if (storageFilterMode === "weapon") return item?.slot === "weapon";
-  if (storageFilterMode === "armor") return item?.slot === "armor";
-  if (storageFilterMode === "accessory") return item?.slot === "accessory";
-  if (storageFilterMode === "artifact") return normalizeRarity(item?.rarity) === "artifact";
-  return true;
+  const kindMatch = !storageFilterKinds.size || [...storageFilterKinds].some((kind) => {
+    if (kind === "weapon") return item?.slot === "weapon";
+    if (kind === "armor") return item?.slot === "armor";
+    if (kind === "accessory") return item?.slot === "accessory";
+    if (kind === "relic") return item?.slot === "relic";
+    return false;
+  });
+  const rarityMatch = !storageFilterRarities.size || [...storageFilterRarities].some((rarity) => {
+    if (rarity === "set") return isSetEquipmentItem(item);
+    return normalizeRarity(item?.rarity) === rarity;
+  });
+  return kindMatch && rarityMatch;
 }
 
 function filteredStorageEntries(items) {
@@ -2211,8 +2238,11 @@ function storageCountHtml(items) {
   </div>`;
 }
 
-function storageFilterButton(value, label) {
-  return `<button type="button" class="storage-filter-btn ${storageFilterMode === value ? "active" : ""}" data-storage-filter="${value}">${label}</button>`;
+function storageFilterButton(value, label, group = "kind") {
+  const active = group === "kind"
+    ? (value === "all" ? storageFilterKinds.size === 0 : storageFilterKinds.has(value))
+    : storageFilterRarities.has(value);
+  return `<button type="button" class="storage-filter-btn ${active ? "active" : ""}" data-storage-filter="${value}" data-storage-filter-group="${group}">${label}</button>`;
 }
 
 function isStorageEntrySelectable(entry) {
@@ -2635,29 +2665,30 @@ function storageSortOptionsHtml(actionHtml = "") {
 }
 
 function storageFilterPanelHtml() {
-  const autoSell = ensureAutoSellSettings();
   return `<div class="storage-popover storage-filter-panel" ${storageFilterOpen ? "" : "hidden"} aria-label="整理条件">
     <div class="storage-filter-panel-title">整理条件</div>
     <div class="storage-filter-panel-group">
       <div class="storage-filter-panel-label">種類：</div>
       <div class="storage-filters">
-        ${storageFilterButton("all", "すべて")}
-        ${storageFilterButton("weapon", "武器")}
-        ${storageFilterButton("armor", "防具")}
-        ${storageFilterButton("accessory", "装飾")}
-        ${storageFilterButton("artifact", "アーティファクト")}
+        ${storageFilterButton("all", "すべて", "kind")}
+        ${storageFilterButton("weapon", "武器", "kind")}
+        ${storageFilterButton("armor", "防具", "kind")}
+        ${storageFilterButton("accessory", "装飾", "kind")}
+        ${storageFilterButton("relic", "遺物", "kind")}
       </div>
     </div>
     <div class="storage-filter-panel-group">
       <div class="storage-filter-panel-label">レアリティ：</div>
-      <div class="storage-auto-sell">
-        <label><input type="checkbox" data-auto-sell="common" ${autoSell.common ? "checked" : ""}> common</label>
-        <label><input type="checkbox" data-auto-sell="uncommon" ${autoSell.uncommon ? "checked" : ""}> uncommon</label>
-        <label><input type="checkbox" disabled> rare</label>
-        <label><input type="checkbox" disabled> epic</label>
-        <label><input type="checkbox" disabled> set</label>
+      <div class="storage-filters">
+        ${storageFilterButton("common", "ノーマル", "rarity")}
+        ${storageFilterButton("uncommon", "アンコモン", "rarity")}
+        ${storageFilterButton("rare", "レア", "rarity")}
+        ${storageFilterButton("epic", "エピック", "rarity")}
+        ${storageFilterButton("legendary", "レジェンド", "rarity")}
+        ${storageFilterButton("set", "セット", "rarity")}
       </div>
     </div>
+    <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-reset>リセット</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-close>閉じる</button>
   </div>`;
 }
@@ -2872,10 +2903,32 @@ function bindStorageEvents(root) {
   });
   root.querySelectorAll(".storage-filter-btn").forEach((button) => {
     button.addEventListener("click", () => {
-      storageFilterMode = button.dataset.storageFilter || "all";
+      const value = button.dataset.storageFilter || "all";
+      const group = button.dataset.storageFilterGroup || "kind";
+      if (group === "kind") {
+        if (value === "all") {
+          storageFilterKinds.clear();
+        } else if (storageFilterKinds.has(value)) {
+          storageFilterKinds.delete(value);
+        } else {
+          storageFilterKinds.add(value);
+        }
+      } else if (group === "rarity") {
+        if (storageFilterRarities.has(value)) {
+          storageFilterRarities.delete(value);
+        } else {
+          storageFilterRarities.add(value);
+        }
+      }
       storageRenderCount = -1;
       renderStorage();
     });
+  });
+  root.querySelector("[data-storage-filter-reset]")?.addEventListener("click", () => {
+    storageFilterKinds.clear();
+    storageFilterRarities.clear();
+    storageRenderCount = -1;
+    renderStorage();
   });
   root.querySelector(".storage-sort-select")?.addEventListener("change", (e) => {
     storageSortMode = e.target.value;
@@ -3030,7 +3083,9 @@ function renderStorage() {
     : [];
   const selectedKey = [...selectedStorageGroups].sort().join(",");
   const fusionMaterialKey = [...selectedStorageFusionMaterialUids].sort().join(",");
-  const renderKey = `${items.length}:${storageSortMode}:${storageFilterMode}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionTargetUid ?? ""}:${fusionMaterialKey}`;
+  const filterKindsKey = [...storageFilterKinds].sort().join(",");
+  const filterRaritiesKey = [...storageFilterRarities].sort().join(",");
+  const renderKey = `${items.length}:${storageSortMode}:${filterKindsKey}:${filterRaritiesKey}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionTargetUid ?? ""}:${fusionMaterialKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
@@ -3151,10 +3206,13 @@ function equipmentRecordHtml(item, discovered = false) {
   const slot = item?.slot || "unknown";
   const slotKind = EQUIPMENT_SLOTS.find(({ key, kind }) => key === slot || kind === slot)?.kind || slot;
   const slotLabel = equipmentRecordKindLabel(slotKind);
+  const metaParts = [rarity];
+  if (isSetEquipmentItem(item)) metaParts.push("set");
+  metaParts.push(slotLabel);
   const dropEnemyIds = equipmentRecordDropEnemyIds(item);
   const dropAreaIds = equipmentRecordDropAreaIds(item, dropEnemyIds);
   const flavor = item?.flavor || item?.description || "未記録";
-  const name = discovered ? item?.name || "名称不明の装備" : "？？？";
+  const name = discovered ? equipmentToastName(item) : "？？？";
   const statText = discovered ? equipmentStatLine(item) : "？？？";
   const appearanceText = equipmentRecordConfiguredInfoValue(dropAreaIds, AREAS);
   const dropText = discovered
@@ -3165,7 +3223,7 @@ function equipmentRecordHtml(item, discovered = false) {
     <div class="records-info">
       <div class="records-head">
         <span class="records-item ${discovered ? rarityClassName(rarity) : ""}">${name}</span>
-        <span class="records-meta">${rarity} / ${slotLabel}</span>
+        <span class="records-meta">${metaParts.join(" / ")}</span>
       </div>
       <div class="records-effect">性能：${statText}</div>
       <div class="records-effect">出現：${appearanceText}</div>
