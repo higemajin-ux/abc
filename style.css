@@ -898,8 +898,8 @@ h1 {
 }
 
 .equipment-candidates {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--line);
@@ -939,6 +939,12 @@ h1 {
   cursor: default;
 }
 
+.equip-choice-btn,
+.equip-choice-current {
+  min-width: 0;
+  align-content: start;
+}
+
 .equip-choice-btn:hover {
   border-color: var(--line-bright);
   background: rgba(214, 168, 79, 0.08);
@@ -949,6 +955,29 @@ h1 {
   align-items: baseline;
   gap: 8px;
   justify-content: space-between;
+}
+
+.equip-choice-head-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.equip-choice-head-main,
+.equip-choice-head-side {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.equip-choice-head-main strong {
+  line-height: 1.15;
+}
+
+.equip-choice-head-side {
+  justify-items: end;
+  text-align: right;
 }
 
 .equip-choice-head span {
@@ -964,6 +993,16 @@ h1 {
   font-weight: 600;
 }
 
+.equip-choice-compare {
+  color: #47443f;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.equip-choice-option-lost {
+  color: #47443f;
+}
+
 .equipment-set-label {
   display: block;
   color: #a88b5b;
@@ -972,9 +1011,18 @@ h1 {
   line-height: 1.2;
 }
 
+.equip-slot-main:has(.equipment-set-label) strong,
+.equip-choice-current:has(.equipment-set-label) .equip-choice-head strong,
+.equip-choice-btn:has(.equipment-set-label) .equip-choice-head strong,
+.equip-choice-btn:has(.equipment-set-label) .equip-choice-head-main strong,
+.storage-info:has(.equipment-set-label) .storage-item {
+  color: #e0d7b8;
+}
+
 .equip-slot-main:has(.equipment-set-label) strong::after,
 .equip-choice-current:has(.equipment-set-label) .equip-choice-head strong::after,
 .equip-choice-btn:has(.equipment-set-label) .equip-choice-head strong::after,
+.equip-choice-btn:has(.equipment-set-label) .equip-choice-head-main strong::after,
 .storage-info:has(.equipment-set-label) .storage-item::after {
   content: "（S）";
   margin-left: 0.18em;
@@ -997,6 +1045,7 @@ h1 {
 }
 
 .equipment-empty {
+  grid-column: 1 / -1;
   color: var(--muted-on-dark);
   font-size: 0.8rem;
 }
