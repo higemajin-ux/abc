@@ -56,6 +56,18 @@ function defaultSkillSettings(job) {
   return Object.fromEntries((JOB_SKILLS?.[job] || []).map((skill) => [skill.id, true]));
 }
 
+function skillRequiredLevel(skill) {
+  return Math.max(1, Number(skill?.requiredLevel) || 1);
+}
+
+function isSkillLearned(member, skillOrId) {
+  const skill = typeof skillOrId === "string"
+    ? getSkillDefinition(member, skillOrId)
+    : skillOrId;
+  if (!skill) return false;
+  return (Number(member?.level) || 1) >= skillRequiredLevel(skill);
+}
+
 function normalizeSkillSettings(member) {
   const defaults = defaultSkillSettings(member?.job);
   const settings = { ...(member?.skillSettings || {}) };
@@ -69,6 +81,7 @@ function normalizeSkillSettings(member) {
 }
 
 function isSkillEnabled(member, skillId) {
+  if (!isSkillLearned(member, skillId)) return false;
   return normalizeSkillSettings(member)[skillId] !== false;
 }
 
@@ -150,7 +163,7 @@ function createEnemy(monster, area, heroLevel) {
     name: monster.name,
     maxHp: monster.hp + scale * 8,
     hp: monster.hp + scale * 8,
-    atk: monster.atk + scale * 2,
+    atk: monster.atk + Math.floor(scale * 1.5),
     def: (monster.def || Math.max(0, area.difficulty - 1)) + Math.floor(scale / 2),
     baseDex: monster.dex || area.difficulty + 4,
     dex: monster.dex || area.difficulty + 4,
@@ -400,8 +413,12 @@ function recoverHp(target, amount) {
   return target.hp - before;
 }
 
-function healingAmount(actor, min, max, levelScale) {
-  return roll(min, max) + Math.floor(actor.level * levelScale);
+function getHealingPower(actor) {
+  return Math.max(0, Number(actor?.atk) || 0);
+}
+
+function healingAmount(actor, min, max, levelScale, atkScale = 0) {
+  return roll(min, max) + Math.floor(actor.level * levelScale) + Math.floor(getHealingPower(actor) * atkScale);
 }
 
 function grantTempHp(target, amount) {
@@ -571,7 +588,7 @@ function performPriestAction(actor, party, enemy, events) {
 
   const lowest = lowestHpLivingMember(party);
   if (lowest && hpRate(lowest) <= 0.3 && isSkillEnabled(actor, "middleHeal")) {
-    const amount = healingAmount(actor, 15, 22, 2);
+    const amount = healingAmount(actor, 15, 22, 2, 0.65);
     const healed = recoverHp(lowest, amount);
     events.push({ kind: "heal", text: `${actor.name}のミドルヒール！` });
     events.push({ kind: "heal", text: `${lowest.name}のHPが${healed}回復した。` });
@@ -584,7 +601,7 @@ function performPriestAction(actor, party, enemy, events) {
     .sort((a, b) => hpRate(a) - hpRate(b))[0];
 
   if (wounded && isSkillEnabled(actor, "heal")) {
-    const amount = healingAmount(actor, 8, 13, 1.4);
+    const amount = healingAmount(actor, 8, 13, 1.4, 0.4);
     const healed = recoverHp(wounded, amount);
     events.push({ kind: "heal", text: `${actor.name}のヒール！` });
     events.push({ kind: "heal", text: `${wounded.name}のHPが${healed}回復した。` });
@@ -594,7 +611,7 @@ function performPriestAction(actor, party, enemy, events) {
 
   const groupTargets = livingMembers(party).filter((m) => hpRate(m) <= 0.75 && m.hp < m.maxHp);
   if (groupTargets.length >= 2 && isSkillEnabled(actor, "healRain")) {
-    const amount = healingAmount(actor, 5, 8, 0.8);
+    const amount = healingAmount(actor, 5, 8, 0.8, 0.25);
     events.push({ kind: "heal", text: `${actor.name}のヒールレイン！` });
     events.push({ kind: "heal", text: `全員のHPが${amount}回復した。` });
     for (const target of livingMembers(party)) {
