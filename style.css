@@ -550,11 +550,12 @@ h1 {
 .member-stat-grid {
   display: grid;
   gap: 3px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .member-stat-row {
   display: grid;
-  grid-template-columns: 44px 50px minmax(58px, 1fr) minmax(62px, 1fr) minmax(52px, 1fr);
+  grid-template-columns: 44px minmax(50px, 0.9fr) repeat(3, minmax(0, 1fr));
   gap: 6px;
   align-items: center;
   padding: 2px 0;
@@ -564,6 +565,26 @@ h1 {
 
 .member-stat-grid .member-stat-row:last-child {
   border-bottom: none;
+}
+
+.member-stat-row-header {
+  min-height: 18px;
+  padding-top: 0;
+  padding-bottom: 1px;
+  border-bottom: 1px solid rgba(138, 106, 61, 0.2);
+}
+
+.member-stat-row-header .member-stat-label,
+.member-stat-row-header .member-stat-total {
+  border-right: none;
+  padding-right: 0;
+}
+
+.member-stat-row-header .member-stat-part {
+  color: var(--paper-light);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-align: center;
 }
 
 .member-stat-label {
@@ -587,7 +608,7 @@ h1 {
   font-size: 0.74rem;
   font-weight: 700;
   line-height: 1.2;
-  text-align: right;
+  text-align: center;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -714,8 +735,23 @@ h1 {
   list-style: none;
 }
 
+.member-skills li {
+  padding: 2px 0;
+}
+
 .member-skills strong {
   color: var(--ink-on-dark);
+}
+
+.member-skills li.skill-unlearned {
+  border-top: 1px solid rgba(176, 134, 74, 0.14);
+  padding-top: 5px;
+}
+
+.member-skills li.skill-unlearned label,
+.member-skills li.skill-unlearned .skill-description,
+.member-skills li.skill-unlearned .skill-type {
+  opacity: 0.58;
 }
 
 .skill-type {
@@ -754,6 +790,12 @@ h1 {
   outline-offset: 2px;
 }
 
+.skill-toggle:disabled {
+  cursor: default;
+  border-color: rgba(176, 134, 74, 0.28);
+  background: rgba(24, 19, 16, 0.78);
+}
+
 .skill-description,
 .skill-debug {
   display: grid;
@@ -781,6 +823,12 @@ h1 {
   line-height: 1.1;
   color: var(--paper-dark);
   opacity: 0.7;
+}
+
+.member-skills li.skill-unlearned .skill-description-note {
+  color: #b07a4a;
+  opacity: 0.96;
+  font-weight: 700;
 }
 
 .member-equipment {
@@ -922,13 +970,6 @@ h1 {
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1.2;
-}
-
-.equip-slot-main:has(.equipment-set-label) strong,
-.equip-choice-current:has(.equipment-set-label) .equip-choice-head strong,
-.equip-choice-btn:has(.equipment-set-label) .equip-choice-head strong,
-.storage-info:has(.equipment-set-label) .storage-item {
-  color: #e0d7b8;
 }
 
 .equip-slot-main:has(.equipment-set-label) strong::after,
@@ -1925,8 +1966,12 @@ h1 {
     font-size: 0.8rem;
   }
 
+  .member-stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .member-stat-row {
-    grid-template-columns: 42px 48px minmax(56px, 1fr) minmax(62px, 1fr) minmax(50px, 1fr);
+    grid-template-columns: 38px minmax(42px, 0.85fr) repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
 
@@ -1952,6 +1997,10 @@ h1 {
 
   .member-stat-part {
     font-size: 0.62rem;
+  }
+
+  .member-stat-row-header .member-stat-part {
+    font-size: 0.58rem;
   }
 
   .member-stat-part:not(:last-child) {
