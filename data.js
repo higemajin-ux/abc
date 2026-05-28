@@ -14,37 +14,37 @@ const JOB_SKILLS = {
   warrior: [
     { id: "guard", type: "active", name: "防御", description: "被ダメージを軽減する", effectLines: ["被ダメージ -50%"], noteLine: "※次の行動まで" },
     { id: "cover", type: "passive", name: "かばう", description: "大きなダメージから味方をかばう", effectLines: ["HP70%以下の味方への大ダメージを肩代わり"], noteLine: "※発動率は味方HPで変動" },
-    { id: "provoke", type: "active", name: "挑発", description: "敵の狙いを引きつける", effectLines: ["狙われ率 +50%"], noteLine: "※2ターン" },
-    { id: "ironWall", type: "passive", name: "鉄壁", description: "大きく被ダメージを軽減する", effectLines: ["被ダメージ -75%"], noteLine: "※次の行動まで" },
-    { id: "desperateStrike", type: "active", name: "捨て身", description: "危険を承知で強く攻撃する", effectLines: ["与ダメージ 1.8倍", "被ダメージ 1.5倍"], noteLine: "※発動率30%" },
-    { id: "counter", type: "passive", name: "反撃", description: "攻撃を受けた時、反撃することがある", effectLines: ["被弾時60%で反撃", "反撃ダメージ 0.5〜0.8倍"] },
+    { id: "provoke", type: "active", name: "挑発", description: "敵の狙いを引きつける", effectLines: ["狙われ率 +50%"], noteLine: "※2ターン", requiredLevel: 3 },
+    { id: "ironWall", type: "passive", name: "鉄壁", description: "大きく被ダメージを軽減する", effectLines: ["被ダメージ -75%"], noteLine: "※次の行動まで", requiredLevel: 5 },
+    { id: "desperateStrike", type: "active", name: "捨て身", description: "危険を承知で強く攻撃する", effectLines: ["与ダメージ 1.8倍", "被ダメージ 1.5倍"], noteLine: "※発動率30%", requiredLevel: 8 },
+    { id: "counter", type: "passive", name: "反撃", description: "攻撃を受けた時、反撃することがある", effectLines: ["被弾時60%で反撃", "反撃ダメージ 0.5〜0.8倍"], requiredLevel: 10 },
   ],
   priest: [
     { id: "heal", type: "active", name: "ヒール", description: "傷ついた味方を回復する", effectLines: ["HP45%未満の味方を回復"] },
-    { id: "middleHeal", type: "active", name: "ミドルヒール", description: "大きく傷ついた味方を回復する", effectLines: ["HP30%以下の味方を大回復"] },
-    { id: "healRain", type: "active", name: "ヒールレイン", description: "味方全員を少し回復する", effectLines: ["味方全体を少回復"], noteLine: "※2人以上が負傷時" },
-    { id: "prayer", type: "active", name: "状態回復", description: "味方の悪い状態を治療する", effectLines: ["毒・麻痺・火傷・スロー・盲目を回復"] },
-    { id: "magicBarrier", type: "active", name: "魔力障壁", description: "味方への被ダメージを軽減する", effectLines: ["被ダメージ -50%"], noteLine: "※1回のみ" },
-    { id: "divineGrace", type: "passive", name: "神の加護", description: "倒れそうな時に踏みとどまる", effectLines: ["戦闘不能を1回防ぐ"], noteLine: "※1戦闘1回" },
-    { id: "resurrect", type: "active", name: "リザレクト", description: "倒れた味方を蘇生する。派遣中一度だけ使える", effectLines: ["戦闘不能を100%で蘇生", "復活時HP35%"], noteLine: "※派遣中1回" },
-    { id: "resura", type: "active", name: "リザラ", description: "倒れた味方を復活させることがある", effectLines: ["戦闘不能を50%で蘇生", "復活時HP25%"] },
+    { id: "middleHeal", type: "active", name: "ミドルヒール", description: "大きく傷ついた味方を回復する", effectLines: ["HP30%以下の味方を大回復"], requiredLevel: 5 },
+    { id: "healRain", type: "active", name: "ヒールレイン", description: "味方全員を少し回復する", effectLines: ["味方全体を少回復"], noteLine: "※2人以上が負傷時", requiredLevel: 8 },
+    { id: "prayer", type: "active", name: "状態回復", description: "味方の悪い状態を治療する", effectLines: ["毒・麻痺・火傷・スロー・盲目を回復"], requiredLevel: 6 },
+    { id: "magicBarrier", type: "active", name: "魔力障壁", description: "味方への被ダメージを軽減する", effectLines: ["被ダメージ -50%"], noteLine: "※1回のみ", requiredLevel: 7 },
+    { id: "divineGrace", type: "passive", name: "神の加護", description: "倒れそうな時に踏みとどまる", effectLines: ["戦闘不能を1回防ぐ"], noteLine: "※1戦闘1回", requiredLevel: 10 },
+    { id: "resurrect", type: "active", name: "リザレクト", description: "倒れた味方を蘇生する。派遣中一度だけ使える", effectLines: ["戦闘不能を100%で蘇生", "復活時HP35%"], noteLine: "※派遣中1回", requiredLevel: 12 },
+    { id: "resura", type: "active", name: "リザラ", description: "倒れた味方を復活させることがある", effectLines: ["戦闘不能を50%で蘇生", "復活時HP25%"], requiredLevel: 9 },
   ],
   mage: [
     { id: "firebolt", type: "active", name: "火球", description: "炎で敵を攻撃し、火傷にすることがある", effectLines: ["火傷率30%", "火傷ダメージ 最大HP6%"], noteLine: "※2ターン" },
-    { id: "lightning", type: "active", name: "雷撃", description: "雷で敵を攻撃し、麻痺にすることがある", effect: "paralyze", effectChance: 0.25, effectTurns: 2, effectLines: ["麻痺率25%", "集中時ダメージ 1.8倍"], noteLine: "※麻痺2ターン" },
-    { id: "iceLance", type: "active", name: "氷槍", description: "氷で敵を攻撃し、スローにすることがある", effectLines: ["スロー率30%", "集中時ダメージ 1.8倍"], noteLine: "※スロー2ターン" },
-    { id: "acidMist", type: "active", name: "アシッドミスト", description: "酸の霧で敵を攻撃し、毒や猛毒にすることがある", effectLines: ["発動率35%", "毒または猛毒を付与"], noteLine: "※毒3ターン" },
-    { id: "magicFocus", type: "active", name: "魔力集中", description: "魔力を高めて威力を上げる", effectLines: ["次の魔法ダメージ 1.5倍"], noteLine: "※発動率30%" },
-    { id: "magicSense", type: "passive", name: "魔力探知", description: "魔力の流れを読み取り、危険や異変を察知することがある", effectLines: ["レア敵を発見", "危険や異変を察知"], noteLine: "※発見率10%" },
+    { id: "lightning", type: "active", name: "雷撃", description: "雷で敵を攻撃し、麻痺にすることがある", effect: "paralyze", effectChance: 0.25, effectTurns: 2, effectLines: ["麻痺率25%", "集中時ダメージ 1.8倍"], noteLine: "※麻痺2ターン", requiredLevel: 5 },
+    { id: "iceLance", type: "active", name: "氷槍", description: "氷で敵を攻撃し、スローにすることがある", effectLines: ["スロー率30%", "集中時ダメージ 1.8倍"], noteLine: "※スロー2ターン", requiredLevel: 7 },
+    { id: "acidMist", type: "active", name: "アシッドミスト", description: "酸の霧で敵を攻撃し、毒や猛毒にすることがある", effectLines: ["発動率35%", "毒または猛毒を付与"], noteLine: "※毒3ターン", requiredLevel: 9 },
+    { id: "magicFocus", type: "active", name: "魔力集中", description: "魔力を高めて威力を上げる", effectLines: ["次の魔法ダメージ 1.5倍"], noteLine: "※発動率30%", requiredLevel: 4 },
+    { id: "magicSense", type: "passive", name: "魔力探知", description: "魔力の流れを読み取り、危険や異変を察知することがある", effectLines: ["レア敵を発見", "危険や異変を察知"], noteLine: "※発見率10%", requiredLevel: 6 },
   ],
   scout: [
     { id: "ambush", type: "passive", name: "奇襲", description: "敵より先に動き、不意打ちを仕掛けることがある", effectLines: ["先制行動"], noteLine: "※発見率100%" },
-    { id: "rogueFocus", type: "active", name: "集中", description: "攻撃の会心率を高める", effectLines: ["会心率 +25%"], noteLine: "※2ターン" },
-    { id: "blind", type: "active", name: "目つぶし", description: "敵の攻撃を外れやすくする", effectLines: ["盲目率40%"], noteLine: "※2ターン" },
-    { id: "firstAid", type: "active", name: "応急手当", description: "味方にバリアを付与し、ダメージを防ぐ", effectLines: ["HP30%未満の味方にバリア付与"], noteLine: "※発動率55%" },
-    { id: "treasureFind", type: "passive", name: "宝箱発見", description: "探索中に宝箱を見つけることがある", effectLines: ["追加宝箱を発見"], noteLine: "※発見率20%" },
-    { id: "trapDisarm", type: "passive", name: "罠解除", description: "探索中に罠を解除することがある", effectLines: ["罠解除率 +25%"], noteLine: "※盗賊1人分のみ有効" },
-    { id: "shortcutFind", type: "passive", name: "近道発見", description: "探索中に近道を見つけることがある", effectLines: ["冒険時間 -10%"], noteLine: "※重複不可" },
+    { id: "rogueFocus", type: "active", name: "集中", description: "攻撃の会心率を高める", effectLines: ["会心率 +25%"], noteLine: "※2ターン", requiredLevel: 4 },
+    { id: "blind", type: "active", name: "目つぶし", description: "敵の攻撃を外れやすくする", effectLines: ["盲目率40%"], noteLine: "※2ターン", requiredLevel: 5 },
+    { id: "firstAid", type: "active", name: "応急手当", description: "味方にバリアを付与し、ダメージを防ぐ", effectLines: ["HP30%未満の味方にバリア付与"], noteLine: "※発動率55%", requiredLevel: 6 },
+    { id: "treasureFind", type: "passive", name: "宝箱発見", description: "探索中に宝箱を見つけることがある", effectLines: ["追加宝箱を発見"], noteLine: "※発見率20%", requiredLevel: 4 },
+    { id: "trapDisarm", type: "passive", name: "罠解除", description: "探索中に罠を解除することがある", effectLines: ["罠解除率 +25%"], noteLine: "※盗賊1人分のみ有効", requiredLevel: 6 },
+    { id: "shortcutFind", type: "passive", name: "近道発見", description: "探索中に近道を見つけることがある", effectLines: ["冒険時間 -10%"], noteLine: "※重複不可", requiredLevel: 8 },
   ],
 };
 
@@ -130,6 +130,21 @@ OPTION_MASTER.hpPercent = {
   maxLevel: 10,
 };
 
+OPTION_MASTER.defenseUp = {
+  id: "defenseUp",
+  name: "DEF",
+  maxLevel: 10,
+};
+
+OPTION_MASTER.defensePercent = {
+  id: "defensePercent",
+  name: "DEF%",
+  maxLevel: 10,
+  format(level) {
+    return `${1 + Math.max(0, Number(level) || 0) * 2}%`;
+  },
+};
+
 OPTION_MASTER.criticalDamage = {
   id: "criticalDamage",
   name: "クリダメ",
@@ -198,9 +213,9 @@ const EQUIPMENT_DROPS = [
     // chippedSword+3 -> 攻撃Lv4 / 盲目Lv2
   },
   { id: "oldCharm", name: "古い護符", slot: "accessory", rarity: "uncommon", luc: 1, sellGold: 12 },
-  { id: "travelerHat", name: "旅人の帽子", slot: "accessory", rarity: "set", luc: 1, sellGold: 10, setId: "traveler", dropAreas: ["plain"], dropEnemies: ["slime", "goblin"] },
-  { id: "travelerCloak", name: "旅人の外套", slot: "armor", rarity: "set", def: 1, luc: 1, sellGold: 12, setId: "traveler", dropAreas: ["forest"], dropEnemies: ["wolf", "mossMage"] },
-  { id: "travelerShoes", name: "旅人の靴", slot: "accessory", rarity: "set", dex: 1, luc: 1, sellGold: 11, setId: "traveler", dropAreas: ["forest"], dropEnemies: ["wolf", "mossMage"] },
+  { id: "travelerHat", name: "旅人の帽子", slot: "accessory", rarity: "rare", luc: 1, sellGold: 10, setId: "traveler", dropAreas: ["plain"], dropEnemies: ["slime", "goblin"] },
+  { id: "travelerCloak", name: "旅人の外套", slot: "armor", rarity: "rare", def: 1, luc: 1, sellGold: 12, setId: "traveler", dropAreas: ["forest"], dropEnemies: ["wolf", "mossMage"] },
+  { id: "travelerShoes", name: "旅人の靴", slot: "accessory", rarity: "rare", dex: 1, luc: 1, sellGold: 11, setId: "traveler", dropAreas: ["forest"], dropEnemies: ["wolf", "mossMage"] },
   { id: "crackedRing", name: "ひび割れた指輪", slot: "accessory", rarity: "uncommon", dex: 1, sellGold: 9 },
   { id: "silverBuckle", name: "銀留めの帯具", slot: "accessory", rarity: "rare", def: 1, luc: 1, sellGold: 28 },
   { id: "emberPendant", name: "燠火の首飾り", slot: "accessory", rarity: "epic", atk: 2, luc: 1, sellGold: 70, flavor: "火は消えている。それでも、胸元だけが夜に温かい。" },
