@@ -899,7 +899,7 @@ h1 {
 
 .equipment-candidates {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--line);
@@ -909,6 +909,62 @@ h1 {
 
 .equipment-candidates[hidden] {
   display: none;
+}
+
+.equipment-candidate-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.equipment-candidate-current-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.equipment-candidate-action-row {
+  position: relative;
+  overflow: visible;
+  align-items: stretch;
+}
+
+.equipment-filter-anchor {
+  position: static;
+  min-width: 0;
+  width: 100%;
+}
+
+.equipment-candidate-action-row > .equip-choice-btn,
+.equipment-candidate-action-row > .equipment-filter-anchor,
+.equipment-filter-anchor > .equip-choice-btn {
+  width: 100%;
+}
+
+.equipment-filter-anchor > .equip-choice-btn {
+  min-height: 38px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.equipment-filter-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 2;
+  width: auto;
+  max-width: calc(100vw - 48px);
+}
+
+.equipment-filter-panel-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.equipment-filter-panel-actions .storage-bulk-cancel-btn {
+  width: 100%;
 }
 
 .equip-choice-btn {
@@ -945,6 +1001,15 @@ h1 {
   align-content: start;
 }
 
+.equipment-candidate-current-row .equip-choice-current {
+  grid-column: 1 / -1;
+}
+
+.equip-choice-control-btn:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
 .equip-choice-btn:hover {
   border-color: var(--line-bright);
   background: rgba(214, 168, 79, 0.08);
@@ -975,6 +1040,11 @@ h1 {
   line-height: 1.15;
 }
 
+.equip-choice-head-main .storage-item {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .equip-choice-head-side {
   justify-items: end;
   text-align: right;
@@ -986,6 +1056,44 @@ h1 {
   font-weight: 700;
 }
 
+.equipment-filter-active {
+  color: #c98949;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.equipment-filter-inactive {
+  color: var(--muted-on-dark);
+}
+
+.equip-choice-btn.rarity-common .equip-choice-rarity {
+  color: var(--ink-on-dark);
+}
+
+.equip-choice-btn.rarity-uncommon .equip-choice-rarity {
+  color: var(--green);
+}
+
+.equip-choice-btn.rarity-rare .equip-choice-rarity {
+  color: #6ec8e5;
+}
+
+.equip-choice-btn.rarity-set .equip-choice-rarity {
+  color: #c9ad72;
+}
+
+.equip-choice-btn.rarity-epic .equip-choice-rarity {
+  color: #b88ce8;
+}
+
+.equip-choice-btn.rarity-legendary .equip-choice-rarity {
+  color: #e7a64c;
+}
+
+.equip-choice-btn.rarity-artifact .equip-choice-rarity {
+  color: var(--red);
+}
+
 .equip-choice-meta,
 .storage-effect {
   color: var(--muted-on-dark);
@@ -993,14 +1101,18 @@ h1 {
   font-weight: 600;
 }
 
+.equip-choice-btn .storage-effect {
+  color: #b98552;
+}
+
 .equip-choice-compare {
-  color: #47443f;
+  color: #5a554f;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 .equip-choice-option-lost {
-  color: #47443f;
+  color: #5a554f;
 }
 
 .equipment-set-label {
@@ -1381,14 +1493,29 @@ h1 {
   width: 100%;
 }
 
+.storage-filter-anchor {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.storage-filter-anchor .storage-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 2;
+  width: min(480px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+}
+
 .storage-filter-panel {
   align-items: flex-start;
   flex-direction: column;
-  width: min(100%, 480px);
+  width: 100%;
   padding: 10px 12px;
   border: 1px solid rgba(138, 106, 61, 0.42);
   border-radius: 6px;
-  background: linear-gradient(180deg, rgba(31, 23, 17, 0.96), rgba(20, 16, 12, 0.98));
+  background: linear-gradient(180deg, rgba(31, 23, 17, 0.88), rgba(20, 16, 12, 0.9));
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
@@ -1442,6 +1569,17 @@ h1 {
   gap: 10px;
 }
 
+.storage-filter-panel-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.storage-filter-panel-actions .storage-bulk-cancel-btn {
+  width: 100%;
+}
+
 .storage-action-row {
   display: flex;
   align-items: center;
@@ -1474,6 +1612,15 @@ h1 {
   border-color: var(--line-bright);
   color: var(--accent);
   background: rgba(214, 168, 79, 0.06);
+}
+
+.storage-organize-filter-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .storage-controls label {
