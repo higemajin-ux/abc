@@ -54,6 +54,10 @@ function formatClock(ts) {
   });
 }
 
+function clearButtonFocus(button) {
+  if (button && typeof button.blur === "function") button.blur();
+}
+
 function defaultStats() {
   return { gold: 0, kills: 0, missionsStarted: 0, missionsCleared: 0 };
 }
@@ -503,7 +507,7 @@ function equipmentOptionCandidatesStorageHtml(item, context = {}) {
     })
     .filter(Boolean);
   if (!lines.length) return "";
-  return `<div class="storage-effect">成長候補<br>1つ選んでください<br><br>${lines.join("<br>")}</div>`;
+  return `<div class="storage-effect storage-option-effect">成長候補<br>1つ選んでください<br><br>${lines.join("<br>")}</div>`;
 }
 
 function equipmentOptionsStorageHtml(item, context = {}) {
@@ -523,7 +527,7 @@ function equipmentOptionsStorageHtml(item, context = {}) {
     .map((option) => equipmentOptionLostHtml(option))
     .filter(Boolean);
   const mergedLines = [...lines, ...currentOnlyLines];
-  const optionsHtml = mergedLines.length ? `<div class="storage-effect">${mergedLines.join("<br>")}</div>` : "";
+  const optionsHtml = mergedLines.length ? `<div class="storage-effect storage-option-effect">${mergedLines.join("<br>")}</div>` : "";
   return `${optionsHtml}${equipmentOptionCandidatesStorageHtml(item, context)}`;
 }
 
@@ -2252,18 +2256,21 @@ function createPartyCard(party) {
   });
   card.querySelectorAll("[data-equipment-filter-toggle]").forEach((button) => {
     button.addEventListener("click", () => {
+      clearButtonFocus(button);
       equipmentFilterOpen = !equipmentFilterOpen;
       renderPartyCard(party);
     });
   });
   card.querySelectorAll("[data-equipment-filter-close]").forEach((button) => {
     button.addEventListener("click", () => {
+      clearButtonFocus(button);
       equipmentFilterOpen = false;
       renderPartyCard(party);
     });
   });
   card.querySelectorAll("[data-equipment-filter]").forEach((button) => {
     button.addEventListener("click", () => {
+      clearButtonFocus(button);
       const value = button.dataset.equipmentFilter || "all";
       if (equipmentFilterRarities.has(value)) {
         equipmentFilterRarities.delete(value);
@@ -2275,6 +2282,7 @@ function createPartyCard(party) {
   });
   card.querySelectorAll("[data-equipment-filter-option]").forEach((button) => {
     button.addEventListener("click", () => {
+      clearButtonFocus(button);
       const value = button.dataset.equipmentFilterOption || "";
       if (!value) return;
       if (equipmentFilterOptions.has(value)) {
@@ -2287,6 +2295,7 @@ function createPartyCard(party) {
   });
   card.querySelectorAll("[data-equipment-filter-reset]").forEach((button) => {
     button.addEventListener("click", () => {
+      clearButtonFocus(button);
       equipmentFilterRarities.clear();
       equipmentFilterOptions.clear();
       renderPartyCard(party);
@@ -3189,11 +3198,13 @@ function storageFusionEntryHtml(entry) {
 
 function bindStorageEvents(root) {
   root.querySelector("[data-storage-filter-toggle]")?.addEventListener("click", () => {
+    clearButtonFocus(root.querySelector("[data-storage-filter-toggle]"));
     storageFilterOpen = !storageFilterOpen;
     storageRenderCount = -1;
     renderStorage();
   });
   root.querySelector("[data-storage-filter-close]")?.addEventListener("click", () => {
+    clearButtonFocus(root.querySelector("[data-storage-filter-close]"));
     storageFilterOpen = false;
     storageRenderCount = -1;
     renderStorage();
@@ -3205,6 +3216,7 @@ function bindStorageEvents(root) {
   });
   root.querySelectorAll(".storage-filter-btn").forEach((button) => {
     button.addEventListener("click", () => {
+      clearButtonFocus(button);
       const value = button.dataset.storageFilter || "all";
       const group = button.dataset.storageFilterGroup || "kind";
       if (group === "kind") {
@@ -3233,6 +3245,7 @@ function bindStorageEvents(root) {
     });
   });
   root.querySelector("[data-storage-filter-reset]")?.addEventListener("click", () => {
+    clearButtonFocus(root.querySelector("[data-storage-filter-reset]"));
     storageFilterKinds.clear();
     storageFilterRarities.clear();
     storageFilterOptions.clear();
@@ -3524,6 +3537,7 @@ function equipmentRecordHtml(item, discovered = false) {
   const name = discovered ? equipmentToastName(item) : "？？？";
   const statText = discovered ? equipmentStatLine(item) : "？？？";
   const appearanceText = equipmentRecordConfiguredInfoValue(dropAreaIds, AREAS);
+  const appearanceLabel = discovered ? "出現" : "出現条件";
   const dropText = discovered
     ? equipmentRecordConfiguredInfoValue(dropEnemyIds, MONSTERS)
     : (dropEnemyIds.length ? "？？？" : "未設定");
@@ -3535,7 +3549,7 @@ function equipmentRecordHtml(item, discovered = false) {
         <span class="records-meta">${metaParts.join(" / ")}</span>
       </div>
       <div class="records-effect">性能：${statText}</div>
-      <div class="records-effect">出現：${appearanceText}</div>
+      <div class="records-effect">${appearanceLabel}：${appearanceText}</div>
       <div class="records-effect">ドロップ：${dropText}</div>
       ${descriptionHtml}
     </div>
@@ -3550,12 +3564,12 @@ function shouldDisplayEquipmentRecord(item, discoveredIds) {
   return dropEnemyIds.length > 0 || dropAreaIds.length > 0;
 }
 
-function enemyRecordInfoValue(value, lookup = null) {
+function enemyRecordInfoValue(value, lookup = null, fallback = "？？？") {
   const values = Array.isArray(value) ? value : value ? [value] : [];
   const labels = values
     .filter(Boolean)
     .map((item) => lookup?.[item]?.name || item);
-  return labels.join("、") || "？？？";
+  return labels.join("、") || fallback;
 }
 
 function enemyRecordDropItemId(drop) {
@@ -3624,12 +3638,14 @@ function enemyRecordHtml(enemyId, record) {
       ? '<span class="enemy-tag rare-tag">[RARE]</span>'
       : "";
   const info = enemy?.recordInfo || {};
+  const appearanceLabel = unlockedName ? "出現" : "出現条件";
+  const appearanceText = enemyRecordInfoValue(info.appearance || enemyRecordAreaIds(enemyId), AREAS, "未設定");
   return `<li>
     <div class="records-info">
       <div class="records-head">
         <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>${tag}
       </div>
-      <div class="records-effect">出現：${enemyRecordInfoValue(info.appearance || enemyRecordAreaIds(enemyId), AREAS)}</div>
+      <div class="records-effect">${appearanceLabel}：${appearanceText}</div>
       <div class="records-effect">ドロップ：${enemyRecordDropItemsValue(enemyId, enemy)}</div>
       <div class="records-effect">討伐数：${kills}回</div>
       <div class="records-effect">HP：${unlockedHp ? enemy?.hp ?? "？？？" : "？？？"}</div>
