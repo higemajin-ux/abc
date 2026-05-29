@@ -1126,8 +1126,7 @@ h1 {
 .equip-slot-main:has(.equipment-set-label) strong,
 .equip-choice-current:has(.equipment-set-label) .equip-choice-head strong,
 .equip-choice-btn:has(.equipment-set-label) .equip-choice-head strong,
-.equip-choice-btn:has(.equipment-set-label) .equip-choice-head-main strong,
-.storage-info:has(.equipment-set-label) .storage-item {
+.equip-choice-btn:has(.equipment-set-label) .equip-choice-head-main strong {
   color: #e0d7b8;
 }
 
@@ -1606,12 +1605,19 @@ h1 {
   font-weight: 700;
 }
 
-.storage-organize-btn:hover,
-.storage-filter-btn.active,
-.storage-filter-btn:hover {
+.storage-filter-btn.active {
   border-color: var(--line-bright);
   color: var(--accent);
   background: rgba(214, 168, 79, 0.06);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .storage-organize-btn:hover,
+  .storage-filter-btn:hover {
+    border-color: var(--line-bright);
+    color: var(--accent);
+    background: rgba(214, 168, 79, 0.06);
+  }
 }
 
 .storage-organize-filter-btn {
@@ -1692,6 +1698,10 @@ h1 {
 
 .storage-item {
   font-weight: 700;
+}
+
+.storage-info .storage-option-effect {
+  color: #b98552;
 }
 
 .storage-count {
