@@ -81,6 +81,7 @@ const SET_BONUSES = [
   {
     name: "旅人一式",
     setId: "traveler",
+    requiredItemIds: ["travelerHat", "travelerCloak", "travelerShoes"],
     requiredCount: 3,
     displayLines: ["放置時間 -10%", "LUC +10"],
     missionDurationKey: "traveler",
@@ -118,6 +119,9 @@ function getActiveSetBonuses(character) {
       return set.items.every((itemId) => equippedIds.has(itemId));
     }
     if (set.setId) {
+      if (Array.isArray(set.requiredItemIds) && set.requiredItemIds.length) {
+        return set.requiredItemIds.every((itemId) => equippedIds.has(itemId));
+      }
       const count = equippedItems.filter((item) => item.setId === set.setId).length;
       return count >= Math.max(1, Number(set.requiredCount) || 1);
     }
