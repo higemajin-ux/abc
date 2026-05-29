@@ -11,6 +11,7 @@ let equipmentFilterOpen = false;
 const openEquipmentSlotsByMemberId = new Map();
 const storageFilterKinds = new Set();
 const storageFilterRarities = new Set();
+const storageFilterOptions = new Set();
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 let storageBulkSellMode = false;
@@ -2467,7 +2468,8 @@ function storageFilterMatches(item) {
     if (rarity === "set") return isSetEquipmentItem(item);
     return normalizeRarity(item?.rarity) === rarity;
   });
-  return kindMatch && rarityMatch;
+  const optionMatch = !storageFilterOptions.size || (Array.isArray(item?.options) && item.options.some((option) => storageFilterOptions.has(String(option?.id || ""))));
+  return kindMatch && rarityMatch && optionMatch;
 }
 
 function filteredStorageEntries(items) {
@@ -2511,12 +2513,14 @@ function storageCountHtml(items) {
 function storageFilterButton(value, label, group = "kind") {
   const active = group === "kind"
     ? (value === "all" ? storageFilterKinds.size === 0 : storageFilterKinds.has(value))
-    : storageFilterRarities.has(value);
+    : group === "rarity"
+      ? storageFilterRarities.has(value)
+      : storageFilterOptions.has(value);
   return `<button type="button" class="storage-filter-btn ${active ? "active" : ""}" data-storage-filter="${value}" data-storage-filter-group="${group}">${label}</button>`;
 }
 
 function storageFilterActiveCount() {
-  return storageFilterKinds.size + storageFilterRarities.size;
+  return storageFilterKinds.size + storageFilterRarities.size + storageFilterOptions.size;
 }
 
 function isStorageEntrySelectable(entry) {
@@ -2969,6 +2973,21 @@ function storageFilterPanelHtml() {
         ${storageFilterButton("set", "セット", "rarity")}
       </div>
     </div>
+    <div class="storage-filter-panel-group">
+      <div class="storage-filter-panel-label">オプション：</div>
+      <div class="storage-filters">
+        ${storageFilterButton("attackUp", "攻撃", "option")}
+        ${storageFilterButton("attackPercent", "攻撃%", "option")}
+        ${storageFilterButton("hpUp", "HP", "option")}
+        ${storageFilterButton("hpPercent", "HP%", "option")}
+        ${storageFilterButton("defenseUp", "DEF", "option")}
+        ${storageFilterButton("defensePercent", "DEF%", "option")}
+        ${storageFilterButton("criticalRate", "クリ率", "option")}
+        ${storageFilterButton("criticalDamage", "クリダメ", "option")}
+        ${storageFilterButton("poisonStrike", "毒", "option")}
+        ${storageFilterButton("blindStrike", "盲目", "option")}
+      </div>
+    </div>
     <div class="storage-filter-panel-actions">
       <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-reset>リセット</button>
       <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-close>閉じる</button>
@@ -3202,6 +3221,12 @@ function bindStorageEvents(root) {
         } else {
           storageFilterRarities.add(value);
         }
+      } else if (group === "option") {
+        if (storageFilterOptions.has(value)) {
+          storageFilterOptions.delete(value);
+        } else {
+          storageFilterOptions.add(value);
+        }
       }
       storageRenderCount = -1;
       renderStorage();
@@ -3210,6 +3235,7 @@ function bindStorageEvents(root) {
   root.querySelector("[data-storage-filter-reset]")?.addEventListener("click", () => {
     storageFilterKinds.clear();
     storageFilterRarities.clear();
+    storageFilterOptions.clear();
     storageRenderCount = -1;
     renderStorage();
   });
