@@ -5,6 +5,10 @@ let tickId = null;
 let worldTickId = null;
 let storageRenderCount = -1;
 let storageSortMode = "new";
+const equipmentFilterRarities = new Set();
+const equipmentFilterOptions = new Set();
+let equipmentFilterOpen = false;
+const openEquipmentSlotsByMemberId = new Map();
 const storageFilterKinds = new Set();
 const storageFilterRarities = new Set();
 let storageFilterOpen = false;
@@ -188,6 +192,69 @@ function equipmentStorageLine(item) {
   return `${equipmentStatLine(item)} / 売却 ${sellGold}G`;
 }
 
+function equipmentFilterMatches(item) {
+  const rarityMatch = !equipmentFilterRarities.size || [...equipmentFilterRarities].some((rarity) => {
+    if (rarity === "set") return isSetEquipmentItem(item);
+    return normalizeRarity(item?.rarity) === rarity;
+  });
+  const optionMatch = !equipmentFilterOptions.size || (Array.isArray(item?.options) && item.options.some((option) => equipmentFilterOptions.has(String(option?.id || ""))));
+  return rarityMatch && optionMatch;
+}
+
+function equipmentFilterButton(value, label) {
+  const active = equipmentFilterRarities.has(value);
+  return `<button type="button" class="storage-filter-btn ${active ? "active" : ""}" data-equipment-filter="${value}">${label}</button>`;
+}
+
+function equipmentFilterOptionButton(value, label) {
+  const active = equipmentFilterOptions.has(value);
+  return `<button type="button" class="storage-filter-btn ${active ? "active" : ""}" data-equipment-filter-option="${value}">${label}</button>`;
+}
+
+function equipmentFilterActiveCount() {
+  return equipmentFilterRarities.size + equipmentFilterOptions.size;
+}
+
+function equipmentFilterPanelHtml() {
+  return `<div class="storage-popover storage-filter-panel equipment-filter-panel" ${equipmentFilterOpen ? "" : "hidden"} aria-label="装備候補フィルター">
+    <div class="storage-filter-panel-title">整理条件</div>
+    <div class="storage-filter-panel-group">
+      <div class="storage-filter-panel-label">レアリティ：</div>
+      <div class="storage-filters">
+        ${equipmentFilterButton("common", "ノーマル")}
+        ${equipmentFilterButton("uncommon", "アンコモン")}
+        ${equipmentFilterButton("rare", "レア")}
+        ${equipmentFilterButton("epic", "エピック")}
+        ${equipmentFilterButton("legendary", "レジェンド")}
+        ${equipmentFilterButton("set", "セット")}
+      </div>
+    </div>
+    <div class="storage-filter-panel-group">
+      <div class="storage-filter-panel-label">オプション：</div>
+      <div class="storage-filters">
+        ${equipmentFilterOptionButton("attackUp", "攻撃")}
+        ${equipmentFilterOptionButton("attackPercent", "攻撃%")}
+        ${equipmentFilterOptionButton("hpUp", "HP")}
+        ${equipmentFilterOptionButton("hpPercent", "HP%")}
+        ${equipmentFilterOptionButton("defenseUp", "DEF")}
+        ${equipmentFilterOptionButton("defensePercent", "DEF%")}
+        ${equipmentFilterOptionButton("criticalRate", "クリ率")}
+        ${equipmentFilterOptionButton("criticalDamage", "クリダメ")}
+        ${equipmentFilterOptionButton("poisonStrike", "毒")}
+        ${equipmentFilterOptionButton("blindStrike", "盲目")}
+      </div>
+    </div>
+    <div class="equipment-filter-panel-actions">
+      <button type="button" class="storage-bulk-cancel-btn" data-equipment-filter-reset>リセット</button>
+      <button type="button" class="storage-bulk-cancel-btn" data-equipment-filter-close>閉じる</button>
+    </div>
+  </div>`;
+}
+
+function isEquipmentSlotOpen(memberId, slot) {
+  return openEquipmentSlotsByMemberId.get(String(memberId)) === String(slot);
+}
+
 function equipmentCandidateCategoryLabel(item) {
   return equipmentSlotLabel(item?.slot || "");
 }
@@ -198,11 +265,11 @@ function equipmentCandidateHeaderHtml(item) {
   const sellGold = equipmentSellGoldValue(item);
   return `<span class="equip-choice-head equip-choice-head-split">
     <span class="equip-choice-head-main">
-      <strong>${equipmentDisplayName(item)}</strong>
-      <span>${rarity}${category ? ` / ${category}` : ""}</span>
+      <strong class="storage-item ${rarityClassName(rarity)}">${equipmentDisplayName(item)}</strong>
+      <span><span class="equip-choice-rarity">${rarity}</span>${category ? ` / <span class="equip-choice-category">${category}</span>` : ""}</span>
     </span>
     <span class="equip-choice-head-side">
-      <span>${rarity}</span>
+      <span class="equip-choice-rarity">${rarity}</span>
       <span>売却 ${sellGold}G</span>
     </span>
   </span>`;
@@ -1930,6 +1997,7 @@ function equipmentCandidateList(member, slot) {
   const candidates = (state.storage || [])
     .map((rawItem, index) => ({ item: storageItemFromEquipment(rawItem), index }))
     .filter(({ item }) => item?.slot === kind)
+    .filter(({ item }) => equipmentFilterMatches(item))
     .sort(compareEquipmentSelectionEntries);
 
   const currentChoice = hasItem
@@ -1947,12 +2015,22 @@ function equipmentCandidateList(member, slot) {
         <span class="equip-choice-meta">装備を外す</span>
       </button>`
     : "";
+  const filterActive = equipmentFilterActiveCount() > 0;
+  const filterChoice = `<div class="equipment-filter-anchor">
+        <button type="button" class="equip-choice-btn equip-choice-control-btn" data-equipment-filter-toggle aria-expanded="${equipmentFilterOpen}">
+          <span class="equip-choice-head"><strong>フィルター</strong></span>
+          <span class="equip-choice-meta ${filterActive ? "equipment-filter-active" : "equipment-filter-inactive"}">${filterActive ? "選択中" : "未選択"}</span>
+        </button>
+        ${equipmentFilterPanelHtml()}
+      </div>`;
 
-  if (!removeChoice && !candidates.length) {
-    return '<p class="equipment-empty">保管庫に候補はありません</p>';
-  }
+  const currentRow = currentChoice
+    ? `<div class="equipment-candidate-row equipment-candidate-current-row">${currentChoice}</div>`
+    : "";
+  const actionRow = `<div class="equipment-candidate-row equipment-candidate-action-row">${removeChoice}${filterChoice}</div>`;
+  const emptyHtml = !candidates.length ? '<p class="equipment-empty">保管庫に候補はありません</p>' : "";
 
-  return currentChoice + removeChoice + candidates
+  return currentRow + actionRow + emptyHtml + candidates
     .map(({ item, index }) => {
       return `<button type="button" class="equip-choice-btn ${rarityClassName(item.rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
         ${equipmentCandidateHeaderHtml(item)}
@@ -1980,7 +2058,7 @@ function equipmentSlotHtml(member, slot) {
         ${optionLine ? `<small class="equip-slot-option">${optionLine}</small>` : ""}
       </div>
     </button>
-    <div class="equipment-candidates" hidden>${equipmentCandidateList(member, slot)}</div>
+    <div class="equipment-candidates" ${isEquipmentSlotOpen(member.id, slot) ? "" : "hidden"}>${equipmentCandidateList(member, slot)}</div>
   </div>`;
 }
 
@@ -2135,11 +2213,13 @@ function createPartyCard(party) {
       const slotRoot = button.closest(".member-equipment-slot");
       const candidates = slotRoot?.querySelector(".equipment-candidates");
       if (!candidates) return;
+      const memberId = String(button.dataset.memberId || "");
+      const slot = String(button.dataset.slot || "");
       const open = candidates.hasAttribute("hidden");
-      card.querySelectorAll(".equipment-candidates").forEach((list) => {
-        if (list !== candidates) list.setAttribute("hidden", "");
-      });
-      candidates.toggleAttribute("hidden", !open);
+      openEquipmentSlotsByMemberId.delete(memberId);
+      equipmentFilterOpen = false;
+      if (open) openEquipmentSlotsByMemberId.set(memberId, slot);
+      renderPartyCard(party);
     });
   });
   card.querySelectorAll(".member-detail-tab").forEach((button) => {
@@ -2161,11 +2241,54 @@ function createPartyCard(party) {
   });
   card.querySelectorAll(".equip-choice-btn").forEach((button) => {
     button.addEventListener("click", () => {
+      if (button.dataset.equipmentFilterToggle !== undefined) return;
       if (button.dataset.unequip === "true") {
         unequipMemberItem(button.dataset.memberId, button.dataset.slot);
         return;
       }
       equipStorageItem(Number(button.dataset.storageIndex), button.dataset.memberId, button.dataset.slot);
+    });
+  });
+  card.querySelectorAll("[data-equipment-filter-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      equipmentFilterOpen = !equipmentFilterOpen;
+      renderPartyCard(party);
+    });
+  });
+  card.querySelectorAll("[data-equipment-filter-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+      equipmentFilterOpen = false;
+      renderPartyCard(party);
+    });
+  });
+  card.querySelectorAll("[data-equipment-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = button.dataset.equipmentFilter || "all";
+      if (equipmentFilterRarities.has(value)) {
+        equipmentFilterRarities.delete(value);
+      } else {
+        equipmentFilterRarities.add(value);
+      }
+      renderPartyCard(party);
+    });
+  });
+  card.querySelectorAll("[data-equipment-filter-option]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = button.dataset.equipmentFilterOption || "";
+      if (!value) return;
+      if (equipmentFilterOptions.has(value)) {
+        equipmentFilterOptions.delete(value);
+      } else {
+        equipmentFilterOptions.add(value);
+      }
+      renderPartyCard(party);
+    });
+  });
+  card.querySelectorAll("[data-equipment-filter-reset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      equipmentFilterRarities.clear();
+      equipmentFilterOptions.clear();
+      renderPartyCard(party);
     });
   });
   card.querySelectorAll(".skill-toggle").forEach((input) => {
@@ -2390,6 +2513,10 @@ function storageFilterButton(value, label, group = "kind") {
     ? (value === "all" ? storageFilterKinds.size === 0 : storageFilterKinds.has(value))
     : storageFilterRarities.has(value);
   return `<button type="button" class="storage-filter-btn ${active ? "active" : ""}" data-storage-filter="${value}" data-storage-filter-group="${group}">${label}</button>`;
+}
+
+function storageFilterActiveCount() {
+  return storageFilterKinds.size + storageFilterRarities.size;
 }
 
 function isStorageEntrySelectable(entry) {
@@ -2792,6 +2919,7 @@ function renderStorageLegacy() {
 }
 
 function storageSortOptionsHtml(actionHtml = "") {
+  const filterActive = storageFilterActiveCount() > 0;
   return `<div class="storage-controls">
     <div class="storage-top-row">
       <label class="storage-sort-control">並び替え
@@ -2802,7 +2930,13 @@ function storageSortOptionsHtml(actionHtml = "") {
           <option value="name" ${storageSortMode === "name" ? "selected" : ""}>名前順</option>
         </select>
       </label>
-      <button type="button" class="storage-organize-btn" data-storage-filter-toggle aria-expanded="${storageFilterOpen}">整理</button>
+      <div class="storage-filter-anchor">
+        <button type="button" class="storage-organize-btn storage-organize-filter-btn" data-storage-filter-toggle aria-expanded="${storageFilterOpen}">
+          <span>整理</span>
+          <span class="${filterActive ? "equipment-filter-active" : "equipment-filter-inactive"}">${filterActive ? "選択中" : "未選択"}</span>
+        </button>
+        ${storageFilterPanelHtml()}
+      </div>
     </div>
     <div class="storage-action-row">
       <button type="button" class="storage-organize-btn" data-storage-auto-sell-toggle aria-expanded="${storageAutoSellOpen}">自動売却</button>
@@ -2835,8 +2969,10 @@ function storageFilterPanelHtml() {
         ${storageFilterButton("set", "セット", "rarity")}
       </div>
     </div>
-    <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-reset>リセット</button>
-    <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-close>閉じる</button>
+    <div class="storage-filter-panel-actions">
+      <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-reset>リセット</button>
+      <button type="button" class="storage-bulk-cancel-btn" data-storage-filter-close>閉じる</button>
+    </div>
   </div>`;
 }
 
@@ -2920,7 +3056,7 @@ function storageFusionTargetPreviewHtml(entry) {
 function storageHeaderHtml(items, visibleGroups = [], visibleEntries = []) {
   const messageHtml = storageFusionMessage ? `<span class="muted">${storageFusionMessage}</span>` : "";
   const actionHtml = `${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleEntries)}`;
-  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml(actionHtml)}${storageFilterPanelHtml()}${storageAutoSellPanelHtml()}${messageHtml}</div>`;
+  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml(actionHtml)}${storageAutoSellPanelHtml()}${messageHtml}</div>`;
 }
 
 function storageFusionStep2Html(targetEntry, contentHtml) {
