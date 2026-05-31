@@ -288,14 +288,71 @@ function equipmentPrimaryStatLabel(slot) {
   return slot === "weapon" ? "ATK" : slot === "armor" ? "DEF" : slot === "accessory" ? "LUC" : "";
 }
 
-function equipmentPrimaryStatCandidateHtml(item, equippedItem, slot) {
+function buildEquipmentCompareContext(member, slot, item) {
+  if (!member || !slot || typeof getEquipmentStatBreakdown !== "function") return null;
+  const currentEquipment = { ...ensureCharacterEquipment(member) };
+  const compareMember = {
+    ...member,
+    equipment: {
+      ...currentEquipment,
+      [slot]: item ? storageItemFromEquipment(item) : null,
+    },
+  };
+  return {
+    currentBreakdown: getEquipmentStatBreakdown(member),
+    nextBreakdown: getEquipmentStatBreakdown(compareMember),
+    currentRates: typeof getEquipmentStatusStrikeRates === "function" ? getEquipmentStatusStrikeRates(member) : null,
+    nextRates: typeof getEquipmentStatusStrikeRates === "function" ? getEquipmentStatusStrikeRates(compareMember) : null,
+  };
+}
+
+function equipmentCompareValueFromContext(compareContext, compareKey) {
+  if (!compareContext || !compareKey) return null;
+  if (compareKey === "criticalRate" || compareKey === "criticalDamage") {
+    const currentValue = Number(compareContext.currentBreakdown?.total?.[compareKey]);
+    const nextValue = Number(compareContext.nextBreakdown?.total?.[compareKey]);
+    if (!Number.isFinite(currentValue) || !Number.isFinite(nextValue)) return null;
+    return {
+      currentValue: Math.round(currentValue * 100),
+      nextValue: Math.round(nextValue * 100),
+    };
+  }
+  if (compareKey === "blind" || compareKey === "poison") {
+    const currentValue = Number(compareContext.currentRates?.[compareKey]);
+    const nextValue = Number(compareContext.nextRates?.[compareKey]);
+    if (!Number.isFinite(currentValue) || !Number.isFinite(nextValue)) return null;
+    return {
+      currentValue: Math.round(currentValue * 100),
+      nextValue: Math.round(nextValue * 100),
+    };
+  }
+  const currentValue = Number(compareContext.currentBreakdown?.total?.[compareKey]);
+  const nextValue = Number(compareContext.nextBreakdown?.total?.[compareKey]);
+  if (!Number.isFinite(currentValue) || !Number.isFinite(nextValue)) return null;
+  return { currentValue, nextValue };
+}
+
+function equipmentOptionCompareKey(optionId) {
+  if (optionId === "attackUp" || optionId === "attackPercent") return "atk";
+  if (optionId === "hpUp" || optionId === "hpPercent") return "maxHp";
+  if (optionId === "defenseUp" || optionId === "defensePercent") return "def";
+  if (optionId === "criticalRate") return "criticalRate";
+  if (optionId === "criticalDamage") return "criticalDamage";
+  if (optionId === "blindStrike") return "blind";
+  if (optionId === "poisonStrike") return "poison";
+  return "";
+}
+
+function equipmentPrimaryStatCandidateHtml(item, equippedItem, slot, compareContext = null) {
   const statKey = equipmentPrimaryStatKey(slot);
   const statLabel = equipmentPrimaryStatLabel(slot);
   if (!item || !statKey || !statLabel) return equipmentStatLine(item);
   const itemValue = Number(equipmentStatValue(item, statKey)) || 0;
-  const currentValue = equippedItem ? (Number(equipmentStatValue(equippedItem, statKey)) || 0) : 0;
+  const totalCompare = equipmentCompareValueFromContext(compareContext, statKey);
+  const currentValue = totalCompare?.currentValue ?? (equippedItem ? (Number(equipmentStatValue(equippedItem, statKey)) || 0) : 0);
+  const nextValue = totalCompare?.nextValue ?? itemValue;
   const itemValueText = `${statLabel}${itemValue > 0 ? "+" : ""}${itemValue}`;
-  return `${itemValueText} <span class="equip-choice-compare">[${currentValue}→${itemValue}]</span>`;
+  return `${itemValueText} <span class="equip-choice-compare">[${currentValue}→${nextValue}]</span>`;
 }
 
 function isSetEquipmentItem(item) {
@@ -463,7 +520,12 @@ function equipmentOptionCompareValue(option) {
   return 0;
 }
 
-function equipmentOptionCompareHtml(option, equippedItem) {
+function equipmentOptionCompareHtml(option, equippedItem, compareContext = null) {
+  const compareKey = equipmentOptionCompareKey(option?.id);
+  const totalCompare = equipmentCompareValueFromContext(compareContext, compareKey);
+  if (totalCompare) {
+    return ` <span class="equip-choice-compare">[${totalCompare.currentValue}→${totalCompare.nextValue}]</span>`;
+  }
   if (!option || !equippedItem) return "";
   const equippedOptions = Array.isArray(equippedItem?.options) ? equippedItem.options : [];
   const currentOption = equippedOptions.find((entry) => String(entry?.id || "") === String(option?.id || ""));
@@ -481,10 +543,15 @@ function equipmentOptionLineText(option) {
   return detail ? `${text}（${detail}）` : text;
 }
 
-function equipmentOptionLostHtml(option) {
+function equipmentOptionLostHtml(option, compareContext = null) {
   if (!option) return "";
   const text = equipmentOptionLineText(option);
   if (!text) return "";
+  const compareKey = equipmentOptionCompareKey(option?.id);
+  const totalCompare = equipmentCompareValueFromContext(compareContext, compareKey);
+  if (totalCompare) {
+    return `<span class="equip-choice-option-lost">${text} <span class="equip-choice-compare">[${totalCompare.currentValue}→${totalCompare.nextValue}]</span></span>`;
+  }
   const currentValue = equipmentOptionCompareValue(option);
   return `<span class="equip-choice-option-lost">${text} <span class="equip-choice-compare">[${currentValue}→0]</span></span>`;
 }
@@ -513,18 +580,19 @@ function equipmentOptionCandidatesStorageHtml(item, context = {}) {
 function equipmentOptionsStorageHtml(item, context = {}) {
   const options = Array.isArray(item?.options) ? item.options : [];
   const compareEquippedItem = context?.compareEquippedItem || null;
+  const compareContext = context?.compareContext || null;
   const compareEquippedOptions = Array.isArray(compareEquippedItem?.options) ? compareEquippedItem.options : [];
   const lines = options
     .map((option) => {
       const text = equipmentOptionLineText(option);
       if (!text) return "";
-      const compareHtml = equipmentOptionCompareHtml(option, compareEquippedItem);
+      const compareHtml = equipmentOptionCompareHtml(option, compareEquippedItem, compareContext);
       return `${text}${compareHtml}`;
     })
     .filter(Boolean);
   const currentOnlyLines = compareEquippedOptions
     .filter((equippedOption) => !options.some((option) => String(option?.id || "") === String(equippedOption?.id || "")))
-    .map((option) => equipmentOptionLostHtml(option))
+    .map((option) => equipmentOptionLostHtml(option, compareContext))
     .filter(Boolean);
   const mergedLines = [...lines, ...currentOnlyLines];
   const optionsHtml = mergedLines.length ? `<div class="storage-effect storage-option-effect">${mergedLines.join("<br>")}</div>` : "";
@@ -2037,11 +2105,12 @@ function equipmentCandidateList(member, slot) {
 
   return currentRow + actionRow + emptyHtml + candidates
     .map(({ item, index }) => {
+      const compareContext = buildEquipmentCompareContext(member, slot, item);
       return `<button type="button" class="equip-choice-btn ${rarityClassName(item.rarity)}" data-storage-index="${index}" data-member-id="${member.id}" data-slot="${slot}">
         ${equipmentCandidateHeaderHtml(item)}
         ${equipmentSetLabelHtml(item)}
-        <span class="equip-choice-meta">${equipmentPrimaryStatCandidateHtml(item, equippedItem, slot)}</span>
-        ${equipmentOptionsStorageHtml(item, { compareEquippedItem: equippedItem })}
+        <span class="equip-choice-meta">${equipmentPrimaryStatCandidateHtml(item, equippedItem, slot, compareContext)}</span>
+        ${equipmentOptionsStorageHtml(item, { compareEquippedItem: equippedItem, compareContext })}
       </button>`;
     })
     .join("");
