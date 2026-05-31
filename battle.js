@@ -1367,7 +1367,7 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
 
   if (enemy.blindTurns > 0 && Math.random() < 0.4) {
     events.push({ kind: "enemy-action", text: `${enemy.name}の攻撃` });
-    events.push({ kind: "enemy-action", text: "ミス！攻撃は外れた。" });
+    events.push({ kind: "enemy-action", text: `ミス！${target.name}への攻撃は外れた。` });
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
     pushActionBreak(events);
