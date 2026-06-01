@@ -1789,7 +1789,8 @@ h1 {
 .storage-lock-btn,
 .storage-unequip-btn,
 .storage-dismantle-btn,
-.storage-fusion-change-btn {
+.storage-fusion-change-btn,
+.storage-option-enhance-btn {
   flex: 0 0 auto;
   min-height: 30px;
   border: 1px solid var(--line);
@@ -1806,15 +1807,78 @@ h1 {
 .storage-lock-btn:hover,
 .storage-unequip-btn:hover,
 .storage-dismantle-btn:hover,
-.storage-fusion-change-btn:hover {
+.storage-fusion-change-btn:hover,
+.storage-option-enhance-btn:hover {
   border-color: var(--line-bright);
   color: var(--accent);
   background: rgba(214, 168, 79, 0.06);
 }
 
-.storage-sell-btn:disabled {
+.storage-sell-btn:disabled,
+.storage-option-enhance-btn:disabled {
   cursor: default;
   opacity: 0.45;
+}
+
+.storage-option-enhance-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.storage-option-enhance-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 92px;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 6px;
+}
+
+.storage-option-enhance-main {
+  color: #b98552;
+  font-weight: 700;
+  min-width: 0;
+  text-align: left;
+}
+
+.storage-option-enhance-fragments,
+.storage-option-enhance-status {
+  color: var(--muted-on-dark);
+  font-size: 0.8rem;
+}
+
+.storage-option-enhance-fragments {
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.storage-option-enhance-action {
+  width: 92px;
+  min-width: 92px;
+  justify-self: end;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.storage-option-enhance-action-disabled {
+  color: var(--muted-on-dark);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  opacity: 1;
+}
+
+@media (max-width: 560px) {
+  .storage-option-enhance-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 84px;
+    column-gap: 8px;
+  }
+
+  .storage-option-enhance-action {
+    width: 84px;
+    min-width: 84px;
+  }
 }
 
 .rarity-common {
@@ -2240,3 +2304,4 @@ h1 {
     padding-right: 6px;
   }
 }
+
