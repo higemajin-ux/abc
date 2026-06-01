@@ -1,0 +1,91 @@
+function runEncounter(members, monster, area, speechState = {}, partyName = "髫・) {
+  const magicSense = tryMageMagicSense(members, monster, area);
+  monster = magicSense.monster;
+  const highestLevel = Math.max(...members.map((m) => m.level || 1));
+  const encounterMonsters = monster.boss ? [monster] : buildEncounterMonsters(area, monster);
+  const enemies = withIndexedEnemyNames(encounterMonsters).map(({ monster: enemyMonster, displayName }) =>
+    createEnemy(enemyMonster, area, highestLevel, displayName)
+  );
+  const encounterLabel = enemyGroupLabel(enemies);
+  const party = members; // 竊・蜈ｨ蝗槫ｾｩ縺帙★縲√◎縺ｮ縺ｾ縺ｾ・医ム繝｡繝ｼ繧ｸ繧貞女縺代◆迥ｶ諷具ｼ峨〒蠑輔″邯吶＄
+  party.forEach((member) => {
+    if (member.job === "priest") {
+      member.sureReviveUsed = false;
+      member.divineGraceUsed = false;
+    }
+  });
+  const startMembersSnapshot = snapshotPartyHp(party);
+  const events = [];
+  const ambushScout = pickAmbushScout(party);
+  const explorationEvents = [...magicSense.explorationEvents, ...buildScoutExplorationEvents(party, speechState, area)];
+  let round = 1;
+
+  events.push({
+    kind: "intro",
+    text: enemy.boss ? `${enemy.name}縺悟ｧｿ繧堤樟縺励◆縲る嚏蛻励↓邱雁ｼｵ縺瑚ｵｰ繧九Ａ : `${enemy.name}縺ｨ驕ｭ驕・Ａ,
+  });
+  if (magicSense.foundRare && magicSense.detector) {
+    events.push({ kind: "spell", text: `${magicSense.detector.name}縺ｮ鬲泌鴨謗｢遏･縺ｧ隕九▽縺大・縺励◆縲Ａ });
+  }
+  pushInitialHp(events, enemy, enemy.boss ? "boss" : "");
+  pushPartyHp(events, party);
+
+  while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 20) {
+    events.push({ kind: "turn-separator", text: `笏笏笏笏 Turn ${round} 笏笏笏笏` });
+    tickTaunts(party);
+    const actionOrder = actionOrderForRound(party, round, ambushScout);
+    if (round === 1 && actionOrder[0]?.id === ambushScout?.id) {
+      pushScoutAmbushEvents(ambushScout, events);
+      performMemberAction(ambushScout, party, enemy, events);
+      tickEnemyDots(ambushScout, events, "ally-action");
+      if (ambushScout.hp <= 0) confirmMemberDown(ambushScout, events, speechState);
+      if (enemy.hp <= 0) break;
+    }
+    performTurnStartSkillChecks(party, enemy, events);
+    for (const member of actionOrder) {
+      if (round === 1 && member.id === ambushScout?.id) continue;
+      performMemberAction(member, party, enemy, events);
+      tickEnemyDots(member, events, "ally-action");
+      if (member.hp <= 0) confirmMemberDown(member, events, speechState);
+      if (enemy.hp <= 0) break;
+    }
+    performEnemyAction(enemy, party, events, speechState, round);
+    round += 1;
+  }
+
+  const draw = enemy.hp <= 0 && livingMembers(party).length === 0;
+  const victory = enemy.hp <= 0 && !draw;
+  confirmRemainingDownMembers(party, events, speechState, !(victory && enemy.boss));
+  clearTempHp(party);
+  const equipmentDrop = victory ? rollEquipmentDrop(party, monster) : null;
+
+  if (victory) {
+    events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}繧定ｨ惹ｼ舌よ姶髣倩ｨ倬鹸繧偵ぐ繝ｫ繝峨∈騾√▲縺溘Ａ });
+    if (equipmentDrop) {
+      const dropName = dropNameHtml(equipmentDrop);
+      if (shouldAutoSellDrop(equipmentDrop)) equipmentDrop.sellGold = equipmentSellGoldValue(equipmentDrop);
+      events.push({ kind: "voice", text: `${equipmentDrop.finderName}縺・{dropName}繧定ｦ九▽縺代◆縲Ａ });
+      if (shouldAutoSellDrop(equipmentDrop)) {
+        events.push({ kind: "voice", text: `${dropName}繧貞｣ｲ蜊ｴ縺励◆・・{equipmentDrop.sellGold || 0}G・峨Ａ });
+      }
+    }
+  } else if (draw) {
+    events.push({ kind: "down", text: enemy.dotDefeatText || `${enemy.name}縺ｯ蛟偵ｌ縺溘Ａ });
+    events.push({ kind: "down", text: `縺励°縺玲里縺ｫ${partyName}縺ｯ螢頑ｻ・＠縺ｦ縺・◆縲Ａ });
+    events.push({ kind: "down", text: "謌ｦ髣倩ｨ倬鹸縺縺代′繧ｮ繝ｫ繝峨∈騾√ｉ繧後◆縲・ });
+  } else {
+    events.push({ kind: "down", text: `${enemy.name}繧帝縺代″繧後★縲・嚏縺ｯ辣吝ｹ輔〒謦､騾縺励◆縲Ａ });
+  }
+
+  return {
+    monster,
+    enemy,
+    victory,
+    draw,
+    events,
+    explorationEvents,
+    equipmentDrop,
+    startMembersSnapshot,
+    bossPreludeEvents: enemy.boss ? buildBossPreludeEvents(party, startMembersSnapshot) : [],
+    membersSnapshot: snapshotPartyHp(party),
+    kills: victory ? 1 : 0,
