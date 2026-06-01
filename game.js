@@ -15,10 +15,12 @@ const storageFilterOptions = new Set();
 let storageFilterOpen = false;
 let storageAutoSellOpen = false;
 let storageBulkSellMode = false;
+let storageBulkDismantleMode = false;
 let storageFusionMode = false;
 let storageFusionMessage = "";
 let dropToastSerial = 1;
 const selectedStorageGroups = new Set();
+const selectedStorageDismantleUids = new Set();
 let selectedStorageFusionTargetUid = null;
 const selectedStorageFusionMaterialUids = new Set();
 const openDetailPartyIds = new Set();
@@ -33,6 +35,7 @@ let state = {
   stats: { gold: 0 },
   areaClears: {},
   storage: [],
+  optionFragments: {},
   autoSell: { common: false, uncommon: false },
   records: defaultRecords(),
   developerMode: false,
@@ -64,6 +67,10 @@ function defaultStats() {
 
 function defaultGuildStats() {
   return { gold: 0 };
+}
+
+function defaultOptionFragments() {
+  return {};
 }
 
 function nextStorageUid() {
@@ -702,6 +709,14 @@ function ensureGuildStats(target = state) {
   target.stats = { ...defaultGuildStats(), ...(target.stats || {}) };
   target.stats.gold = Math.max(0, Number(target.stats.gold) || 0);
   return target.stats;
+}
+
+function ensureOptionFragments(target = state) {
+  target.optionFragments =
+    target.optionFragments && typeof target.optionFragments === "object" && !Array.isArray(target.optionFragments)
+      ? { ...target.optionFragments }
+      : defaultOptionFragments();
+  return target.optionFragments;
 }
 
 function ensureStorageUids(target = state) {
@@ -2565,8 +2580,17 @@ function storageFilterMatches(item) {
     if (rarity === "set") return isSetEquipmentItem(item);
     return normalizeRarity(item?.rarity) === rarity;
   });
-  const optionMatch = !storageFilterOptions.size || (Array.isArray(item?.options) && item.options.some((option) => storageFilterOptions.has(String(option?.id || ""))));
-  return kindMatch && rarityMatch && optionMatch;
+  const hasFixedOptions = hasEquipmentOptions(item);
+  const optionStateFilter = storageFilterOptions.has("hasOptions")
+    ? "hasOptions"
+    : storageFilterOptions.has("noOptions")
+      ? "noOptions"
+      : "";
+  const optionStateMatch = !optionStateFilter ||
+    (optionStateFilter === "hasOptions" ? hasFixedOptions : !hasFixedOptions);
+  const optionIds = [...storageFilterOptions].filter((filter) => filter !== "hasOptions" && filter !== "noOptions");
+  const optionMatch = !optionIds.length || (hasFixedOptions && item.options.some((option) => optionIds.includes(String(option?.id || ""))));
+  return kindMatch && rarityMatch && optionStateMatch && optionMatch;
 }
 
 function filteredStorageEntries(items) {
@@ -2605,6 +2629,20 @@ function storageCountHtml(items) {
     <span>装備保管：${items.length}</span>
     <span>保護：${lockedCount}</span>
   </div>`;
+}
+
+function storageOptionFragmentsSummaryHtml() {
+  const fragments = ensureOptionFragments();
+  const lines = Object.entries(fragments)
+    .map(([fragmentId, amount]) => {
+      const count = Math.max(0, Number(amount) || 0);
+      if (!fragmentId || count <= 0) return "";
+      const label = OPTION_MASTER?.[fragmentId]?.name || fragmentId;
+      return `${label} ×${count}`;
+    })
+    .filter(Boolean);
+  const text = lines.length ? lines.join(" / ") : "なし";
+  return `<div class="storage-option-fragments muted">OPかけら：${text}</div>`;
 }
 
 function storageFilterButton(value, label, group = "kind") {
@@ -2650,6 +2688,34 @@ function cancelStorageBulkSellMode() {
   selectedStorageGroups.clear();
 }
 
+function isStorageDismantleEntrySelectable(entry) {
+  return canDismantleStorageEquipmentByUid(storageEntryUid(entry));
+}
+
+function selectedStorageDismantleCount(visibleEntries) {
+  return visibleEntries
+    .filter((entry) => selectedStorageDismantleUids.has(String(storageEntryUid(entry) || "")))
+    .filter(isStorageDismantleEntrySelectable)
+    .length;
+}
+
+function syncSelectedStorageDismantleUids(visibleEntries) {
+  const validIds = new Set(
+    visibleEntries
+      .filter(isStorageDismantleEntrySelectable)
+      .map((entry) => String(storageEntryUid(entry) || ""))
+      .filter(Boolean)
+  );
+  [...selectedStorageDismantleUids].forEach((id) => {
+    if (!validIds.has(id)) selectedStorageDismantleUids.delete(id);
+  });
+}
+
+function cancelStorageBulkDismantleMode() {
+  storageBulkDismantleMode = false;
+  selectedStorageDismantleUids.clear();
+}
+
 function storageEntryUid(entry) {
   return entry?.item?.storageUid || entry?.rawItem?.storageUid || null;
 }
@@ -2670,6 +2736,157 @@ function storageStateEntryByUid(uid) {
   const item = storageItemFromEquipment(rawItem);
   if (!item) return null;
   return { rawItem, storageIndex: index, index, item, locked: !!rawItem?.locked };
+}
+
+function equippedStorageEntryByUid(uid) {
+  if (!uid) return null;
+  return equippedStorageEntries().find((entry) => String(entry?.item?.storageUid || "") === String(uid)) || null;
+}
+
+function isDismantleRestrictedEquipment(item) {
+  return item?.slot === "relic" || normalizeRarity(item?.rarity) === "artifact";
+}
+
+function canDismantleStorageEquipmentByUid(uid) {
+  const entry = storageStateEntryByUid(uid);
+  if (!entry || typeof entry.storageIndex !== "number") return false;
+  if (storageEntryLocked(entry)) return false;
+  if (equippedStorageEntryByUid(uid)) return false;
+  if (!hasEquipmentOptions(entry.item)) return false;
+  if (isSetEquipmentItem(entry.item)) return false;
+  if (isDismantleRestrictedEquipment(entry.item)) return false;
+  return true;
+}
+
+function dismantlePreviewForStorageEquipmentByUid(uid) {
+  if (!canDismantleStorageEquipmentByUid(uid)) return [];
+  const entry = storageStateEntryByUid(uid);
+  if (!entry?.item) return [];
+  return (Array.isArray(entry.item.options) ? entry.item.options : [])
+    .map((option) => {
+      const optionId = String(option?.id || "");
+      const level = Math.max(0, Number(option?.level) || 0);
+      if (!optionId || level <= 0) return null;
+      return { fragmentId: optionId, optionId, level };
+    })
+    .filter(Boolean);
+}
+
+function addOptionFragmentsFromPreview(preview, target = state) {
+  const fragments = ensureOptionFragments(target);
+  const entries = Array.isArray(preview) ? preview : [];
+  entries.forEach((entry) => {
+    const fragmentId = String(entry?.fragmentId || "");
+    const level = Math.max(0, Number(entry?.level) || 0);
+    if (!fragmentId || level <= 0) return;
+    fragments[fragmentId] = Math.max(0, Number(fragments[fragmentId]) || 0) + level;
+  });
+  return fragments;
+}
+
+function mergeOptionFragmentPreviews(previews) {
+  const totals = new Map();
+  (Array.isArray(previews) ? previews : []).forEach((fragment) => {
+    const fragmentId = String(fragment?.fragmentId || "");
+    const level = Math.max(0, Number(fragment?.level) || 0);
+    if (!fragmentId || level <= 0) return;
+    totals.set(fragmentId, (totals.get(fragmentId) || 0) + level);
+  });
+  return [...totals.entries()].map(([fragmentId, level]) => ({ fragmentId, optionId: fragmentId, level }));
+}
+
+function optionFragmentPreviewLine(fragment) {
+  const fragmentId = String(fragment?.fragmentId || "");
+  const level = Math.max(0, Number(fragment?.level) || 0);
+  if (!fragmentId || level <= 0) return "";
+  const label = OPTION_MASTER?.[fragmentId]?.name || fragmentId;
+  return `${label}のかけら +${level}`;
+}
+
+function dismantleStorageEquipmentByUid(uid, target = state) {
+  const entry = storageStateEntryByUid(uid);
+  if (!entry || typeof entry.storageIndex !== "number") {
+    return { ok: false, reason: "not_found" };
+  }
+  if (!canDismantleStorageEquipmentByUid(uid)) {
+    return { ok: false, reason: "not_dismantlable" };
+  }
+  const fragments = dismantlePreviewForStorageEquipmentByUid(uid);
+  if (!fragments.length) {
+    return { ok: false, reason: "no_fragments" };
+  }
+  addOptionFragmentsFromPreview(fragments, target);
+  target.storage.splice(entry.storageIndex, 1);
+  if (target === state) {
+    if (selectedStorageFusionTargetUid === String(uid)) selectedStorageFusionTargetUid = null;
+    selectedStorageFusionMaterialUids.delete(String(uid));
+    saveGame();
+  }
+  return {
+    ok: true,
+    itemName: equipmentDisplayName(entry.item),
+    fragments,
+  };
+}
+
+function storageDismantleButtonHtml(uid) {
+  return uid && canDismantleStorageEquipmentByUid(uid)
+    ? `<button type="button" class="storage-dismantle-btn" data-storage-dismantle="${uid}">分解</button>`
+    : "";
+}
+
+function dismantleConfirmMessage(uid) {
+  const entry = storageStateEntryByUid(uid);
+  if (!entry?.item) return "この装備を分解しますか？\n装備は失われ、OPかけらを得ます。";
+  const preview = dismantlePreviewForStorageEquipmentByUid(uid);
+  const lines = preview.map(optionFragmentPreviewLine).filter(Boolean);
+  const previewText = lines.length ? `\n獲得予定：\n${lines.join("\n")}` : "";
+  return `${equipmentDisplayName(entry.item)}を分解しますか？\n装備は失われ、OPかけらを得ます。${previewText}`;
+}
+
+function handleStorageItemDismantle(uid) {
+  if (!uid || !canDismantleStorageEquipmentByUid(uid)) return;
+  if (!confirm(dismantleConfirmMessage(uid))) return;
+  const result = dismantleStorageEquipmentByUid(uid);
+  if (!result?.ok) return;
+  const fragmentText = (Array.isArray(result.fragments) ? result.fragments : [])
+    .map(optionFragmentPreviewLine)
+    .filter(Boolean)
+    .join(" / ");
+  storageFusionMessage = fragmentText ? `${result.itemName}を分解した（${fragmentText}）` : `${result.itemName}を分解した`;
+  storageRenderCount = -1;
+  renderStorage();
+}
+
+function dismantleSelectedStorageItems() {
+  const candidateUids = [...selectedStorageDismantleUids]
+    .map((uid) => String(uid || ""))
+    .filter(Boolean);
+  const entries = candidateUids
+    .map((uid) => ({ uid, entry: storageStateEntryByUid(uid) }))
+    .filter(({ uid, entry }) => uid && entry && canDismantleStorageEquipmentByUid(uid));
+  if (!entries.length) return;
+
+  const preview = mergeOptionFragmentPreviews(entries.flatMap(({ uid }) => dismantlePreviewForStorageEquipmentByUid(uid)));
+  const previewText = preview.map(optionFragmentPreviewLine).filter(Boolean).join("\n");
+  const confirmMessage = `${entries.length}件を分解しますか？\n装備は失われ、OPかけらを得ます。${previewText ? `\n\n獲得予定：\n${previewText}` : ""}`;
+  if (!confirm(confirmMessage)) return;
+
+  const results = candidateUids.map((uid) => dismantleStorageEquipmentByUid(uid));
+  const successResults = results.filter((result) => result?.ok);
+  if (!successResults.length) {
+    selectedStorageDismantleUids.clear();
+    storageRenderCount = -1;
+    renderStorage();
+    return;
+  }
+  const fragments = mergeOptionFragmentPreviews(successResults.flatMap((result) => result.fragments || []));
+  const fragmentText = fragments.map(optionFragmentPreviewLine).filter(Boolean).join(" / ");
+  const failedCount = results.length - successResults.length;
+  storageFusionMessage = `${successResults.length}件を分解した${fragmentText ? `（${fragmentText}）` : ""}${failedCount > 0 ? ` / ${failedCount}件は実行時条件でスキップ` : ""}`;
+  selectedStorageDismantleUids.clear();
+  storageRenderCount = -1;
+  renderStorage();
 }
 
 function storageFusionTargetEntry(visibleEntries) {
@@ -3073,6 +3290,8 @@ function storageFilterPanelHtml() {
     <div class="storage-filter-panel-group">
       <div class="storage-filter-panel-label">オプション：</div>
       <div class="storage-filters">
+        ${storageFilterButton("hasOptions", "OP付き", "option")}
+        ${storageFilterButton("noOptions", "OPなし", "option")}
         ${storageFilterButton("attackUp", "攻撃", "option")}
         ${storageFilterButton("attackPercent", "攻撃%", "option")}
         ${storageFilterButton("hpUp", "HP", "option")}
@@ -3102,7 +3321,7 @@ function storageAutoSellPanelHtml() {
 
 function storageBulkSellHtml(visibleGroups) {
   const count = selectedStorageSellCount(visibleGroups);
-  if (storageFusionMode) return "";
+  if (storageFusionMode || storageBulkDismantleMode) return "";
   if (!storageBulkSellMode) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell-toggle>選択売却</button>';
   }
@@ -3112,8 +3331,21 @@ function storageBulkSellHtml(visibleGroups) {
   </div>`;
 }
 
+function storageBulkDismantleHtml(visibleEntries) {
+  const count = selectedStorageDismantleCount(visibleEntries);
+  if (storageFusionMode || storageBulkSellMode) return "";
+  if (!storageBulkDismantleMode) {
+    return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-dismantle-toggle>選択分解</button>';
+  }
+  return `<div class="storage-bulk-sell-actions">
+    <button type="button" class="storage-bulk-sell-btn" data-storage-bulk-dismantle-run ${count ? "" : "disabled"}>選択した装備を分解${count ? ` (${count})` : ""}</button>
+    <button type="button" class="storage-bulk-cancel-btn" data-storage-bulk-dismantle-cancel>キャンセル</button>
+    <span class="muted">分解したい装備を選択</span>
+  </div>`;
+}
+
 function storageFusionHtml(visibleEntries) {
-  if (storageBulkSellMode) return "";
+  if (storageBulkSellMode || storageBulkDismantleMode) return "";
   const selectedEntry = currentStorageFusionTargetEntry();
   if (!storageFusionMode) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-fusion-toggle>装備合成</button>';
@@ -3171,8 +3403,8 @@ function storageFusionTargetPreviewHtml(entry) {
 
 function storageHeaderHtml(items, visibleGroups = [], visibleEntries = []) {
   const messageHtml = storageFusionMessage ? `<span class="muted">${storageFusionMessage}</span>` : "";
-  const actionHtml = `${storageBulkSellHtml(visibleGroups)}${storageFusionHtml(visibleEntries)}`;
-  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml(actionHtml)}${storageAutoSellPanelHtml()}${messageHtml}</div>`;
+  const actionHtml = `${storageBulkSellHtml(visibleGroups)}${storageBulkDismantleHtml(visibleEntries)}${storageFusionHtml(visibleEntries)}`;
+  return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml(actionHtml)}${storageAutoSellPanelHtml()}${messageHtml}${storageOptionFragmentsSummaryHtml()}</div>`;
 }
 
 function storageFusionStep2Html(targetEntry, contentHtml) {
@@ -3204,6 +3436,7 @@ function storageGroupHtml(group) {
   const rarity = normalizeRarity(item?.rarity);
   const name = equipmentDisplayName(item);
   const index = entries[0]?.index;
+  const uid = entries[0]?.storageUid;
   const locked = !!entries[0]?.locked;
   const equippedEntry = entries.find((entry) => entry.equippedBy);
   const equippedBy = equippedEntry?.equippedBy;
@@ -3231,6 +3464,7 @@ function storageGroupHtml(group) {
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
       ${equippedEntry ? `<button type="button" class="storage-unequip-btn" data-member-id="${equippedEntry.equippedMemberId}" data-slot="${equippedEntry.equippedSlot}">装備解除</button>` : ""}
+      ${storageDismantleButtonHtml(uid)}
       <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
@@ -3240,6 +3474,7 @@ function storageFusionEntryHtml(entry) {
   const item = entry?.item;
   if (!item) return "";
   const index = storageEntryIndex(entry);
+  const uid = storageEntryUid(entry);
   const locked = storageEntryLocked(entry);
   const equippedBy = entry?.equippedBy;
   const rarity = normalizeRarity(item?.rarity);
@@ -3279,6 +3514,42 @@ function storageFusionEntryHtml(entry) {
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
       ${entry?.equippedMemberId ? `<button type="button" class="storage-unequip-btn" data-member-id="${entry.equippedMemberId}" data-slot="${entry.equippedSlot}">装備解除</button>` : ""}
+      ${storageDismantleButtonHtml(uid)}
+      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
+    </div>
+  </li>`;
+}
+
+function storageDismantleEntryHtml(entry) {
+  const item = entry?.item;
+  if (!item) return "";
+  const index = storageEntryIndex(entry);
+  const uid = storageEntryUid(entry);
+  const locked = storageEntryLocked(entry);
+  const equippedBy = entry?.equippedBy;
+  const rarity = normalizeRarity(item?.rarity);
+  const name = equipmentDisplayName(item);
+  const selectable = isStorageDismantleEntrySelectable(entry);
+  const checked = selectable && selectedStorageDismantleUids.has(String(uid));
+  const checkboxHtml = `<label class="storage-select">
+      <input type="checkbox" class="storage-select-checkbox" data-storage-dismantle-select="${String(uid || "")}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
+    </label>`;
+  const canSell = typeof index === "number" && !equippedBy && !locked;
+  return `<li>
+    ${checkboxHtml}
+    <div class="storage-info">
+      <div class="storage-head">
+        <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : ""}</span>
+        ${equippedBy ? `<span class="storage-equipped-label">装備中：${equippedBy}</span>` : ""}
+      </div>
+      ${equipmentSetLabelHtml(item)}
+      <div class="storage-effect">${equipmentStorageLine(item)}</div>
+      ${equipmentOptionsStorageHtml(item, { storageIndex: index })}
+    </div>
+    <div class="storage-actions">
+      ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
+      ${entry?.equippedMemberId ? `<button type="button" class="storage-unequip-btn" data-member-id="${entry.equippedMemberId}" data-slot="${entry.equippedSlot}">装備解除</button>` : ""}
+      ${storageDismantleButtonHtml(uid)}
       <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
@@ -3325,6 +3596,8 @@ function bindStorageEvents(root) {
         if (storageFilterOptions.has(value)) {
           storageFilterOptions.delete(value);
         } else {
+          if (value === "hasOptions") storageFilterOptions.delete("noOptions");
+          if (value === "noOptions") storageFilterOptions.delete("hasOptions");
           storageFilterOptions.add(value);
         }
       }
@@ -3382,6 +3655,15 @@ function bindStorageEvents(root) {
         renderStorage();
         return;
       }
+      if (storageBulkDismantleMode) {
+        const dismantleId = input.dataset.storageDismantleSelect;
+        if (!dismantleId) return;
+        if (input.checked) selectedStorageDismantleUids.add(String(dismantleId));
+        else selectedStorageDismantleUids.delete(String(dismantleId));
+        storageRenderCount = -1;
+        renderStorage();
+        return;
+      }
       const selectionId = input.dataset.storageSelect;
       if (!selectionId) return;
       if (input.checked) selectedStorageGroups.add(selectionId);
@@ -3392,6 +3674,7 @@ function bindStorageEvents(root) {
   });
   root.querySelector("[data-storage-bulk-sell-toggle]")?.addEventListener("click", () => {
     storageBulkSellMode = true;
+    cancelStorageBulkDismantleMode();
     cancelStorageFusionMode();
     selectedStorageGroups.clear();
     storageRenderCount = -1;
@@ -3406,9 +3689,26 @@ function bindStorageEvents(root) {
     storageRenderCount = -1;
     renderStorage();
   });
+  root.querySelector("[data-storage-bulk-dismantle-toggle]")?.addEventListener("click", () => {
+    storageBulkDismantleMode = true;
+    cancelStorageBulkSellMode();
+    cancelStorageFusionMode();
+    selectedStorageDismantleUids.clear();
+    storageRenderCount = -1;
+    renderStorage();
+  });
+  root.querySelector("[data-storage-bulk-dismantle-run]")?.addEventListener("click", () => {
+    dismantleSelectedStorageItems();
+  });
+  root.querySelector("[data-storage-bulk-dismantle-cancel]")?.addEventListener("click", () => {
+    cancelStorageBulkDismantleMode();
+    storageRenderCount = -1;
+    renderStorage();
+  });
   root.querySelector("[data-storage-fusion-toggle]")?.addEventListener("click", () => {
     storageFusionMode = true;
     cancelStorageBulkSellMode();
+    cancelStorageBulkDismantleMode();
     selectedStorageFusionTargetUid = null;
     selectedStorageFusionMaterialUids.clear();
     storageRenderCount = -1;
@@ -3442,6 +3742,12 @@ function bindStorageEvents(root) {
   root.querySelectorAll(".storage-lock-btn").forEach((button) => {
     button.addEventListener("click", () => {
       toggleStorageLock(Number(button.dataset.storageIndex));
+    });
+  });
+  root.querySelectorAll(".storage-dismantle-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      clearButtonFocus(button);
+      handleStorageItemDismantle(String(button.dataset.storageDismantle || ""));
     });
   });
 }
@@ -3479,6 +3785,7 @@ function renderStorage() {
   const visibleGroups = storageGroups(visibleEntries);
   const fusionTargetEntry = currentStorageFusionTargetEntry();
   syncSelectedStorageGroups(visibleGroups);
+  syncSelectedStorageDismantleUids(visibleEntries);
   syncSelectedStorageFusionMaterials(visibleEntries, fusionTargetEntry);
   const fusionDisplayEntries = storageFusionMode
     ? fusionTargetEntry
@@ -3492,16 +3799,22 @@ function renderStorage() {
         .sort(compareStorageFusionTargetEntries)
     : [];
   const selectedKey = [...selectedStorageGroups].sort().join(",");
+  const dismantleSelectedKey = [...selectedStorageDismantleUids].sort().join(",");
   const fusionMaterialKey = [...selectedStorageFusionMaterialUids].sort().join(",");
   const filterKindsKey = [...storageFilterKinds].sort().join(",");
   const filterRaritiesKey = [...storageFilterRarities].sort().join(",");
-  const renderKey = `${items.length}:${storageSortMode}:${filterKindsKey}:${filterRaritiesKey}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageFusionMode}:${selectedKey}:${selectedStorageFusionTargetUid ?? ""}:${fusionMaterialKey}`;
+  const renderKey = `${items.length}:${storageSortMode}:${filterKindsKey}:${filterRaritiesKey}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageBulkDismantleMode}:${storageFusionMode}:${selectedKey}:${dismantleSelectedKey}:${selectedStorageFusionTargetUid ?? ""}:${fusionMaterialKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
-  if ((storageFusionMode ? fusionDisplayEntries : visibleGroups).length === 0) {
+  const normalDisplayEntries = storageBulkDismantleMode ? visibleEntries : visibleGroups;
+  if ((storageFusionMode ? fusionDisplayEntries : normalDisplayEntries).length === 0) {
     const emptyText = storageFusionMode && fusionTargetEntry
       ? "素材候補はありません"
+      : storageBulkDismantleMode
+        ? items.length
+          ? "条件に合う装備はありません"
+          : "保管中の装備はありません"
       : items.length
         ? "条件に合う装備はありません"
         : "保管中の装備はありません";
@@ -3517,7 +3830,9 @@ function renderStorage() {
     ? fusionTargetEntry
       ? renderStorageFusionStep2ListHtml(fusionTargetEntry, fusionDisplayEntries)
       : renderStorageFusionStep1Html(fusionDisplayEntries)
-    : renderStorageNormalHtml(visibleGroups);
+    : storageBulkDismantleMode
+      ? `<ul class="storage-list">${visibleEntries.map(storageDismantleEntryHtml).join("")}</ul>`
+      : renderStorageNormalHtml(visibleGroups);
   root.innerHTML = `${renderStorageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionListHtml}`;
   bindStorageEvents(root);
 }
@@ -3929,6 +4244,7 @@ function migrate(data) {
   ensureRecords(data);
   ensureDeveloperMode(data);
   ensureGuildStats(data);
+  ensureOptionFragments(data);
   ensureStorageUids(data);
   data.storage = data.storage.map((item) => {
     if (!item || !Object.prototype.hasOwnProperty.call(item, "fixedOptions")) return item;
@@ -4048,11 +4364,13 @@ function loadGame() {
         stats: data.stats || defaultGuildStats(),
         areaClears: data.areaClears || {},
         storage: data.storage || [],
+        optionFragments: data.optionFragments || defaultOptionFragments(),
         autoSell: data.autoSell || defaultAutoSellSettings(),
         records: data.records || defaultRecords(),
         developerMode: data.developerMode === true,
       };
       ensureGuildStats();
+      ensureOptionFragments();
       ensureAutoSellSettings();
       ensureRecords();
       ensureDeveloperMode();
@@ -4073,6 +4391,7 @@ function resetGame() {
     stats: defaultGuildStats(),
     areaClears: {},
     storage: [],
+    optionFragments: defaultOptionFragments(),
     autoSell: defaultAutoSellSettings(),
     records: defaultRecords(),
     developerMode: false,
