@@ -268,6 +268,11 @@ function isEquipmentSlotOpen(memberId, slot) {
   return openEquipmentSlotsByMemberId.get(String(memberId)) === String(slot);
 }
 
+function closeEquipmentSlotSelection(memberId) {
+  openEquipmentSlotsByMemberId.delete(String(memberId));
+  equipmentFilterOpen = false;
+}
+
 function equipmentCandidateCategoryLabel(item) {
   return equipmentSlotLabel(item?.slot || "");
 }
@@ -1428,6 +1433,7 @@ function equipStorageItem(index, memberId, targetSlot) {
   state.storage.splice(index, 1);
   equipment[slot] = hasItemInstanceData(storedItem) ? storageItemFromEquipment(storedItem) : storedItem.id;
   if (previousItem) state.storage.push(previousItem);
+  closeEquipmentSlotSelection(memberId);
   syncMemberStats(member);
   storageRenderCount = -1;
   if (found.party) openDetailPartyIds.add(found.party.id);
@@ -1449,6 +1455,7 @@ function unequipMemberItem(memberId, slot) {
   equipment[slot] = null;
   if (!state.storage) state.storage = [];
   state.storage.push(removedItem);
+  closeEquipmentSlotSelection(memberId);
   syncMemberStats(member);
   storageRenderCount = -1;
   if (found.party) openDetailPartyIds.add(found.party.id);
@@ -2059,7 +2066,7 @@ function memberStatusPanelHtml(member) {
 
 function memberEquipmentPanelHtml(member) {
   return `<div class="member-detail-panel member-detail-panel-equipment">
-    <div class="member-equipment">${EQUIPMENT_SLOTS.map(({ key }) => equipmentSlotHtml(member, key)).join("")}</div>
+    <div class="member-equipment">${EQUIPMENT_SLOTS.map(({ key }) => equipmentSlotRowHtml(member, key)).join("")}</div>
   </div>`;
 }
 
@@ -2167,6 +2174,12 @@ function equipmentSlotHtml(member, slot) {
         ${optionLine ? `<small class="equip-slot-option">${optionLine}</small>` : ""}
       </div>
     </button>
+  </div>`;
+}
+
+function equipmentSlotRowHtml(member, slot) {
+  return `<div class="member-equipment-entry">
+    ${equipmentSlotHtml(member, slot)}
     <div class="equipment-candidates" ${isEquipmentSlotOpen(member.id, slot) ? "" : "hidden"}>${equipmentCandidateList(member, slot)}</div>
   </div>`;
 }
@@ -2319,12 +2332,9 @@ function createPartyCard(party) {
   });
   card.querySelectorAll(".equip-slot-btn").forEach((button) => {
     button.addEventListener("click", () => {
-      const slotRoot = button.closest(".member-equipment-slot");
-      const candidates = slotRoot?.querySelector(".equipment-candidates");
-      if (!candidates) return;
       const memberId = String(button.dataset.memberId || "");
       const slot = String(button.dataset.slot || "");
-      const open = candidates.hasAttribute("hidden");
+      const open = !isEquipmentSlotOpen(memberId, slot);
       openEquipmentSlotsByMemberId.delete(memberId);
       equipmentFilterOpen = false;
       if (open) openEquipmentSlotsByMemberId.set(memberId, slot);
