@@ -156,11 +156,11 @@ function syncMemberStats(member) {
   Object.assign(member, normalized);
 }
 
-function createEnemy(monster, area, heroLevel) {
+function createEnemy(monster, area, heroLevel, nameOverride = null) {
   const scale = Math.max(0, area.difficulty - 1) + Math.floor(heroLevel / 3);
   return {
     id: monster.id,
-    name: monster.name,
+    name: nameOverride || monster.name,
     maxHp: monster.hp + scale * 8,
     hp: monster.hp + scale * 8,
     atk: monster.atk + Math.floor(scale * 1.5),
@@ -177,6 +177,71 @@ function createEnemy(monster, area, heroLevel) {
 
 function livingMembers(party) {
   return party.filter((m) => m.hp > 0);
+}
+
+function livingEnemies(enemies) {
+  return (Array.isArray(enemies) ? enemies : [enemies]).filter((enemy) => enemy && enemy.hp > 0);
+}
+
+function pickLivingEnemy(enemies) {
+  const candidates = livingEnemies(enemies);
+  return candidates.length ? pick(candidates) : null;
+}
+
+function monsterGroupLabel(monsters) {
+  const list = Array.isArray(monsters) ? monsters : [monsters];
+  return list.map((monster) => monster?.name).filter(Boolean).join("、");
+}
+
+function enemyGroupLabel(enemies) {
+  const list = Array.isArray(enemies) ? enemies : [enemies];
+  return list.map((enemy) => enemy?.name).filter(Boolean).join("、");
+}
+
+function pickWeightedCount(weights, fallback = 1) {
+  const entries = Object.entries(weights || {})
+    .map(([count, weight]) => [Number(count), Number(weight)])
+    .filter(([count, weight]) => Number.isFinite(count) && count > 0 && Number.isFinite(weight) && weight > 0);
+  if (!entries.length) return fallback;
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  let rollValue = Math.random() * total;
+  for (const [count, weight] of entries) {
+    rollValue -= weight;
+    if (rollValue <= 0) return count;
+  }
+  return entries.at(-1)?.[0] || fallback;
+}
+
+function normalEncounterEnemyCount(area, leadMonster) {
+  if (leadMonster?.boss || leadMonster?.rare) return 1;
+  return clamp(pickWeightedCount(area?.normalEncounterGroupWeights, 1), 1, 3);
+}
+
+function buildEncounterMonsters(area, leadMonster) {
+  const count = normalEncounterEnemyCount(area, leadMonster);
+  const monsters = [leadMonster];
+  for (let i = 1; i < count; i += 1) {
+    monsters.push(pickWeightedMonster(area));
+  }
+  return monsters;
+}
+
+function withIndexedEnemyNames(monsters) {
+  const counts = new Map();
+  monsters.forEach((monster) => {
+    counts.set(monster.name, (counts.get(monster.name) || 0) + 1);
+  });
+  const current = new Map();
+  return monsters.map((monster) => {
+    const total = counts.get(monster.name) || 0;
+    if (total <= 1) return { monster, displayName: monster.name };
+    const index = (current.get(monster.name) || 0) + 1;
+    current.set(monster.name, index);
+    return {
+      monster,
+      displayName: `${monster.name}${String.fromCharCode(64 + index)}`,
+    };
+  });
 }
 
 function livingScouts(party) {
@@ -637,8 +702,9 @@ function performPriestAction(actor, party, enemy, events) {
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
-function targetEnemyGroup(enemy) {
-  return [enemy];
+function targetEnemyGroup(enemy, enemies = null) {
+  const target = enemy && enemy.hp > 0 ? enemy : pickLivingEnemy(enemies);
+  return target ? [target] : [];
 }
 
 function applyEnemySlow(enemy) {
@@ -754,7 +820,9 @@ function tickEnemyDots(enemy, events, kind = "enemy-action") {
   }
 }
 
-function performMageAction(actor, enemy, events) {
+function performMageAction(actor, enemy, events, enemies = null) {
+  enemy = enemy && enemy.hp > 0 ? enemy : pickLivingEnemy(enemies);
+  if (!enemy) return;
   const lightningSkill = getSkillDefinition(actor, "lightning");
   if (isSkillEnabled(actor, "acidMist") && Math.random() < 0.35) {
     const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
@@ -804,7 +872,7 @@ function performMageAction(actor, enemy, events) {
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     events.push({ kind: "spell", text: `${actor.name}の氷槍。` });
 
-    for (const target of targetEnemyGroup(enemy)) {
+    for (const target of targetEnemyGroup(enemy, enemies)) {
       if (target.hp <= 0) continue;
       if (!focused && Math.random() >= 0.9) {
         events.push({ kind: "spell", text: `${target.name}には当たらなかった。` });
@@ -849,7 +917,9 @@ function performMageAction(actor, enemy, events) {
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
-function performScoutAction(actor, party, enemy, events) {
+function performScoutAction(actor, party, enemy, events, enemies = null) {
+  enemy = enemy && enemy.hp > 0 ? enemy : pickLivingEnemy(enemies);
+  if (!enemy) return;
   if (actor.focusTurns > 0) {
     actor.focusTurns -= 1;
   }
@@ -941,14 +1011,15 @@ function performWarriorDefendPassive(member, events) {
   events.push({ kind: "guard", text: `次の行動まで受けるダメージを50%軽減。` });
 }
 
-function performTurnStartSkillChecks(party, enemy, events) {
-  if (enemy.hp <= 0) return;
+function performTurnStartSkillChecks(party, enemies, events) {
+  const enemyCount = livingEnemies(enemies).length;
+  if (!enemyCount) return;
   for (const member of party) {
     const turnState = startMemberTurn(member);
     if (member.hp <= 0) continue;
 
     // Active defensive skills consume the member's normal action.
-    if (shouldWarriorIronWall(member)) {
+    if (shouldWarriorIronWall(member, enemyCount)) {
       performWarriorIronWallActive(member, events, turnState.wasIronWall);
       continue;
     }
@@ -974,7 +1045,9 @@ function shouldWarriorDesperateStrike(actor) {
   return Math.random() < 0.3;
 }
 
-function performWarriorAction(actor, party, enemy, events) {
+function performWarriorAction(actor, party, enemy, events, enemies = null) {
+  enemy = enemy && enemy.hp > 0 ? enemy : pickLivingEnemy(enemies);
+  if (!enemy) return;
   // Active actions in this block consume the normal attack.
   if (shouldWarriorTaunt(actor, party)) {
     actor.tauntTurns = 2;
@@ -1010,15 +1083,16 @@ function performWarriorAction(actor, party, enemy, events) {
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
 }
 
-function performMemberAction(actor, party, enemy, events) {
-  if (actor.hp <= 0 || enemy.hp <= 0) return;
+function performMemberAction(actor, party, enemies, events) {
+  const enemy = pickLivingEnemy(enemies);
+  if (actor.hp <= 0 || !enemy) return;
   if (actor.actionConsumed) return;
   if (shouldSkipParalyzedAction(actor, events)) return;
   const hpBeforeAction = enemy.hp;
   if (actor.job === "priest") performPriestAction(actor, party, enemy, events);
-  else if (actor.job === "mage") performMageAction(actor, enemy, events);
-  else if (actor.job === "scout") performScoutAction(actor, party, enemy, events);
-  else performWarriorAction(actor, party, enemy, events);
+  else if (actor.job === "mage") performMageAction(actor, enemy, events, enemies);
+  else if (actor.job === "scout") performScoutAction(actor, party, enemy, events, enemies);
+  else performWarriorAction(actor, party, enemy, events, enemies);
   if (enemy.hp > 0 && enemy.hp < hpBeforeAction) {
     tryApplyEquipmentStrikeOptions(actor, enemy, events);
   }
@@ -1090,10 +1164,27 @@ function pushScoutAmbushEvents(scout, events) {
   events.push({ kind: "voice", text: `${scout.name}が最初に行動。` });
 }
 
-function actionOrderForRound(party, round, ambushScout) {
-  const ordered = livingMembers(party).sort((a, b) => effectiveDex(b) - effectiveDex(a));
-  if (round !== 1 || !ambushScout || ambushScout.hp <= 0) return ordered;
-  return [ambushScout, ...ordered.filter((member) => member.id !== ambushScout.id)];
+function actionOrderForRound(party, enemies, round, ambushScout) {
+  const entries = [
+    ...livingMembers(party).map((member, index) => ({
+      side: "ally",
+      unit: member,
+      order: index,
+      ambush: round === 1 && ambushScout?.id === member.id && member.hp > 0,
+    })),
+    ...livingEnemies(enemies).map((enemy, index) => ({
+      side: "enemy",
+      unit: enemy,
+      order: livingMembers(party).length + index,
+      ambush: false,
+    })),
+  ];
+  return entries.sort((a, b) => {
+    if (a.ambush !== b.ambush) return a.ambush ? -1 : 1;
+    const dexDiff = effectiveDex(b.unit) - effectiveDex(a.unit);
+    if (dexDiff) return dexDiff;
+    return a.order - b.order;
+  });
 }
 
 const DEFAULT_TREASURE_RATES = [0.6, 0.4, 0.2, 0.1];
@@ -1341,7 +1432,6 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
   if (shouldSkipParalyzedAction(enemy, events)) {
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
-    pushActionBreak(events);
     return;
   }
   let target = pickEnemyTarget(party);
@@ -1361,7 +1451,6 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     events.push({ kind: "enemy-action", text: "次の攻撃は危険だ。" });
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
-    pushActionBreak(events);
     return;
   }
 
@@ -1370,7 +1459,6 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     events.push({ kind: "enemy-action", text: `ミス！${target.name}への攻撃は外れた。` });
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
-    pushActionBreak(events);
     return;
   }
 
@@ -1435,14 +1523,18 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
   maybeCounterAttack(target, enemy, events);
   tickEnemyDots(enemy, events);
   tickEnemyTurnStatuses(enemy);
-  pushActionBreak(events);
 }
 
 function runEncounter(members, monster, area, speechState = {}, partyName = "隊") {
   const magicSense = tryMageMagicSense(members, monster, area);
   monster = magicSense.monster;
   const highestLevel = Math.max(...members.map((m) => m.level || 1));
-  const enemy = createEnemy(monster, area, highestLevel);
+  const encounterMonsters = monster.boss ? [monster] : buildEncounterMonsters(area, monster);
+  const enemies = withIndexedEnemyNames(encounterMonsters).map(({ monster: enemyMonster, displayName }) =>
+    createEnemy(enemyMonster, area, highestLevel, displayName)
+  );
+  const encounterLabel = enemyGroupLabel(enemies);
+  const enemy = enemies[0];
   const party = members; // ← 全回復せず、そのまま（ダメージを受けた状態）で引き継ぐ
   party.forEach((member) => {
     if (member.job === "priest") {
@@ -1463,37 +1555,48 @@ function runEncounter(members, monster, area, speechState = {}, partyName = "隊
   if (magicSense.foundRare && magicSense.detector) {
     events.push({ kind: "spell", text: `${magicSense.detector.name}の魔力探知で見つけ出した。` });
   }
-  pushInitialHp(events, enemy, enemy.boss ? "boss" : "");
+  enemies.forEach((enemy) => pushInitialHp(events, enemy, `${enemy.boss ? "boss " : ""}enemy-roster`.trim()));
   pushPartyHp(events, party);
 
-  while (enemy.hp > 0 && livingMembers(party).length > 0 && round <= 20) {
+  while (livingEnemies(enemies).length > 0 && livingMembers(party).length > 0 && round <= 20) {
     events.push({ kind: "turn-separator", text: `──── Turn ${round} ────` });
     tickTaunts(party);
-    const actionOrder = actionOrderForRound(party, round, ambushScout);
-    if (round === 1 && actionOrder[0]?.id === ambushScout?.id) {
+    const actionOrder = actionOrderForRound(party, enemies, round, ambushScout);
+    if (round === 1 && actionOrder[0]?.unit?.id === ambushScout?.id) {
       pushScoutAmbushEvents(ambushScout, events);
-      performMemberAction(ambushScout, party, enemy, events);
+      performMemberAction(ambushScout, party, enemies, events);
       tickEnemyDots(ambushScout, events, "ally-action");
       if (ambushScout.hp <= 0) confirmMemberDown(ambushScout, events, speechState);
-      if (enemy.hp <= 0) break;
+      if (!livingEnemies(enemies).length) break;
     }
-    performTurnStartSkillChecks(party, enemy, events);
-    for (const member of actionOrder) {
-      if (round === 1 && member.id === ambushScout?.id) continue;
-      performMemberAction(member, party, enemy, events);
-      tickEnemyDots(member, events, "ally-action");
-      if (member.hp <= 0) confirmMemberDown(member, events, speechState);
-      if (enemy.hp <= 0) break;
+    performTurnStartSkillChecks(party, enemies, events);
+    let enemyActed = false;
+    for (const actor of actionOrder) {
+      if (round === 1 && actor.unit.id === ambushScout?.id) continue;
+      if (actor.side === "ally") {
+        performMemberAction(actor.unit, party, enemies, events);
+        tickEnemyDots(actor.unit, events, "ally-action");
+        if (actor.unit.hp <= 0) confirmMemberDown(actor.unit, events, speechState);
+        if (!livingEnemies(enemies).length) break;
+      } else {
+        performEnemyAction(actor.unit, party, events, speechState, round);
+        enemyActed = true;
+        if (!livingMembers(party).length) break;
+      }
     }
-    performEnemyAction(enemy, party, events, speechState, round);
+    if (enemyActed && livingEnemies(enemies).length > 0 && livingMembers(party).length > 0) {
+      events.push({ kind: "action-break", text: "────────" });
+    }
     round += 1;
   }
 
-  const draw = enemy.hp <= 0 && livingMembers(party).length === 0;
-  const victory = enemy.hp <= 0 && !draw;
-  confirmRemainingDownMembers(party, events, speechState, !(victory && enemy.boss));
+  const defeatedEnemies = enemies.filter((enemyUnit) => enemyUnit.hp <= 0);
+  const draw = defeatedEnemies.length === enemies.length && livingMembers(party).length === 0;
+  const victory = defeatedEnemies.length === enemies.length && !draw;
+  confirmRemainingDownMembers(party, events, speechState, !(victory && enemies.some((enemyUnit) => enemyUnit.boss)));
   clearTempHp(party);
-  const equipmentDrop = victory ? rollEquipmentDrop(party, monster) : null;
+  const dropMonster = victory ? pick(encounterMonsters) : null;
+  const equipmentDrop = dropMonster ? rollEquipmentDrop(party, dropMonster) : null;
 
   if (victory) {
     events.push({ kind: enemy.boss ? "boss" : "", text: `${enemy.name}を討伐。戦闘記録をギルドへ送った。` });
@@ -1515,17 +1618,29 @@ function runEncounter(members, monster, area, speechState = {}, partyName = "隊
 
   return {
     monster,
+    monsters: encounterMonsters,
     enemy,
+    enemies,
+    label: encounterLabel,
     victory,
     draw,
     events,
     explorationEvents,
     equipmentDrop,
     startMembersSnapshot,
-    bossPreludeEvents: enemy.boss ? buildBossPreludeEvents(party, startMembersSnapshot) : [],
+    bossPreludeEvents: enemies.some((enemyUnit) => enemyUnit.boss) ? buildBossPreludeEvents(party, startMembersSnapshot) : [],
     membersSnapshot: snapshotPartyHp(party),
-    kills: victory ? 1 : 0,
-    xp: victory ? enemy.xp : draw ? 0 : Math.floor(enemy.xp * 0.35),
-    gold: victory ? enemy.gold + (equipmentDrop && shouldAutoSellDrop(equipmentDrop) ? equipmentDrop.sellGold || 0 : 0) : draw ? 0 : Math.floor(enemy.gold * 0.25),
+    kills: victory ? encounterMonsters.length : 0,
+    xp: victory
+      ? enemies.reduce((sum, enemyUnit) => sum + enemyUnit.xp, 0)
+      : draw
+      ? 0
+      : Math.floor(enemies.reduce((sum, enemyUnit) => sum + enemyUnit.xp, 0) * 0.35),
+    gold: victory
+      ? enemies.reduce((sum, enemyUnit) => sum + enemyUnit.gold, 0) +
+        (equipmentDrop && shouldAutoSellDrop(equipmentDrop) ? equipmentDrop.sellGold || 0 : 0)
+      : draw
+      ? 0
+      : Math.floor(enemies.reduce((sum, enemyUnit) => sum + enemyUnit.gold, 0) * 0.25),
   };
 }
