@@ -17,9 +17,10 @@ let storageAutoSellOpen = false;
 let storageBulkSellMode = false;
 let storageBulkDismantleMode = false;
 let storageFusionMode = false;
+let storageOptionEnhanceMode = false;
 let storageFusionMessage = "";
 let dropToastSerial = 1;
-const selectedStorageGroups = new Set();
+const selectedStorageSellUids = new Set();
 const selectedStorageDismantleUids = new Set();
 let selectedStorageFusionTargetUid = null;
 const selectedStorageFusionMaterialUids = new Set();
@@ -2662,30 +2663,36 @@ function isStorageEntrySelectable(entry) {
   return typeof entry?.index === "number" && !entry?.locked && !entry?.equippedBy;
 }
 
-function storageGroupSelectionId(group) {
-  return storageGroupKey(group?.item, group?.entries?.[0]?.index);
+function canSellStorageEquipmentByUid(uid) {
+  const entry = storageStateEntryByUid(uid);
+  if (!entry || typeof entry.storageIndex !== "number") return false;
+  if (storageEntryLocked(entry)) return false;
+  if (equippedStorageEntryByUid(uid)) return false;
+  return true;
 }
 
-function selectedStorageSellCount(visibleGroups) {
-  return visibleGroups
-    .filter((group) => selectedStorageGroups.has(storageGroupSelectionId(group)))
-    .reduce((sum, group) => sum + group.entries.filter(isStorageEntrySelectable).length, 0);
+function selectedStorageSellCount(visibleEntries) {
+  return visibleEntries
+    .filter((entry) => selectedStorageSellUids.has(String(storageEntryUid(entry) || "")))
+    .filter((entry) => canSellStorageEquipmentByUid(storageEntryUid(entry)))
+    .length;
 }
 
-function syncSelectedStorageGroups(visibleGroups) {
+function syncSelectedStorageSellUids(visibleEntries) {
   const validIds = new Set(
-    visibleGroups
-      .filter((group) => group.entries.some(isStorageEntrySelectable))
-      .map(storageGroupSelectionId)
+    visibleEntries
+      .filter((entry) => canSellStorageEquipmentByUid(storageEntryUid(entry)))
+      .map((entry) => String(storageEntryUid(entry) || ""))
+      .filter(Boolean)
   );
-  [...selectedStorageGroups].forEach((id) => {
-    if (!validIds.has(id)) selectedStorageGroups.delete(id);
+  [...selectedStorageSellUids].forEach((id) => {
+    if (!validIds.has(id)) selectedStorageSellUids.delete(id);
   });
 }
 
 function cancelStorageBulkSellMode() {
   storageBulkSellMode = false;
-  selectedStorageGroups.clear();
+  selectedStorageSellUids.clear();
 }
 
 function isStorageDismantleEntrySelectable(entry) {
@@ -2716,6 +2723,10 @@ function cancelStorageBulkDismantleMode() {
   selectedStorageDismantleUids.clear();
 }
 
+function cancelStorageOptionEnhanceMode() {
+  storageOptionEnhanceMode = false;
+}
+
 function storageEntryUid(entry) {
   return entry?.item?.storageUid || entry?.rawItem?.storageUid || null;
 }
@@ -2743,19 +2754,187 @@ function equippedStorageEntryByUid(uid) {
   return equippedStorageEntries().find((entry) => String(entry?.item?.storageUid || "") === String(uid)) || null;
 }
 
-function isDismantleRestrictedEquipment(item) {
-  return item?.slot === "relic" || normalizeRarity(item?.rarity) === "artifact";
-}
-
 function canDismantleStorageEquipmentByUid(uid) {
   const entry = storageStateEntryByUid(uid);
   if (!entry || typeof entry.storageIndex !== "number") return false;
   if (storageEntryLocked(entry)) return false;
   if (equippedStorageEntryByUid(uid)) return false;
   if (!hasEquipmentOptions(entry.item)) return false;
-  if (isSetEquipmentItem(entry.item)) return false;
-  if (isDismantleRestrictedEquipment(entry.item)) return false;
   return true;
+}
+
+function optionEnhanceRequiredFragments(currentLevel) {
+  if (Math.max(0, Number(currentLevel) || 0) >= 10) return 0;
+  return 10;
+}
+
+function canDisplayStorageOptionEnhanceEntry(entry) {
+  return typeof entry?.storageIndex === "number" &&
+    !entry?.equippedBy &&
+    !equippedStorageEntryByUid(storageEntryUid(entry)) &&
+    hasEquipmentOptions(entry?.item);
+}
+
+function canEnhanceStorageEquipmentOptionByUid(uid, optionIndex, target = state) {
+  const entry = storageStateEntryByUid(uid);
+  if (!entry || typeof entry.storageIndex !== "number") {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const item = entry.item;
+  const options = Array.isArray(item?.options) ? item.options : [];
+  if (!options.length) {
+    return { ok: false, reason: "no_options" };
+  }
+
+  const normalizedIndex = Number(optionIndex);
+  if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0 || normalizedIndex >= options.length) {
+    return { ok: false, reason: "invalid_option_index" };
+  }
+
+  const option = options[normalizedIndex];
+  const optionId = String(option?.id || "");
+  const currentLevel = Math.max(0, Number(option?.level) || 0);
+  if (!optionId) {
+    return { ok: false, reason: "invalid_option" };
+  }
+  if (currentLevel <= 0) {
+    return {
+      ok: false,
+      reason: "invalid_option_level",
+      optionId,
+      currentLevel,
+    };
+  }
+  if (currentLevel >= 10) {
+    return {
+      ok: false,
+      reason: "max_level",
+      optionId,
+      currentLevel,
+      nextLevel: currentLevel,
+      requiredFragments: 0,
+      currentFragments: Math.max(0, Number(ensureOptionFragments(target)[optionId]) || 0),
+    };
+  }
+
+  const requiredFragments = optionEnhanceRequiredFragments(currentLevel);
+  const currentFragments = Math.max(0, Number(ensureOptionFragments(target)[optionId]) || 0);
+  if (currentFragments < requiredFragments) {
+    return {
+      ok: false,
+      reason: "not_enough_fragments",
+      optionId,
+      currentLevel,
+      nextLevel: currentLevel + 1,
+      requiredFragments,
+      currentFragments,
+    };
+  }
+
+  return {
+    ok: true,
+    optionId,
+    currentLevel,
+    nextLevel: currentLevel + 1,
+    requiredFragments,
+    currentFragments,
+  };
+}
+
+function enhanceStorageEquipmentOptionByUid(uid, optionIndex, target = state) {
+  const preview = canEnhanceStorageEquipmentOptionByUid(uid, optionIndex, target);
+  if (!preview?.ok) return preview;
+
+  const entry = storageStateEntryByUid(uid);
+  if (!entry || typeof entry.storageIndex !== "number") {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const item = entry.item;
+  const normalizedIndex = Number(optionIndex);
+  const options = Array.isArray(item?.options) ? item.options.map((option) => ({ ...option })) : [];
+  const targetOption = options[normalizedIndex];
+  if (!targetOption) {
+    return { ok: false, reason: "invalid_option_index" };
+  }
+
+  const optionId = String(targetOption?.id || preview.optionId || "");
+  const previousLevel = Math.max(0, Number(targetOption?.level) || 0);
+  const newLevel = previousLevel + 1;
+  const spentFragments = Math.max(0, Number(preview.requiredFragments) || 0);
+  const fragments = ensureOptionFragments(target);
+  const currentFragments = Math.max(0, Number(fragments[optionId]) || 0);
+  if (!optionId) {
+    return { ok: false, reason: "invalid_option" };
+  }
+  if (currentFragments < spentFragments) {
+    return {
+      ok: false,
+      reason: "not_enough_fragments",
+      optionId,
+      previousLevel,
+      newLevel,
+      requiredFragments: spentFragments,
+      currentFragments,
+    };
+  }
+
+  targetOption.level = Math.min(10, newLevel);
+  fragments[optionId] = currentFragments - spentFragments;
+
+  const nextItem = storageItemFromEquipment({
+    ...item,
+    options,
+    storageUid: entry.rawItem?.storageUid || item.storageUid || uid,
+    locked: !!entry.rawItem?.locked,
+  });
+
+  if (target === state) {
+    state.storage[entry.storageIndex] = nextItem;
+    storageRenderCount = -1;
+    saveGame();
+  } else if (Array.isArray(target.storage)) {
+    target.storage[entry.storageIndex] = nextItem;
+  }
+
+  return {
+    ok: true,
+    itemName: equipmentDisplayName(nextItem),
+    optionId,
+    previousLevel,
+    newLevel: targetOption.level,
+    spentFragments,
+    remainingFragments: Math.max(0, Number(fragments[optionId]) || 0),
+  };
+}
+
+function optionEnhanceLabel(option) {
+  const optionId = String(option?.id || "");
+  const level = Math.max(0, Number(option?.level) || 0);
+  const name = OPTION_MASTER?.[optionId]?.name || optionId || "不明OP";
+  return `${name} Lv${level}`;
+}
+
+function optionEnhanceConfirmMessage(uid, optionIndex) {
+  const entry = storageStateEntryByUid(uid);
+  const itemName = entry?.item ? equipmentDisplayName(entry.item) : "この装備";
+  const option = Array.isArray(entry?.item?.options) ? entry.item.options[Number(optionIndex)] : null;
+  const preview = canEnhanceStorageEquipmentOptionByUid(uid, optionIndex);
+  const optionText = option ? optionEnhanceLabel(option) : `OP #${optionIndex}`;
+  const costText = preview?.requiredFragments ? `${preview.optionId}のかけら ${preview.requiredFragments}個` : "必要かけら";
+  return `${itemName} の ${optionText} を強化しますか？\n${costText} を消費します。`;
+}
+
+function handleStorageOptionEnhance(uid, optionIndex) {
+  const preview = canEnhanceStorageEquipmentOptionByUid(uid, optionIndex);
+  if (!preview?.ok) return;
+  if (!confirm(optionEnhanceConfirmMessage(uid, optionIndex))) return;
+  const result = enhanceStorageEquipmentOptionByUid(uid, optionIndex);
+  if (!result?.ok) return;
+  storageFusionMessage = `${result.itemName} の ${OPTION_MASTER?.[result.optionId]?.name || result.optionId} を Lv${result.newLevel} に強化した`;
+  storageRenderCount = -1;
+  renderStorage();
 }
 
 function dismantlePreviewForStorageEquipmentByUid(uid) {
@@ -2827,12 +3006,6 @@ function dismantleStorageEquipmentByUid(uid, target = state) {
     itemName: equipmentDisplayName(entry.item),
     fragments,
   };
-}
-
-function storageDismantleButtonHtml(uid) {
-  return uid && canDismantleStorageEquipmentByUid(uid)
-    ? `<button type="button" class="storage-dismantle-btn" data-storage-dismantle="${uid}">分解</button>`
-    : "";
 }
 
 function dismantleConfirmMessage(uid) {
@@ -3151,24 +3324,84 @@ function fuseSelectedStorageGroup(visibleEntries) {
   renderAll();
 }
 
-function sellSelectedStorageGroups(visibleGroups) {
-  const selectedEntries = visibleGroups
-    .filter((group) => selectedStorageGroups.has(storageGroupSelectionId(group)))
-    .flatMap((group) => group.entries.filter(isStorageEntrySelectable));
+function sellSelectedStorageItems() {
+  const candidateUids = [...selectedStorageSellUids]
+    .map((uid) => String(uid || ""))
+    .filter(Boolean);
+  const selectedEntries = candidateUids
+    .map((uid) => ({ uid, entry: storageStateEntryByUid(uid) }))
+    .filter(({ uid, entry }) => uid && entry && canSellStorageEquipmentByUid(uid));
   if (!selectedEntries.length) return;
   if (!confirm(`${selectedEntries.length}個売却しますか？`)) return;
 
   const indices = selectedEntries
-    .map((entry) => entry.index)
+    .map(({ entry }) => entry.storageIndex)
     .filter((index) => typeof index === "number")
     .sort((a, b) => b - a);
   indices.forEach((index) => {
     sellStorageItemByIndex(index, { deferRender: true });
   });
-  selectedStorageGroups.clear();
+  selectedStorageSellUids.clear();
   storageRenderCount = -1;
   saveGame();
   renderAll();
+}
+
+function isStorageSellGroupableEntry(entry) {
+  const item = entry?.item;
+  return (
+    canSellStorageEquipmentByUid(storageEntryUid(entry)) &&
+    !hasEquipmentOptions(item) &&
+    !(Array.isArray(item?.optionCandidates) && item.optionCandidates.length > 0)
+  );
+}
+
+function storageSellGroupKey(entry) {
+  const item = entry?.item;
+  if (!isStorageSellGroupableEntry(entry) || !item?.id) return "";
+  return [
+    item.id,
+    Number(item?.plus) || 0,
+    Number(item?.enhance) || 0,
+    equipmentSellGoldValue(item),
+  ].join(":");
+}
+
+function storageSellDisplayEntries(visibleEntries) {
+  const displayEntries = [];
+  const groupedByKey = new Map();
+  visibleEntries.forEach((entry) => {
+    if (!isStorageSellGroupableEntry(entry)) {
+      displayEntries.push({ type: "entry", entry });
+      return;
+    }
+    const key = storageSellGroupKey(entry);
+    if (!key) {
+      displayEntries.push({ type: "entry", entry });
+      return;
+    }
+    let group = groupedByKey.get(key);
+    if (!group) {
+      group = {
+        type: "group",
+        key,
+        item: entry.item,
+        entries: [],
+      };
+      groupedByKey.set(key, group);
+      displayEntries.push(group);
+    }
+    group.entries.push(entry);
+  });
+  return displayEntries;
+}
+
+function storageDismantleDisplayEntries(visibleEntries) {
+  return visibleEntries.filter(isStorageDismantleEntrySelectable);
+}
+
+function storageOptionEnhanceDisplayEntries(visibleEntries) {
+  return visibleEntries.filter(canDisplayStorageOptionEnhanceEntry);
 }
 
 function renderStorageLegacy() {
@@ -3319,33 +3552,34 @@ function storageAutoSellPanelHtml() {
   </div>`;
 }
 
-function storageBulkSellHtml(visibleGroups) {
-  const count = selectedStorageSellCount(visibleGroups);
-  if (storageFusionMode || storageBulkDismantleMode) return "";
+function storageBulkSellHtml(visibleEntries) {
+  const count = selectedStorageSellCount(visibleEntries);
+  if (storageFusionMode || storageBulkDismantleMode || storageOptionEnhanceMode) return "";
   if (!storageBulkSellMode) {
-    return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell-toggle>選択売却</button>';
+    return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell-toggle>売却</button>';
   }
   return `<div class="storage-bulk-sell-actions">
     <button type="button" class="storage-bulk-sell-btn" data-storage-bulk-sell ${count ? "" : "disabled"}>選択した装備を売却${count ? ` (${count})` : ""}</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-bulk-cancel>キャンセル</button>
+    <span class="muted">売却モード中</span>
   </div>`;
 }
 
 function storageBulkDismantleHtml(visibleEntries) {
   const count = selectedStorageDismantleCount(visibleEntries);
-  if (storageFusionMode || storageBulkSellMode) return "";
+  if (storageFusionMode || storageBulkSellMode || storageOptionEnhanceMode) return "";
   if (!storageBulkDismantleMode) {
-    return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-dismantle-toggle>選択分解</button>';
+    return '<button type="button" class="storage-bulk-sell-btn" data-storage-bulk-dismantle-toggle>分解</button>';
   }
   return `<div class="storage-bulk-sell-actions">
     <button type="button" class="storage-bulk-sell-btn" data-storage-bulk-dismantle-run ${count ? "" : "disabled"}>選択した装備を分解${count ? ` (${count})` : ""}</button>
     <button type="button" class="storage-bulk-cancel-btn" data-storage-bulk-dismantle-cancel>キャンセル</button>
-    <span class="muted">分解したい装備を選択</span>
+    <span class="muted">分解モード中</span>
   </div>`;
 }
 
 function storageFusionHtml(visibleEntries) {
-  if (storageBulkSellMode || storageBulkDismantleMode) return "";
+  if (storageBulkSellMode || storageBulkDismantleMode || storageOptionEnhanceMode) return "";
   const selectedEntry = currentStorageFusionTargetEntry();
   if (!storageFusionMode) {
     return '<button type="button" class="storage-bulk-sell-btn" data-storage-fusion-toggle>装備合成</button>';
@@ -3369,6 +3603,19 @@ function storageFusionHtml(visibleEntries) {
     ${targetNote}
     ${shortageNote}
     ${materialNote}
+  </div>`;
+}
+
+function storageOptionEnhanceHtml(visibleEntries) {
+  if (storageBulkSellMode || storageBulkDismantleMode || storageFusionMode) return "";
+  if (!storageOptionEnhanceMode) {
+    return '<button type="button" class="storage-bulk-sell-btn" data-storage-option-enhance-toggle>OP強化</button>';
+  }
+  const availableEntryCount = storageOptionEnhanceDisplayEntries(visibleEntries).length;
+  return `<div class="storage-bulk-sell-actions">
+    <button type="button" class="storage-bulk-cancel-btn" data-storage-option-enhance-cancel>キャンセル</button>
+    <span class="muted">OP強化モード中</span>
+    <span class="muted">強化したいOPを選んでください${availableEntryCount ? "" : "（対象なし）"}</span>
   </div>`;
 }
 
@@ -3403,7 +3650,7 @@ function storageFusionTargetPreviewHtml(entry) {
 
 function storageHeaderHtml(items, visibleGroups = [], visibleEntries = []) {
   const messageHtml = storageFusionMessage ? `<span class="muted">${storageFusionMessage}</span>` : "";
-  const actionHtml = `${storageBulkSellHtml(visibleGroups)}${storageBulkDismantleHtml(visibleEntries)}${storageFusionHtml(visibleEntries)}`;
+  const actionHtml = `${storageBulkSellHtml(visibleEntries)}${storageBulkDismantleHtml(visibleEntries)}${storageFusionHtml(visibleEntries)}${storageOptionEnhanceHtml(visibleEntries)}`;
   return `<div class="storage-toolbar">${storageCountHtml(items)}${storageSortOptionsHtml(actionHtml)}${storageAutoSellPanelHtml()}${messageHtml}${storageOptionFragmentsSummaryHtml()}</div>`;
 }
 
@@ -3436,22 +3683,10 @@ function storageGroupHtml(group) {
   const rarity = normalizeRarity(item?.rarity);
   const name = equipmentDisplayName(item);
   const index = entries[0]?.index;
-  const uid = entries[0]?.storageUid;
   const locked = !!entries[0]?.locked;
   const equippedEntry = entries.find((entry) => entry.equippedBy);
   const equippedBy = equippedEntry?.equippedBy;
-  const canSell = typeof index === "number" && !equippedBy && !locked;
-  const selectableEntries = entries.filter(isStorageEntrySelectable);
-  const selectionId = storageGroupSelectionId(group);
-  const selectable = selectableEntries.length > 0;
-  const checked = selectable && selectedStorageGroups.has(selectionId);
-  const checkboxHtml = storageBulkSellMode
-    ? `<label class="storage-select">
-      <input type="checkbox" class="storage-select-checkbox" data-storage-select="${selectionId}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
-    </label>`
-    : "";
   return `<li>
-    ${checkboxHtml}
     <div class="storage-info">
       <div class="storage-head">
         <span class="storage-item ${rarityClassName(rarity)}">${name}${equippedBy || locked ? " ★" : ""}</span>${!equippedBy && !locked && count > 1 ? `<span class="storage-count">×${count}</span>` : ""}
@@ -3463,9 +3698,6 @@ function storageGroupHtml(group) {
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
-      ${equippedEntry ? `<button type="button" class="storage-unequip-btn" data-member-id="${equippedEntry.equippedMemberId}" data-slot="${equippedEntry.equippedSlot}">装備解除</button>` : ""}
-      ${storageDismantleButtonHtml(uid)}
-      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
 }
@@ -3474,7 +3706,6 @@ function storageFusionEntryHtml(entry) {
   const item = entry?.item;
   if (!item) return "";
   const index = storageEntryIndex(entry);
-  const uid = storageEntryUid(entry);
   const locked = storageEntryLocked(entry);
   const equippedBy = entry?.equippedBy;
   const rarity = normalizeRarity(item?.rarity);
@@ -3498,7 +3729,6 @@ function storageFusionEntryHtml(entry) {
     : materialChecked
       ? '<span class="storage-fusion-badge">素材</span>'
       : "";
-  const canSell = typeof index === "number" && !equippedBy && !locked;
   return `<li>
     ${checkboxHtml}
     <div class="storage-info">
@@ -3513,14 +3743,82 @@ function storageFusionEntryHtml(entry) {
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
-      ${entry?.equippedMemberId ? `<button type="button" class="storage-unequip-btn" data-member-id="${entry.equippedMemberId}" data-slot="${entry.equippedSlot}">装備解除</button>` : ""}
-      ${storageDismantleButtonHtml(uid)}
-      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
 }
 
-function storageDismantleEntryHtml(entry) {
+function storageSellGroupHtml(group) {
+  const item = group?.item;
+  if (!item) return "";
+  const rarity = normalizeRarity(item?.rarity);
+  const name = equipmentDisplayName(item);
+  const count = Array.isArray(group?.entries) ? group.entries.length : 0;
+  const sellGold = equipmentSellGoldValue(item);
+  const uids = (group.entries || [])
+    .map((entry) => String(storageEntryUid(entry) || ""))
+    .filter(Boolean);
+  const checked = !!uids.length && uids.every((uid) => selectedStorageSellUids.has(uid));
+  const value = uids.join(",");
+  return `<li>
+    <label class="storage-select">
+      <input type="checkbox" class="storage-select-checkbox" data-storage-sell-group="${value}" ${checked ? "checked" : ""} ${uids.length ? "" : "disabled"}>
+    </label>
+    <div class="storage-info">
+      <div class="storage-head">
+        <span class="storage-item ${rarityClassName(rarity)}">${name}</span>${count > 1 ? `<span class="storage-count">×${count}</span>` : ""}
+      </div>
+      ${equipmentSetLabelHtml(item)}
+      <div class="storage-effect">${equipmentStatLine(item)}</div>
+      <div class="storage-effect">売却 ${sellGold}G${count > 1 ? ` ×${count}` : ""}</div>
+    </div>
+    <div class="storage-actions"></div>
+  </li>`;
+}
+
+function storageOptionEnhanceOptionsHtml(entry) {
+  const uid = String(storageEntryUid(entry) || "");
+  const options = Array.isArray(entry?.item?.options) ? entry.item.options : [];
+  const lines = options
+    .map((option, index) => {
+      const preview = canEnhanceStorageEquipmentOptionByUid(uid, index);
+      const optionId = String(option?.id || preview?.optionId || "");
+      const currentFragments = Math.max(0, Number(preview?.currentFragments) || 0);
+      const requiredFragments = Math.max(0, Number(preview?.requiredFragments) || 0);
+      const fragmentsText = preview?.reason === "max_level"
+        ? "最大Lv"
+        : `${currentFragments}/${requiredFragments || optionEnhanceRequiredFragments(option?.level)}`;
+      const actionHtml = preview?.ok
+        ? `<button type="button" class="storage-option-enhance-btn storage-option-enhance-action" data-storage-option-enhance="${uid}" data-storage-option-index="${index}">強化</button>`
+        : `<button type="button" class="storage-option-enhance-btn storage-option-enhance-action storage-option-enhance-action-disabled" disabled>${preview?.reason === "max_level" ? "最大Lv" : preview?.reason === "not_enough_fragments" ? "不足" : "強化不可"}</button>`;
+      return `<div class="storage-option-enhance-row">
+        <span class="storage-option-enhance-main">${optionEnhanceLabel(option)}</span>
+        <span class="storage-option-enhance-fragments">${OPTION_MASTER?.[optionId]?.name || optionId} ${fragmentsText}</span>
+        ${actionHtml}
+      </div>`;
+    })
+    .join("");
+  return lines ? `<div class="storage-option-enhance-list">${lines}</div>` : "";
+}
+
+function storageOptionEnhanceEntryHtml(entry) {
+  const item = entry?.item;
+  if (!item) return "";
+  const locked = storageEntryLocked(entry);
+  const rarity = normalizeRarity(item?.rarity);
+  const name = equipmentDisplayName(item);
+  return `<li>
+    <div class="storage-info">
+      <div class="storage-head">
+        <span class="storage-item ${rarityClassName(rarity)}">${name}${locked ? " ★" : ""}</span>
+      </div>
+      ${equipmentSetLabelHtml(item)}
+      <div class="storage-effect">${equipmentStatLine(item)}</div>
+      ${storageOptionEnhanceOptionsHtml(entry)}
+    </div>
+  </li>`;
+}
+
+function storageModeEntryHtml(entry, mode = "dismantle") {
   const item = entry?.item;
   if (!item) return "";
   const index = storageEntryIndex(entry);
@@ -3529,12 +3827,15 @@ function storageDismantleEntryHtml(entry) {
   const equippedBy = entry?.equippedBy;
   const rarity = normalizeRarity(item?.rarity);
   const name = equipmentDisplayName(item);
-  const selectable = isStorageDismantleEntrySelectable(entry);
-  const checked = selectable && selectedStorageDismantleUids.has(String(uid));
+  const sellMode = mode === "sell";
+  const selectable = sellMode ? canSellStorageEquipmentByUid(uid) : isStorageDismantleEntrySelectable(entry);
+  const checked = selectable && (sellMode
+    ? selectedStorageSellUids.has(String(uid))
+    : selectedStorageDismantleUids.has(String(uid)));
+  const dataAttr = sellMode ? "data-storage-sell-select" : "data-storage-dismantle-select";
   const checkboxHtml = `<label class="storage-select">
-      <input type="checkbox" class="storage-select-checkbox" data-storage-dismantle-select="${String(uid || "")}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
+      <input type="checkbox" class="storage-select-checkbox" ${dataAttr}="${String(uid || "")}" ${checked ? "checked" : ""} ${selectable ? "" : "disabled"}>
     </label>`;
-  const canSell = typeof index === "number" && !equippedBy && !locked;
   return `<li>
     ${checkboxHtml}
     <div class="storage-info">
@@ -3548,9 +3849,6 @@ function storageDismantleEntryHtml(entry) {
     </div>
     <div class="storage-actions">
       ${typeof index === "number" ? `<button type="button" class="storage-lock-btn" data-storage-index="${index}">${locked ? "解除" : "保護"}</button>` : ""}
-      ${entry?.equippedMemberId ? `<button type="button" class="storage-unequip-btn" data-member-id="${entry.equippedMemberId}" data-slot="${entry.equippedSlot}">装備解除</button>` : ""}
-      ${storageDismantleButtonHtml(uid)}
-      <button type="button" class="storage-sell-btn" data-storage-index="${index}" ${canSell ? "" : "disabled"}>売却</button>
     </div>
   </li>`;
 }
@@ -3664,10 +3962,24 @@ function bindStorageEvents(root) {
         renderStorage();
         return;
       }
-      const selectionId = input.dataset.storageSelect;
-      if (!selectionId) return;
-      if (input.checked) selectedStorageGroups.add(selectionId);
-      else selectedStorageGroups.delete(selectionId);
+      const sellGroupValue = input.dataset.storageSellGroup;
+      if (sellGroupValue) {
+        sellGroupValue
+          .split(",")
+          .map((uid) => String(uid || "").trim())
+          .filter(Boolean)
+          .forEach((uid) => {
+            if (input.checked) selectedStorageSellUids.add(uid);
+            else selectedStorageSellUids.delete(uid);
+          });
+        storageRenderCount = -1;
+        renderStorage();
+        return;
+      }
+      const sellId = input.dataset.storageSellSelect;
+      if (!sellId) return;
+      if (input.checked) selectedStorageSellUids.add(String(sellId));
+      else selectedStorageSellUids.delete(String(sellId));
       storageRenderCount = -1;
       renderStorage();
     });
@@ -3676,13 +3988,13 @@ function bindStorageEvents(root) {
     storageBulkSellMode = true;
     cancelStorageBulkDismantleMode();
     cancelStorageFusionMode();
-    selectedStorageGroups.clear();
+    cancelStorageOptionEnhanceMode();
+    selectedStorageSellUids.clear();
     storageRenderCount = -1;
     renderStorage();
   });
   root.querySelector("[data-storage-bulk-sell]")?.addEventListener("click", () => {
-    const visibleGroups = storageGroups(filteredStorageEntries(state.storage || []));
-    sellSelectedStorageGroups(visibleGroups);
+    sellSelectedStorageItems();
   });
   root.querySelector("[data-storage-bulk-cancel]")?.addEventListener("click", () => {
     cancelStorageBulkSellMode();
@@ -3693,6 +4005,7 @@ function bindStorageEvents(root) {
     storageBulkDismantleMode = true;
     cancelStorageBulkSellMode();
     cancelStorageFusionMode();
+    cancelStorageOptionEnhanceMode();
     selectedStorageDismantleUids.clear();
     storageRenderCount = -1;
     renderStorage();
@@ -3709,6 +4022,7 @@ function bindStorageEvents(root) {
     storageFusionMode = true;
     cancelStorageBulkSellMode();
     cancelStorageBulkDismantleMode();
+    cancelStorageOptionEnhanceMode();
     selectedStorageFusionTargetUid = null;
     selectedStorageFusionMaterialUids.clear();
     storageRenderCount = -1;
@@ -3729,25 +4043,30 @@ function bindStorageEvents(root) {
     storageRenderCount = -1;
     renderStorage();
   });
-  root.querySelectorAll(".storage-sell-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      sellStorageItem(Number(button.dataset.storageIndex));
-    });
+  root.querySelector("[data-storage-option-enhance-toggle]")?.addEventListener("click", () => {
+    storageOptionEnhanceMode = true;
+    cancelStorageBulkSellMode();
+    cancelStorageBulkDismantleMode();
+    cancelStorageFusionMode();
+    storageRenderCount = -1;
+    renderStorage();
   });
-  root.querySelectorAll(".storage-unequip-btn").forEach((button) => {
+  root.querySelector("[data-storage-option-enhance-cancel]")?.addEventListener("click", () => {
+    cancelStorageOptionEnhanceMode();
+    storageRenderCount = -1;
+    renderStorage();
+  });
+  root.querySelectorAll("[data-storage-option-enhance]").forEach((button) => {
     button.addEventListener("click", () => {
-      unequipMemberItem(button.dataset.memberId, button.dataset.slot);
+      handleStorageOptionEnhance(
+        String(button.dataset.storageOptionEnhance || ""),
+        Number(button.dataset.storageOptionIndex)
+      );
     });
   });
   root.querySelectorAll(".storage-lock-btn").forEach((button) => {
     button.addEventListener("click", () => {
       toggleStorageLock(Number(button.dataset.storageIndex));
-    });
-  });
-  root.querySelectorAll(".storage-dismantle-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      clearButtonFocus(button);
-      handleStorageItemDismantle(String(button.dataset.storageDismantle || ""));
     });
   });
 }
@@ -3783,9 +4102,12 @@ function renderStorage() {
   const equippedKey = equippedStorageEntries().map(({ storageIndex, item }) => `${storageIndex}:${item.id}`).join(",");
   const visibleEntries = filteredStorageEntries(items);
   const visibleGroups = storageGroups(visibleEntries);
+  const sellDisplayEntries = storageSellDisplayEntries(visibleEntries);
+  const dismantleDisplayEntries = storageDismantleDisplayEntries(visibleEntries);
+  const optionEnhanceDisplayEntries = storageOptionEnhanceDisplayEntries(visibleEntries);
   const fusionTargetEntry = currentStorageFusionTargetEntry();
-  syncSelectedStorageGroups(visibleGroups);
-  syncSelectedStorageDismantleUids(visibleEntries);
+  syncSelectedStorageSellUids(visibleEntries);
+  syncSelectedStorageDismantleUids(dismantleDisplayEntries);
   syncSelectedStorageFusionMaterials(visibleEntries, fusionTargetEntry);
   const fusionDisplayEntries = storageFusionMode
     ? fusionTargetEntry
@@ -3798,22 +4120,32 @@ function renderStorage() {
         .filter((entry) => hasStorageFusionRequiredMaterials(entry, visibleEntries))
         .sort(compareStorageFusionTargetEntries)
     : [];
-  const selectedKey = [...selectedStorageGroups].sort().join(",");
+  const selectedKey = [...selectedStorageSellUids].sort().join(",");
   const dismantleSelectedKey = [...selectedStorageDismantleUids].sort().join(",");
   const fusionMaterialKey = [...selectedStorageFusionMaterialUids].sort().join(",");
   const filterKindsKey = [...storageFilterKinds].sort().join(",");
   const filterRaritiesKey = [...storageFilterRarities].sort().join(",");
-  const renderKey = `${items.length}:${storageSortMode}:${filterKindsKey}:${filterRaritiesKey}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageBulkDismantleMode}:${storageFusionMode}:${selectedKey}:${dismantleSelectedKey}:${selectedStorageFusionTargetUid ?? ""}:${fusionMaterialKey}`;
+  const renderKey = `${items.length}:${storageSortMode}:${filterKindsKey}:${filterRaritiesKey}:${autoSell.common}:${autoSell.uncommon}:${storageFilterOpen}:${storageAutoSellOpen}:${equippedKey}:${storageBulkSellMode}:${storageBulkDismantleMode}:${storageFusionMode}:${storageOptionEnhanceMode}:${selectedKey}:${dismantleSelectedKey}:${selectedStorageFusionTargetUid ?? ""}:${fusionMaterialKey}`;
   if (renderKey === storageRenderCount) return;
   storageRenderCount = renderKey;
 
-  const normalDisplayEntries = storageBulkDismantleMode ? visibleEntries : visibleGroups;
+  const normalDisplayEntries = storageBulkSellMode
+    ? sellDisplayEntries
+    : storageBulkDismantleMode
+      ? dismantleDisplayEntries
+      : storageOptionEnhanceMode
+        ? optionEnhanceDisplayEntries
+        : visibleGroups;
   if ((storageFusionMode ? fusionDisplayEntries : normalDisplayEntries).length === 0) {
     const emptyText = storageFusionMode && fusionTargetEntry
       ? "素材候補はありません"
-      : storageBulkDismantleMode
+      : (storageBulkSellMode || storageBulkDismantleMode)
         ? items.length
           ? "条件に合う装備はありません"
+          : "保管中の装備はありません"
+      : storageOptionEnhanceMode
+        ? items.length
+          ? "強化対象の装備はありません"
           : "保管中の装備はありません"
       : items.length
         ? "条件に合う装備はありません"
@@ -3830,8 +4162,12 @@ function renderStorage() {
     ? fusionTargetEntry
       ? renderStorageFusionStep2ListHtml(fusionTargetEntry, fusionDisplayEntries)
       : renderStorageFusionStep1Html(fusionDisplayEntries)
+    : storageBulkSellMode
+      ? `<ul class="storage-list">${sellDisplayEntries.map((entry) => entry?.type === "group" ? storageSellGroupHtml(entry) : storageModeEntryHtml(entry.entry, "sell")).join("")}</ul>`
     : storageBulkDismantleMode
-      ? `<ul class="storage-list">${visibleEntries.map(storageDismantleEntryHtml).join("")}</ul>`
+      ? `<ul class="storage-list">${dismantleDisplayEntries.map((entry) => storageModeEntryHtml(entry, "dismantle")).join("")}</ul>`
+    : storageOptionEnhanceMode
+      ? `<ul class="storage-list">${optionEnhanceDisplayEntries.map(storageOptionEnhanceEntryHtml).join("")}</ul>`
       : renderStorageNormalHtml(visibleGroups);
   root.innerHTML = `${renderStorageHeaderHtml(items, visibleGroups, visibleEntries)}${fusionListHtml}`;
   bindStorageEvents(root);
@@ -4475,3 +4811,5 @@ renderAll();
 updateDeveloperButton();
 ensureWorldSituationTick();
 if (state.parties.some((p) => p.mission)) ensureTick();
+
+
