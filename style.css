@@ -1427,6 +1427,10 @@ h1 {
   flex-wrap: wrap;
 }
 
+.storage-option-fragments {
+  flex: 1 1 100%;
+}
+
 .storage-controls {
   display: flex;
   align-items: flex-end;
@@ -1784,6 +1788,7 @@ h1 {
 .storage-sell-btn,
 .storage-lock-btn,
 .storage-unequip-btn,
+.storage-dismantle-btn,
 .storage-fusion-change-btn {
   flex: 0 0 auto;
   min-height: 30px;
@@ -1800,6 +1805,7 @@ h1 {
 .storage-sell-btn:hover,
 .storage-lock-btn:hover,
 .storage-unequip-btn:hover,
+.storage-dismantle-btn:hover,
 .storage-fusion-change-btn:hover {
   border-color: var(--line-bright);
   color: var(--accent);
