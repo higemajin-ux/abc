@@ -343,6 +343,17 @@ function equipmentOptionCompareKey(optionId) {
   return "";
 }
 
+function equipmentCompareValueClass(currentValue, nextValue) {
+  if (nextValue > currentValue) return "up";
+  if (nextValue < currentValue) return "down";
+  return "same";
+}
+
+function equipmentCompareHtml(currentValue, nextValue) {
+  const compareClass = equipmentCompareValueClass(currentValue, nextValue);
+  return `<span class="equip-choice-compare ${compareClass}">[${currentValue}→${nextValue}]</span>`;
+}
+
 function equipmentPrimaryStatCandidateHtml(item, equippedItem, slot, compareContext = null) {
   const statKey = equipmentPrimaryStatKey(slot);
   const statLabel = equipmentPrimaryStatLabel(slot);
@@ -352,7 +363,7 @@ function equipmentPrimaryStatCandidateHtml(item, equippedItem, slot, compareCont
   const currentValue = totalCompare?.currentValue ?? (equippedItem ? (Number(equipmentStatValue(equippedItem, statKey)) || 0) : 0);
   const nextValue = totalCompare?.nextValue ?? itemValue;
   const itemValueText = `${statLabel}${itemValue > 0 ? "+" : ""}${itemValue}`;
-  return `${itemValueText} <span class="equip-choice-compare">[${currentValue}→${nextValue}]</span>`;
+  return `${itemValueText} ${equipmentCompareHtml(currentValue, nextValue)}`;
 }
 
 function isSetEquipmentItem(item) {
@@ -524,14 +535,14 @@ function equipmentOptionCompareHtml(option, equippedItem, compareContext = null)
   const compareKey = equipmentOptionCompareKey(option?.id);
   const totalCompare = equipmentCompareValueFromContext(compareContext, compareKey);
   if (totalCompare) {
-    return ` <span class="equip-choice-compare">[${totalCompare.currentValue}→${totalCompare.nextValue}]</span>`;
+    return ` ${equipmentCompareHtml(totalCompare.currentValue, totalCompare.nextValue)}`;
   }
   if (!option || !equippedItem) return "";
   const equippedOptions = Array.isArray(equippedItem?.options) ? equippedItem.options : [];
   const currentOption = equippedOptions.find((entry) => String(entry?.id || "") === String(option?.id || ""));
   const currentValue = equipmentOptionCompareValue(currentOption);
   const nextValue = equipmentOptionCompareValue(option);
-  return ` <span class="equip-choice-compare">[${currentValue}→${nextValue}]</span>`;
+  return ` ${equipmentCompareHtml(currentValue, nextValue)}`;
 }
 
 function equipmentOptionLineText(option) {
@@ -550,10 +561,10 @@ function equipmentOptionLostHtml(option, compareContext = null) {
   const compareKey = equipmentOptionCompareKey(option?.id);
   const totalCompare = equipmentCompareValueFromContext(compareContext, compareKey);
   if (totalCompare) {
-    return `<span class="equip-choice-option-lost">${text} <span class="equip-choice-compare">[${totalCompare.currentValue}→${totalCompare.nextValue}]</span></span>`;
+    return `<span class="equip-choice-option-lost">${text} ${equipmentCompareHtml(totalCompare.currentValue, totalCompare.nextValue)}</span>`;
   }
   const currentValue = equipmentOptionCompareValue(option);
-  return `<span class="equip-choice-option-lost">${text} <span class="equip-choice-compare">[${currentValue}→0]</span></span>`;
+  return `<span class="equip-choice-option-lost">${text} ${equipmentCompareHtml(currentValue, 0)}</span>`;
 }
 
 function canFixEquipmentOption(item) {
@@ -871,8 +882,9 @@ function missionDurationMs(area, party = null) {
 
 function battleSummary(encounter) {
   const result = encounter.draw ? "相打ち" : encounter.victory ? "討伐成功" : "撤退";
-  if (encounter.draw) return `${encounter.monster.name}: ${result} / 報酬なし`;
-  return `${encounter.monster.name}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
+  const label = encounter.label || encounter.monster?.name || "敵";
+  if (encounter.draw) return `${label}: ${result} / 報酬なし`;
+  return `${label}: ${result} / ${encounter.xp}XP / ${encounter.gold}G`;
 }
 
 function buildDeliveryBoxHtml(rewards) {
@@ -1081,7 +1093,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
       id: uid("entry"),
       timestamp: battleTime,
       type: "battle",
-      title: `${encounter.monster.name}との戦闘記録（${encounter.draw ? "相打ち" : encounter.victory ? "勝利" : "撤退"}）`,
+      title: `${encounter.label || encounter.monster.name}との戦闘記録（${encounter.draw ? "相打ち" : encounter.victory ? "勝利" : "撤退"}）`,
       monsterBoss: !!encounter.monster.boss,
       monsterRare: !!encounter.monster.rare && !encounter.monster.boss,
       battleDetail: encounter.events,
@@ -1204,7 +1216,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
       id: uid("entry"),
       timestamp: battleTime,
       type: "battle",
-      title: `${encounter.monster.name}との戦闘記録（${encounter.draw ? "相打ち" : encounter.victory ? "勝利" : "撤退"}）`,
+      title: `${encounter.label || encounter.monster.name}との戦闘記録（${encounter.draw ? "相打ち" : encounter.victory ? "勝利" : "撤退"}）`,
       monsterBoss: !!encounter.monster.boss,
       monsterRare: !!encounter.monster.rare && !encounter.monster.boss,
       battleDetail: encounter.events,
@@ -1324,7 +1336,13 @@ function applyRewards(party, area, rewards) {
   });
   party.hero = party.members[0];
 
-  const names = [...new Set(rewards.encounters.map((e) => e.monster.name))];
+  const names = [
+    ...new Set(
+      rewards.encounters.flatMap((encounter) =>
+        (encounter.monsters?.length ? encounter.monsters : [encounter.monster]).map((monster) => monster?.name).filter(Boolean)
+      )
+    ),
+  ];
   party.lastReport = {
     areaName: area.name,
     monsters: names.join("、"),
@@ -1336,7 +1354,8 @@ function applyRewards(party, area, rewards) {
 function recordEnemyKills(rewards) {
   for (const encounter of rewards?.encounters || []) {
     if (!encounter?.victory) continue;
-    recordEnemyKill(encounter.monster);
+    const monsters = encounter.monsters?.length ? encounter.monsters : [encounter.monster];
+    monsters.filter(Boolean).forEach((monster) => recordEnemyKill(monster));
   }
 }
 
@@ -3693,6 +3712,24 @@ function enemyRecordTypeRank(enemy) {
   return 0;
 }
 
+function enemyRecordDexValue(enemyId, enemy) {
+  if (Number.isFinite(enemy?.dex)) return enemy.dex;
+  const areaIds = Array.isArray(enemy?.recordInfo?.appearance) && enemy.recordInfo.appearance.length
+    ? enemy.recordInfo.appearance
+    : enemyRecordAreaIds(enemyId);
+  const area = areaIds
+    .map((areaId) => AREAS?.[areaId])
+    .filter(Boolean)
+    .sort((a, b) => {
+      const rankA = AREA_ORDER.indexOf(a.id);
+      const rankB = AREA_ORDER.indexOf(b.id);
+      const safeRankA = rankA >= 0 ? rankA : Number.MAX_SAFE_INTEGER;
+      const safeRankB = rankB >= 0 ? rankB : Number.MAX_SAFE_INTEGER;
+      return safeRankA - safeRankB;
+    })[0];
+  return Number.isFinite(area?.difficulty) ? area.difficulty + 4 : null;
+}
+
 function enemyRecordHtml(enemyId, record) {
   const enemy = MONSTERS?.[enemyId];
   const kills = Math.max(0, Number(record?.kills) || 0);
@@ -3700,7 +3737,9 @@ function enemyRecordHtml(enemyId, record) {
   const unlockedHp = kills >= 5;
   const unlockedAtk = kills >= 10;
   const unlockedDef = kills >= 15;
+  const unlockedDex = kills >= 15;
   const def = enemy?.def ?? 0;
+  const dex = enemyRecordDexValue(enemyId, enemy);
   const tag = enemy?.boss
     ? '<span class="enemy-tag boss-tag">[BOSS]</span>'
     : enemy?.rare
@@ -3720,6 +3759,7 @@ function enemyRecordHtml(enemyId, record) {
       <div class="records-effect">HP：${unlockedHp ? enemy?.hp ?? "？？？" : "？？？"}</div>
       <div class="records-effect">ATK：${unlockedAtk ? enemy?.atk ?? "？？？" : "？？？"}</div>
       <div class="records-effect">DEF：${unlockedDef ? def : "？？？"}</div>
+      <div class="records-effect">DEX：${unlockedDex ? dex ?? "？？？" : "？？？"}</div>
     </div>
   </li>`;
 }
