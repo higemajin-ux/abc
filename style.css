@@ -456,6 +456,7 @@ h1 {
   border-radius: 8px;
   background: rgba(20, 16, 12, 0.72);
   padding: 10px;
+  overflow-anchor: none;
 }
 
 .member-detail-card.down {
@@ -587,25 +588,25 @@ h1 {
   text-align: center;
 }
 
-.member-stat-label {
+.member-detail-panel-status .member-stat-label {
   color: var(--muted-on-dark);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   font-weight: 700;
 }
 
-.member-stat-total {
+.member-detail-panel-status .member-stat-total {
   min-width: 0;
   color: var(--ink-on-dark);
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
   border-right: 1px solid rgba(176, 134, 74, 0.42);
   padding-right: 7px;
 }
 
-.member-stat-part {
+.member-detail-panel-status .member-stat-part {
   color: var(--muted-on-dark);
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
@@ -837,9 +838,13 @@ h1 {
   margin-top: 10px;
 }
 
-.member-equipment-slot {
+.member-equipment-entry {
   display: grid;
   gap: 4px;
+}
+
+.member-equipment-slot {
+  display: block;
 }
 
 .equip-slot-btn {
@@ -2259,8 +2264,8 @@ h1 {
     font-size: 0.85rem;
   }
 
-  .member-stat-row strong {
-    font-size: 0.8rem;
+  .member-detail-panel-status .member-stat-row strong {
+    font-size: 0.84rem;
   }
 
   .member-stat-grid {
@@ -2292,12 +2297,12 @@ h1 {
     padding-right: 8px;
   }
 
-  .member-stat-part {
-    font-size: 0.62rem;
+  .member-detail-panel-status .member-stat-part {
+    font-size: 0.68rem;
   }
 
-  .member-stat-row-header .member-stat-part {
-    font-size: 0.58rem;
+  .member-detail-panel-status .member-stat-row-header .member-stat-part {
+    font-size: 0.62rem;
   }
 
   .member-stat-part:not(:last-child) {
