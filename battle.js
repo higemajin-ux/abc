@@ -970,7 +970,13 @@ function shouldWarriorDefend(actor) {
 }
 
 function shouldWarriorIronWall(actor, enemyCount = 1) {
-  if (actor.job !== "warrior" || actor.hp <= 0 || actor.ironWall || !isSkillEnabled(actor, "ironWall")) return false;
+  if (
+    actor.job !== "warrior" ||
+    actor.hp <= 0 ||
+    actor.ironWall ||
+    (actor.ironWallCooldown || 0) > 0 ||
+    !isSkillEnabled(actor, "ironWall")
+  ) return false;
   const hpRate = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
   return hpRate <= 50 || enemyCount >= 2;
 }
@@ -980,6 +986,11 @@ function startMemberTurn(member) {
   member.guard = false;
   member.ironWall = false;
   member.actionConsumed = false;
+  member.tauntCheckedThisTurn = false;
+  if ((member.ironWallCooldown || 0) > 0) {
+    member.ironWallCooldown -= 1;
+    if (member.ironWallCooldown < 0) member.ironWallCooldown = 0;
+  }
   return { wasIronWall };
 }
 
@@ -996,12 +1007,23 @@ function tickTaunts(party) {
 function performWarriorIronWallActive(member, events, continued = false) {
   member.ironWall = true;
   member.actionConsumed = true;
+  member.ironWallCooldown = 3;
   events.push({
     kind: "guard",
     text: continued ? `${member.name}は鉄壁の構えを取っている。` : `${member.name}は鉄壁の構えを取った。`,
   });
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${member.name}「ここは通さない」` });
+  }
+}
+
+function performWarriorTauntActive(member, events) {
+  member.tauntTurns = 2;
+  member.actionConsumed = true;
+  events.push({ kind: "guard", text: `${member.name}の挑発。` });
+  events.push({ kind: "guard", text: `${member.name}が敵を引きつけた。` });
+  if (Math.random() < 0.15) {
+    events.push({ kind: "voice", text: `${member.name}「こちらだ」` });
   }
 }
 
@@ -1024,6 +1046,12 @@ function performTurnStartSkillChecks(party, enemies, events) {
       continue;
     }
 
+    if (shouldWarriorTaunt(member, party)) {
+      performWarriorTauntActive(member, events);
+      continue;
+    }
+    member.tauntCheckedThisTurn = true;
+
     // Passive defenses do not consume the member's normal action.
     if (!shouldWarriorDefend(member)) continue;
     performWarriorDefendPassive(member, events);
@@ -1031,7 +1059,13 @@ function performTurnStartSkillChecks(party, enemies, events) {
 }
 
 function shouldWarriorTaunt(actor, party) {
-  if (actor.job !== "warrior" || actor.hp <= 0 || actor.tauntTurns > 0 || !isSkillEnabled(actor, "provoke")) return false;
+  if (
+    actor.job !== "warrior" ||
+    actor.hp <= 0 ||
+    actor.tauntTurns > 0 ||
+    actor.tauntCheckedThisTurn ||
+    !isSkillEnabled(actor, "provoke")
+  ) return false;
   const needsAttention = livingMembers(party).some((member) => {
     if (member.id === actor.id || member.maxHp <= 0) return false;
     const hpRate = (member.hp / member.maxHp) * 100;
@@ -1429,7 +1463,12 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     tickEnemyTurnStatuses(enemy);
     return;
   }
+  const eventCountBeforeAction = events.length;
   if (shouldSkipParalyzedAction(enemy, events)) {
+    const latestEvent = events.at(-1);
+    if (events.length > eventCountBeforeAction && latestEvent?.kind === "voice") {
+      latestEvent.kind = "enemy-action";
+    }
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
     return;
