@@ -5092,6 +5092,7 @@ function migrate(data) {
   for (const p of data.parties) {
     ensurePartyShape(p);
     if (p.selectedArea === "plain") p.selectedArea = "plainEntrance";
+    if (p.selectedArea === "forest") p.selectedArea = "howlingRoad";
     recordEquippedEquipment(p, data);
     if (p.adventureLog?.length && !p.dispatches.length) {
       p.dispatches.push({
