@@ -465,6 +465,46 @@ const AREAS = {
     trapRates: [0.25, 0.15, 0.1, 0.05],
     flavor: ["朝露の草を踏み、隊列は街道の外へ出た。", "遠くで鐘が鳴り、草むらが小さく揺れた。"],
   },
+  plainEntrance: {
+    id: "plainEntrance",
+    name: "平原入口",
+    durationMs: 5000,
+    difficulty: 1,
+    baseAtk: 4,
+    monsters: ["slime"],
+    normalEncounterGroupWeights: { 1: 80, 2: 20 },
+    unlockAfter: null,
+    treasureRates: [0.7, 0.5, 0.25, 0.12],
+    trapRates: [0.2, 0.1, 0.05, 0.02],
+    flavor: ["街道を離れてまもなく、草丈の低い平原が広がる。", "朝の風に揺れる草の先で、小さな影が跳ねた。"],
+  },
+  plainRoad: {
+    id: "plainRoad",
+    name: "平原道中",
+    durationMs: 5000,
+    difficulty: 1,
+    baseAtk: 4,
+    monsters: ["slime", "goblin"],
+    normalEncounterGroupWeights: { 1: 70, 2: 25, 3: 5 },
+    unlockAfter: "plainEntrance",
+    treasureRates: [0.7, 0.5, 0.25, 0.12],
+    trapRates: [0.25, 0.15, 0.1, 0.05],
+    flavor: ["踏み固められた獣道の脇に、荒らされた荷車の跡が残る。", "草むらの奥で、短い怒鳴り声が風に混じった。"],
+  },
+  goblinNest: {
+    id: "goblinNest",
+    name: "ゴブリンの巣",
+    durationMs: 5000,
+    difficulty: 1,
+    baseAtk: 5,
+    monsters: ["goblin"],
+    normalEncounterGroupWeights: { 1: 75, 2: 20, 3: 5 },
+    boss: "goblinChief",
+    unlockAfter: "plainRoad",
+    treasureRates: [0.7, 0.5, 0.25, 0.12],
+    trapRates: [0.25, 0.15, 0.1, 0.05],
+    flavor: ["粗末な見張り台と焚き火跡が、草原の奥に固まっている。", "掘り返された土の匂いの中に、群れの生活臭が混じっていた。"],
+  },
   forest: {
     id: "forest",
     name: "月影の森",
@@ -474,7 +514,7 @@ const AREAS = {
     monsters: ["wolf", "mossMage"],
     normalEncounterGroupWeights: { 1: 60, 2: 30, 3: 10 },
     boss: "forestWarden",
-    unlockAfter: "plain",
+    unlockAfter: "goblinNest",
     flavor: ["枝葉が月を裂き、足音だけが森に残る。", "古い祠の前で、冷たい風が吹いた。"],
   },
   swamp: {
@@ -759,10 +799,13 @@ const AREAS = {
   },
 };
 
-const AREA_ORDER = ["plain", "forest", "swamp", "ruins", "canyon", "glacier", "volcano", "abyss", "forgottenCorridor", "starMarsh", "mourningSpire", "borderGate", "ashCapital", "silentRim", "lastCathedral", "mistRainRoad", "abandonedWatchtower", "witheredForestGate", "blackwaterMarsh", "forgottenChapel", "redMoonCanyon", "northernOldRoad", "sealedMineRuins", "silentCorridor", "lightlessCatacomb"];
+const AREA_ORDER = ["plainEntrance", "plainRoad", "goblinNest", "forest", "swamp", "ruins", "canyon", "glacier", "volcano", "abyss", "forgottenCorridor", "starMarsh", "mourningSpire", "borderGate", "ashCapital", "silentRim", "lastCathedral", "mistRainRoad", "abandonedWatchtower", "witheredForestGate", "blackwaterMarsh", "forgottenChapel", "redMoonCanyon", "northernOldRoad", "sealedMineRuins", "silentCorridor", "lightlessCatacomb"];
 
 const WORLD_SITUATIONS = {
   plain: [["最近、始まりの草原付近の魔物が活発化している。", "近隣街道にて小規模な襲撃報告あり。"]],
+  plainEntrance: [["街道脇の平原入口で、小型魔物の目撃報告が増えている。"]],
+  plainRoad: [["平原道中にて、荷の荒らし跡と小鬼の足跡が確認された。"]],
+  goblinNest: [["平原奥でゴブリンの巣穴らしき拠点が見つかった。", "偵察隊は統率個体の存在を警告している。"]],
   forest: [["月影の森から戻らない行商人が増えている。", "夜間、森方面で遠吠えが確認された。"]],
   swamp: [["沈み杭の沼で消息を絶つ冒険者が出ている。", "周辺村落では井戸水の変色が確認された。"]],
   ruins: [["忘れられた遺跡内部で未知の紋章が発見された。", "調査班は夜間活動を停止した。"]],
