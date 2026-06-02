@@ -883,7 +883,7 @@ function defaultParty(id, name) {
     name,
     members,
     hero: members[0],
-    selectedArea: "plain",
+    selectedArea: "plainEntrance",
     mission: null,
     dispatches: [],
     expandedDispatchIds: [],
@@ -913,7 +913,7 @@ function getUnlockHint(id) {
 
 function ensureValidSelectedArea(party) {
   if (!isAreaUnlocked(party.selectedArea)) {
-    party.selectedArea = AREA_ORDER.find(isAreaUnlocked) || "plain";
+    party.selectedArea = AREA_ORDER.find(isAreaUnlocked) || "plainEntrance";
   }
 }
 
@@ -5091,6 +5091,7 @@ function migrate(data) {
 
   for (const p of data.parties) {
     ensurePartyShape(p);
+    if (p.selectedArea === "plain") p.selectedArea = "plainEntrance";
     recordEquippedEquipment(p, data);
     if (p.adventureLog?.length && !p.dispatches.length) {
       p.dispatches.push({
