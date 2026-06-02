@@ -517,6 +517,40 @@ const AREAS = {
     unlockAfter: "goblinNest",
     flavor: ["枝葉が月を裂き、足音だけが森に残る。", "古い祠の前で、冷たい風が吹いた。"],
   },
+  howlingRoad: {
+    id: "howlingRoad",
+    name: "遠吠えの道",
+    durationMs: 5000,
+    difficulty: 2,
+    baseAtk: 7,
+    monsters: ["wolf"],
+    normalEncounterGroupWeights: { 1: 75, 2: 20, 3: 5 },
+    unlockAfter: "goblinNest",
+    flavor: ["街道脇の木立から、途切れ途切れの遠吠えが聞こえる。", "踏み荒らされた下草の先で、獣道が闇へ続いていた。"],
+  },
+  mossTrail: {
+    id: "mossTrail",
+    name: "苔むす獣道",
+    durationMs: 5000,
+    difficulty: 2,
+    baseAtk: 7,
+    monsters: ["wolf", "mossMage"],
+    normalEncounterGroupWeights: { 1: 60, 2: 30, 3: 10 },
+    unlockAfter: "howlingRoad",
+    flavor: ["湿った苔が石を覆い、足跡は途中で途切れている。", "木々の隙間で、誰かに見られているような気配が続いた。"],
+  },
+  beastTerritory: {
+    id: "beastTerritory",
+    name: "巨獣の縄張り",
+    durationMs: 5000,
+    difficulty: 2,
+    baseAtk: 8,
+    monsters: ["mossMage"],
+    normalEncounterGroupWeights: { 1: 80, 2: 20 },
+    boss: "forestWarden",
+    unlockAfter: "mossTrail",
+    flavor: ["折れた幹と抉れた地面が、この先の主を黙って示している。", "森の空気が重くなり、奥で大きな息遣いが揺れた。"],
+  },
   swamp: {
     id: "swamp",
     name: "沈み杭の沼",
@@ -526,7 +560,7 @@ const AREAS = {
     monsters: ["mudSlime", "bogLeech"],
     normalEncounterGroupWeights: { 1: 55, 2: 30, 3: 15 },
     boss: "marshMaw",
-    unlockAfter: "forest",
+    unlockAfter: "beastTerritory",
     flavor: ["腐った桟橋が水面に沈みかけ、隊列は一歩ずつ進んだ。", "泥の泡が弾けるたび、古い杭が小さく揺れた。"],
   },
   ruins: {
@@ -799,7 +833,7 @@ const AREAS = {
   },
 };
 
-const AREA_ORDER = ["plainEntrance", "plainRoad", "goblinNest", "forest", "swamp", "ruins", "canyon", "glacier", "volcano", "abyss", "forgottenCorridor", "starMarsh", "mourningSpire", "borderGate", "ashCapital", "silentRim", "lastCathedral", "mistRainRoad", "abandonedWatchtower", "witheredForestGate", "blackwaterMarsh", "forgottenChapel", "redMoonCanyon", "northernOldRoad", "sealedMineRuins", "silentCorridor", "lightlessCatacomb"];
+const AREA_ORDER = ["plainEntrance", "plainRoad", "goblinNest", "howlingRoad", "mossTrail", "beastTerritory", "swamp", "ruins", "canyon", "glacier", "volcano", "abyss", "forgottenCorridor", "starMarsh", "mourningSpire", "borderGate", "ashCapital", "silentRim", "lastCathedral", "mistRainRoad", "abandonedWatchtower", "witheredForestGate", "blackwaterMarsh", "forgottenChapel", "redMoonCanyon", "northernOldRoad", "sealedMineRuins", "silentCorridor", "lightlessCatacomb"];
 
 const WORLD_SITUATIONS = {
   plain: [["最近、始まりの草原付近の魔物が活発化している。", "近隣街道にて小規模な襲撃報告あり。"]],
@@ -807,6 +841,9 @@ const WORLD_SITUATIONS = {
   plainRoad: [["平原道中にて、荷の荒らし跡と小鬼の足跡が確認された。"]],
   goblinNest: [["平原奥でゴブリンの巣穴らしき拠点が見つかった。", "偵察隊は統率個体の存在を警告している。"]],
   forest: [["月影の森から戻らない行商人が増えている。", "夜間、森方面で遠吠えが確認された。"]],
+  howlingRoad: [["月影の森の入口街道で、夜毎に遠吠えが重なっている。"]],
+  mossTrail: [["苔むす獣道で、獣の足跡に混じって奇妙な術式痕が見つかった。"]],
+  beastTerritory: [["森の深部で巨獣の縄張りが確認された。", "先行隊は奥へ進まず、警戒報告のみを持ち帰った。"]],
   swamp: [["沈み杭の沼で消息を絶つ冒険者が出ている。", "周辺村落では井戸水の変色が確認された。"]],
   ruins: [["忘れられた遺跡内部で未知の紋章が発見された。", "調査班は夜間活動を停止した。"]],
   canyon: [["赤鳴りの峡谷監視隊より、説明できない落石音の報告あり。", "吊り橋の通行許可はギルド管理下へ移された。"]],
