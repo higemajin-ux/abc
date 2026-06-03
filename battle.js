@@ -1509,6 +1509,22 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     events.push({ kind: "enemy-action", text: "selfDestruct未実装" });
   }
 
+  if (enemy.special === "curseTouch" && Math.random() < 0.2) {
+    const curseTargets = livingMembers(party).filter(
+      (member) => (member[STATUS_EFFECTS.curse.turnKey] || 0) <= 0
+    );
+    if (curseTargets.length) {
+      target = pick(curseTargets);
+      target[STATUS_EFFECTS.curse.turnKey] = 3;
+      events.push({ kind: "enemy-action", text: `${enemy.name}は低く祈った。` });
+      events.push({ kind: "enemy-action", text: `${target.name}を覆う呪いが濃くなった。` });
+      pushHp(events, target);
+      tickEnemyDots(enemy, events);
+      tickEnemyTurnStatuses(enemy);
+      return;
+    }
+  }
+
   if (enemy.boss && !enemy.heavyAttackReady && round % 3 === 2) {
     enemy.heavyAttackReady = true;
     events.push({ kind: "enemy-action", text: `${enemy.name}が剣を構えた。` });
