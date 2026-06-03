@@ -4894,12 +4894,14 @@ function enemyRecordHtml(enemyId, record) {
   const info = enemy?.recordInfo || {};
   const appearanceLabel = unlockedName ? "出現" : "出現条件";
   const appearanceText = enemyRecordInfoValue(info.appearance || enemyRecordAreaIds(enemyId), AREAS, "未設定");
+  const traitsText = unlockedName ? String(enemy?.traitsText || "").trim() : "";
   return `<li>
     <div class="records-info">
       <div class="records-head">
         <span class="records-item">${unlockedName ? enemy?.name || "名称不明の敵" : "？？？"}</span>${tag}
       </div>
       <div class="records-effect">${appearanceLabel}：${appearanceText}</div>
+      ${traitsText ? `<div class="records-effect">特徴：${traitsText}</div>` : ""}
       <div class="records-effect">ドロップ：${enemyRecordDropItemsValue(enemyId, enemy)}</div>
       <div class="records-effect">討伐数：${kills}回</div>
       <div class="records-effect">HP：${unlockedHp ? enemy?.hp ?? "？？？" : "？？？"}</div>

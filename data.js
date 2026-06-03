@@ -879,7 +879,7 @@ const MONSTERS = {
   goblinMage: { id: "goblinMage", name: "メイジゴブリン", hp: 20, atk: 9, xp: 13, gold: 12, drops: ["oldCharm", "emberPendant"] },
   goblinChief: { id: "goblinChief", name: "ゴブリンチーフ", hp: 46, atk: 10, xp: 28, gold: 34, rare: true, boss: true, drops: ["silverBuckle", "emberPendant"] },
   wolf: { id: "wolf", name: "ウルフ", hp: 30, atk: 9, xp: 15, gold: 13, drops: ["patchedCloak", "travelerCloak", "travelerShoes"] },
-  mossMage: { id: "mossMage", name: "モスメイジ", hp: 26, atk: 11, xp: 18, gold: 16, rare: true, special: "curseTouch", drops: ["oldCharm", "emberPendant", "travelerCloak", "travelerShoes"] },
+  mossMage: { id: "mossMage", name: "モスメイジ", hp: 26, atk: 11, xp: 18, gold: 16, rare: true, special: "curseTouch", traitsText: "低確率で呪いを付与する。", drops: ["oldCharm", "emberPendant", "travelerCloak", "travelerShoes"] },
   forestWarden: { id: "forestWarden", name: "森の番獣", hp: 62, atk: 14, xp: 46, gold: 52, rare: true, boss: true, drops: ["blackLeatherArmor"] },
   mudSlime: { id: "mudSlime", name: "沼泥スライム", hp: 36, atk: 12, xp: 24, gold: 20 },
   bogLeech: { id: "bogLeech", name: "沼大蛭", hp: 42, atk: 13, xp: 28, gold: 24 },
