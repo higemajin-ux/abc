@@ -875,7 +875,7 @@ const MONSTERS = {
   slime: { id: "slime", name: "スライム", hp: 18, atk: 5, xp: 8, gold: 7, drops: ["oldCharm", "travelerHat"] },
   goblin: { id: "goblin", name: "ゴブリン", hp: 24, atk: 7, xp: 11, gold: 10, drops: ["chippedSword", "travelerHat"] },
   axeGoblin: { id: "axeGoblin", name: "アックスゴブリン", hp: 30, atk: 9, xp: 14, gold: 12, drops: ["chippedSword", "travelerHat"] },
-  goblinArcher: { id: "goblinArcher", name: "ゴブリンアーチャー", hp: 22, atk: 8, xp: 12, gold: 11, drops: ["oldCharm", "travelerHat"] },
+  goblinArcher: { id: "goblinArcher", name: "ゴブリンアーチャー", hp: 22, atk: 8, xp: 12, gold: 11, targeting: "backlineBias", traitsText: "後衛を狙いやすい。", drops: ["oldCharm", "travelerHat"] },
   goblinMage: { id: "goblinMage", name: "メイジゴブリン", hp: 20, atk: 9, xp: 13, gold: 12, drops: ["oldCharm", "emberPendant"] },
   goblinChief: { id: "goblinChief", name: "ゴブリンチーフ", hp: 46, atk: 10, xp: 28, gold: 34, rare: true, boss: true, drops: ["silverBuckle", "emberPendant"] },
   wolf: { id: "wolf", name: "ウルフ", hp: 30, atk: 9, xp: 15, gold: 13, drops: ["patchedCloak", "travelerCloak", "travelerShoes"] },

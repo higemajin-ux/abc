@@ -252,22 +252,27 @@ function livingScouts(party) {
   return livingMembers(party).filter((member) => member.job === "scout" || member.job === "rogue");
 }
 
-function formationTargetWeight(member) {
+function formationTargetWeight(member, enemy = null) {
+  if (enemy?.targeting === "backlineBias") {
+    if (member.formation === "前衛") return 3;
+    if (member.formation === "後衛") return 5;
+    return 4;
+  }
   if (member.formation === "前衛") return 6;
   if (member.formation === "後衛") return 1;
   return 3;
 }
 
-function pickEnemyTarget(party) {
+function pickEnemyTarget(party, enemy = null) {
   const candidates = livingMembers(party);
   if (!candidates.length) return null;
   const taunting = candidates.filter((member) => member.tauntTurns > 0);
   if (taunting.length) return pick(taunting);
 
-  const total = candidates.reduce((sum, member) => sum + formationTargetWeight(member), 0);
+  const total = candidates.reduce((sum, member) => sum + formationTargetWeight(member, enemy), 0);
   let rollValue = Math.random() * total;
   for (const member of candidates) {
-    rollValue -= formationTargetWeight(member);
+    rollValue -= formationTargetWeight(member, enemy);
     if (rollValue <= 0) return member;
   }
   return candidates.at(-1);
@@ -1498,7 +1503,7 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     tickEnemyTurnStatuses(enemy);
     return;
   }
-  let target = pickEnemyTarget(party);
+  let target = pickEnemyTarget(party, enemy);
   if (!target) {
     tickEnemyDots(enemy, events);
     tickEnemyTurnStatuses(enemy);
