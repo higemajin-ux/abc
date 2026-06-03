@@ -162,12 +162,13 @@ function syncMemberStats(member) {
 
 function createEnemy(monster, area, heroLevel, nameOverride = null) {
   const scale = Math.max(0, area.difficulty - 1) + Math.floor(heroLevel / 3);
+  const hpScale = monster.boss ? 14 : 8;
   return {
     id: monster.id,
     name: nameOverride || monster.name,
-    maxHp: monster.hp + scale * 8,
-    hp: monster.hp + scale * 8,
-    atk: monster.atk + Math.floor(scale * 1.5),
+    maxHp: monster.hp + scale * hpScale,
+    hp: monster.hp + scale * hpScale,
+    atk: monster.atk + Math.floor(scale * 1.8),
     def: (monster.def || Math.max(0, area.difficulty - 1)) + Math.floor(scale / 2),
     baseDex: monster.dex || area.difficulty + 4,
     dex: monster.dex || area.difficulty + 4,
