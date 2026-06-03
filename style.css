@@ -1196,6 +1196,11 @@ h1 {
   padding: 9px 10px;
 }
 
+.area-detail-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .dispatch-wrap {
   margin-top: 12px;
   overflow: hidden;
@@ -1574,6 +1579,19 @@ h1 {
   display: grid;
   gap: 8px;
   margin-top: 12px;
+}
+
+.area-detail-modal {
+  width: min(460px, calc(100vw - 24px));
+  max-height: min(72vh, 520px);
+}
+
+.area-detail-modal-body {
+  gap: 8px;
+}
+
+.area-detail-row strong {
+  color: var(--paper-light);
 }
 
 .storage-bulk-sell-category-btn {

@@ -52,6 +52,7 @@ let state = {
   autoSell: { common: false, uncommon: false },
   records: defaultRecords(),
   developerMode: false,
+  areaDetailModalState: null,
 };
 
 function $(id) {
@@ -757,6 +758,21 @@ function formatMissionDurationLabel(durationMs) {
   return `${rounded.toFixed(1)}秒`;
 }
 
+function openAreaDetailModal(areaId, partyId = null) {
+  if (!areaId || !AREAS?.[areaId]) return;
+  state.areaDetailModalState = {
+    areaId: String(areaId),
+    partyId: partyId ? String(partyId) : null,
+  };
+  renderPartySection();
+}
+
+function closeAreaDetailModal() {
+  if (!state.areaDetailModalState) return;
+  state.areaDetailModalState = null;
+  renderPartySection();
+}
+
 function missionDurationEffectsForParty(party) {
   if (!party) return [];
   const effects = [];
@@ -909,6 +925,37 @@ function getUnlockHint(id) {
   const area = getArea(id);
   if (!area.unlockAfter) return "解放済";
   return `${AREAS[area.unlockAfter].name}を1回クリア`;
+}
+
+function areaDetailModalHtml() {
+  const modalState = state.areaDetailModalState;
+  if (!modalState?.areaId) return "";
+  const area = AREAS?.[modalState.areaId];
+  if (!area) return "";
+  const party = modalState.partyId ? getParty(modalState.partyId) : null;
+  const durationLabel = formatMissionDurationLabel(party ? missionDurationMs(area, party) : area.durationMs);
+  const recommendedLevel = Number.isFinite(Number(area.recommendedLevel)) ? Number(area.recommendedLevel) : "-";
+  const enemyNames = (area.monsters || [])
+    .map((enemyId) => MONSTERS?.[enemyId]?.name)
+    .filter(Boolean);
+  const bossName = area.boss ? MONSTERS?.[area.boss]?.name || "-" : "-";
+  const description = area.description || "-";
+  return `<div class="storage-confirm-modal-backdrop area-detail-modal-backdrop" data-area-detail-modal-root data-area-detail-close>
+    <div class="storage-confirm-modal area-detail-modal" role="dialog" aria-modal="true" aria-label="派遣先詳細">
+      <div class="storage-confirm-modal-title">派遣先詳細</div>
+      <div class="storage-confirm-modal-body area-detail-modal-body">
+        <div class="area-detail-row"><strong>派遣先名：</strong>${area.name}</div>
+        <div class="area-detail-row"><strong>推奨Lv：</strong>${recommendedLevel}</div>
+        <div class="area-detail-row"><strong>派遣時間：</strong>${durationLabel}</div>
+        <div class="area-detail-row"><strong>出現敵：</strong>${enemyNames.length ? enemyNames.join("、") : "-"}</div>
+        <div class="area-detail-row"><strong>ボス：</strong>${bossName}</div>
+        <div class="area-detail-row"><strong>説明：</strong>${description}</div>
+      </div>
+      <div class="storage-confirm-modal-actions">
+        <button type="button" class="storage-bulk-cancel-btn" data-area-detail-close>閉じる</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 function ensureValidSelectedArea(party) {
@@ -2532,6 +2579,13 @@ function createPartyCard(party) {
       setMemberSkillSetting(input.dataset.memberId, input.dataset.skillId, input.checked);
     });
   });
+  card.querySelectorAll("[data-area-detail-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const currentAreaId = party.mission?.areaId || card.querySelector(".area-select")?.value || party.selectedArea || button.dataset.areaDetailOpen;
+      if (!currentAreaId) return;
+      openAreaDetailModal(currentAreaId, party.id);
+    });
+  });
   card.querySelector(".dispatch-btn")?.addEventListener("click", () => startMission(party.id));
   return card;
 }
@@ -2570,6 +2624,7 @@ function renderExpeditionSection(party, on, area) {
       <div class="eta">帰還予定：${on ? formatClock(party.mission.endsAt) : "--"}</div>
       <label class="field-label">派遣先</label>
       <select class="area-select" ${on ? "disabled" : ""}>${areaOptions(party, party.selectedArea)}</select>
+      <button type="button" class="ghost area-detail-btn" data-area-detail-open="${area.id}">詳細</button>
       <div class="dispatch-wrap" data-progress="${party.id}">
         <button type="button" class="primary dispatch-btn ${on ? "on-mission" : ""}" ${on ? "disabled" : ""}>
           <span class="btn-progress ${on ? `progress-${progressStage(missionProgress(party)).key}` : ""}" style="width:${on ? missionProgress(party) : 0}%"></span>
@@ -2598,6 +2653,20 @@ function renderParties() {
 
 function renderPartySection() {
   renderParties();
+  document.querySelector("[data-area-detail-modal-root]")?.remove();
+  const modalHtml = areaDetailModalHtml();
+  if (!modalHtml) return;
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+  const modalRoot = document.querySelector("[data-area-detail-modal-root]");
+  modalRoot?.querySelectorAll("[data-area-detail-close]").forEach((button) => {
+    button.addEventListener("click", () => closeAreaDetailModal());
+  });
+  modalRoot?.addEventListener("click", (event) => {
+    if (event.target === modalRoot) closeAreaDetailModal();
+  });
+  modalRoot?.querySelector(".area-detail-modal")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
 }
 
 function updateDeveloperButton() {
@@ -5205,6 +5274,7 @@ function loadGame() {
         autoSell: data.autoSell || defaultAutoSellSettings(),
         records: data.records || defaultRecords(),
         developerMode: data.developerMode === true,
+        areaDetailModalState: null,
       };
       ensureGuildStats();
       ensureEquipmentResearch();
@@ -5234,6 +5304,7 @@ function resetGame() {
     autoSell: defaultAutoSellSettings(),
     records: defaultRecords(),
     developerMode: false,
+    areaDetailModalState: null,
   };
   nextId = 1;
   storageRenderCount = -1;
