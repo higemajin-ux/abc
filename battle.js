@@ -5,6 +5,10 @@ const STATUS_EFFECTS = {
     turnKey: "poisonTurns",
     label: "毒",
   },
+  curse: {
+    turnKey: "curseTurns",
+    label: "呪い",
+  },
   burn: {
     turnKey: "burnTurns",
     label: "火傷",
@@ -320,6 +324,7 @@ function statusLabels(unit) {
   const poisonTurns = unit[STATUS_EFFECTS.poison.turnKey] || 0;
   if (poisonTurns > 0 && unit.poisonTier !== "venom") labels.push(`${STATUS_EFFECTS.poison.label}${poisonTurns}`);
   if (poisonTurns > 0 && unit.poisonTier === "venom") labels.push(`猛毒${poisonTurns}`);
+  if (unit[STATUS_EFFECTS.curse.turnKey] > 0) labels.push(`${STATUS_EFFECTS.curse.label}${unit[STATUS_EFFECTS.curse.turnKey]}`);
   if (unit[STATUS_EFFECTS.burn.turnKey] > 0) labels.push(`${STATUS_EFFECTS.burn.label}${unit[STATUS_EFFECTS.burn.turnKey]}`);
   if (unit[STATUS_EFFECTS.paralyze.turnKey] > 0) labels.push(`${STATUS_EFFECTS.paralyze.label}${unit[STATUS_EFFECTS.paralyze.turnKey]}`);
   if (unit[STATUS_EFFECTS.blind.turnKey] > 0) labels.push(`${STATUS_EFFECTS.blind.label}${unit[STATUS_EFFECTS.blind.turnKey]}`);
@@ -473,8 +478,11 @@ function magicBarrierTarget(party) {
 }
 
 function recoverHp(target, amount) {
+  const adjustedAmount = target?.[STATUS_EFFECTS.curse.turnKey] > 0
+    ? Math.floor(amount * 0.7)
+    : amount;
   const before = target.hp;
-  target.hp = clamp(target.hp + amount, 0, target.maxHp);
+  target.hp = clamp(target.hp + adjustedAmount, 0, target.maxHp);
   return target.hp - before;
 }
 
@@ -507,18 +515,22 @@ function clearTempHp(party) {
 function hasBadStatus(member) {
   return (
     member[STATUS_EFFECTS.poison.turnKey] > 0 ||
+    member[STATUS_EFFECTS.curse.turnKey] > 0 ||
     member.poisonTier === "venom" ||
     member[STATUS_EFFECTS.paralyze.turnKey] > 0 ||
     member[STATUS_EFFECTS.burn.turnKey] > 0 ||
+    member[STATUS_EFFECTS.blind.turnKey] > 0 ||
     member[STATUS_EFFECTS.slow.turnKey] > 0
   );
 }
 
 function clearBadStatus(member) {
   member[STATUS_EFFECTS.poison.turnKey] = 0;
+  member[STATUS_EFFECTS.curse.turnKey] = 0;
   member.poisonTier = null;
   member[STATUS_EFFECTS.paralyze.turnKey] = 0;
   member[STATUS_EFFECTS.burn.turnKey] = 0;
+  member[STATUS_EFFECTS.blind.turnKey] = 0;
   member[STATUS_EFFECTS.slow.turnKey] = 0;
 }
 
@@ -739,6 +751,18 @@ function tickParalyze(member) {
   if (!member.paralyzeTurns) return;
   member.paralyzeTurns -= 1;
   if (member.paralyzeTurns <= 0) member.paralyzeTurns = 0;
+}
+
+function tickMemberTurnStatuses(member, events = null) {
+  if (member.hp <= 0) return;
+  if (!member?.[STATUS_EFFECTS.curse.turnKey]) return;
+  member[STATUS_EFFECTS.curse.turnKey] -= 1;
+  if (member[STATUS_EFFECTS.curse.turnKey] <= 0) {
+    member[STATUS_EFFECTS.curse.turnKey] = 0;
+    if (events) {
+      events.push({ kind: "heal", text: `${member.name}を覆う呪いが薄れた。` });
+    }
+  }
 }
 
 function shouldSkipParalyzedAction(member, events) {
@@ -981,12 +1005,13 @@ function shouldWarriorIronWall(actor, enemyCount = 1) {
   return hpRate <= 50 || enemyCount >= 2;
 }
 
-function startMemberTurn(member) {
+function startMemberTurn(member, events = null) {
   const wasIronWall = !!member.ironWall;
   member.guard = false;
   member.ironWall = false;
   member.actionConsumed = false;
   member.tauntCheckedThisTurn = false;
+  tickMemberTurnStatuses(member, events);
   if ((member.ironWallCooldown || 0) > 0) {
     member.ironWallCooldown -= 1;
     if (member.ironWallCooldown < 0) member.ironWallCooldown = 0;
@@ -1037,7 +1062,7 @@ function performTurnStartSkillChecks(party, enemies, events) {
   const enemyCount = livingEnemies(enemies).length;
   if (!enemyCount) return;
   for (const member of party) {
-    const turnState = startMemberTurn(member);
+    const turnState = startMemberTurn(member, events);
     if (member.hp <= 0) continue;
 
     // Active defensive skills consume the member's normal action.
