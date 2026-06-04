@@ -14,13 +14,14 @@ const LEGACY_COLUMN_MIGRATIONS = {
 };
 
 const INITIAL_CARDS = [
-  { text: "税理士CSV：入力フォーム作成", columnId: "next" },
-  { text: "税理士CSV：CSVダウンロード機能", columnId: "next" },
-  { text: "税理士CSV：OCRテキスト貼り付け欄", columnId: "idea" },
-  { text: "付箋ボード：JSONエクスポート追加", columnId: "urgent" },
-  { text: "派遣ギルド：敵・エリア追加", columnId: "hold" },
-  { text: "派遣ギルド：状態異常追加", columnId: "hold" },
-  { text: "派遣ギルド：6人PT化", columnId: "hold" },
+  { text: "敵・エリア追加", columnId: "urgent" },
+  { text: "ハード難易度とドロップ増加の設計", columnId: "urgent" },
+  { text: "状態異常の追加", columnId: "next" },
+  { text: "ログ文の整理", columnId: "next" },
+  { text: "報告書要素の追加", columnId: "next" },
+  { text: "6人PT化", columnId: "hold" },
+  { text: "装備枠拡張", columnId: "hold" },
+  { text: "記録室/保管庫の別ページ化", columnId: "hold" },
 ];
 
 const boardElement = document.getElementById("board-columns");
@@ -34,11 +35,16 @@ const exportButtonElement = document.getElementById("export-button");
 const importButtonElement = document.getElementById("import-button");
 const importFileElement = document.getElementById("import-file");
 const cardTemplate = document.getElementById("card-template");
+const editDialogElement = document.getElementById("edit-dialog");
+const editFormElement = document.getElementById("edit-form");
+const editTextElement = document.getElementById("edit-text");
+const editCancelElement = document.getElementById("edit-cancel");
 
 let boardState = loadState();
 let draggedCardId = null;
 let saveStatusTimer = null;
 let messageTimer = null;
+let editingCardRef = null;
 
 initialize();
 
@@ -51,6 +57,12 @@ function initialize() {
   exportButtonElement.addEventListener("click", handleExport);
   importButtonElement.addEventListener("click", () => importFileElement.click());
   importFileElement.addEventListener("change", handleImport);
+  editFormElement.addEventListener("submit", handleSaveEdit);
+  editCancelElement.addEventListener("click", closeEditor);
+  editDialogElement.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeEditor();
+  });
 }
 
 function populateColumnSelect() {
@@ -315,6 +327,60 @@ function handleDeleteCard(columnId, cardId) {
   renderBoard();
 }
 
+function openEditor(columnId, cardId) {
+  const card = boardState[columnId]?.find((item) => item.id === cardId);
+
+  if (!card) {
+    return;
+  }
+
+  editingCardRef = { columnId, cardId };
+  editTextElement.value = card.text;
+  if (!editDialogElement.open) {
+    editDialogElement.showModal();
+  }
+  editTextElement.focus();
+  editTextElement.setSelectionRange(editTextElement.value.length, editTextElement.value.length);
+}
+
+function closeEditor() {
+  editingCardRef = null;
+  editFormElement.reset();
+  if (editDialogElement.open) {
+    editDialogElement.close();
+  }
+}
+
+function handleSaveEdit(event) {
+  event.preventDefault();
+
+  if (!editingCardRef) {
+    closeEditor();
+    return;
+  }
+
+  const nextText = editTextElement.value.trim();
+
+  if (!nextText) {
+    showMessage("カード本文を入力してください。", "error");
+    return;
+  }
+
+  const cards = boardState[editingCardRef.columnId];
+  const card = cards?.find((item) => item.id === editingCardRef.cardId);
+
+  if (!card) {
+    closeEditor();
+    return;
+  }
+
+  card.text = nextText;
+  saveState();
+  renderBoard();
+  closeEditor();
+  showMessage("カード本文を更新しました。", "success");
+}
+
 function moveCard(cardId, targetColumnId) {
   if (!cardId || !boardState[targetColumnId]) {
     return;
@@ -402,13 +468,32 @@ function createCardElement(columnId, card) {
   const fragment = cardTemplate.content.cloneNode(true);
   const cardElement = fragment.querySelector(".task-card");
   const textElement = fragment.querySelector(".card-text");
+  const editButton = fragment.querySelector(".edit-button");
   const deleteButton = fragment.querySelector(".delete-button");
 
   cardElement.dataset.cardId = card.id;
   textElement.textContent = card.text;
 
-  deleteButton.addEventListener("click", () => {
+  editButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openEditor(columnId, card.id);
+  });
+
+  deleteButton.addEventListener("click", (event) => {
+    event.stopPropagation();
     handleDeleteCard(columnId, card.id);
+  });
+
+  textElement.addEventListener("click", () => {
+    openEditor(columnId, card.id);
+  });
+
+  cardElement.addEventListener("click", (event) => {
+    if (event.target.closest(".edit-button, .delete-button")) {
+      return;
+    }
+
+    openEditor(columnId, card.id);
   });
 
   cardElement.addEventListener("dragstart", (event) => {

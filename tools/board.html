@@ -56,10 +56,37 @@
   <template id="card-template">
     <article class="task-card" draggable="true">
       <div class="card-glow"></div>
+      <button type="button" class="edit-button" aria-label="カードを編集">EDIT</button>
       <p class="card-text"></p>
       <button type="button" class="delete-button" aria-label="カードを削除">×</button>
     </article>
   </template>
+
+  <dialog class="edit-dialog" id="edit-dialog">
+    <form class="edit-form" id="edit-form" method="dialog">
+      <div class="edit-form-header">
+        <p class="edit-eyebrow">Card Editor</p>
+        <h2 class="edit-title">EDIT CARD</h2>
+      </div>
+
+      <label class="field">
+        <span>本文</span>
+        <textarea
+          id="edit-text"
+          name="editText"
+          rows="5"
+          maxlength="200"
+          placeholder="カード本文を入力"
+          required
+        ></textarea>
+      </label>
+
+      <div class="edit-actions">
+        <button type="button" class="action-button" id="edit-cancel">Cancel</button>
+        <button type="submit" class="action-button action-button-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="./board.js"></script>
 </body>
