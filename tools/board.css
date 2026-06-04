@@ -23,6 +23,7 @@ body {
   margin: 0;
   min-height: 100%;
   font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+  font-size: 8px;
   color: var(--text-main);
   background:
     radial-gradient(circle at top left, rgba(255, 89, 208, 0.14), transparent 30%),
@@ -51,13 +52,13 @@ body {
   margin: 0 0 6px;
   color: var(--accent-cyan);
   letter-spacing: 0.16em;
-  font-size: 0.74rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -71,7 +72,7 @@ h1 {
   background: rgba(7, 12, 24, 0.8);
   box-shadow: inset 0 0 24px rgba(107, 232, 255, 0.05);
   color: var(--text-sub);
-  font-size: 0.85rem;
+  font-size: 0.72rem;
 }
 
 .save-indicator.is-saving {
@@ -115,7 +116,7 @@ h1 {
 
 .field span {
   color: var(--text-sub);
-  font-size: 0.84rem;
+  font-size: 0.72rem;
 }
 
 .field-grow {
@@ -140,7 +141,7 @@ select {
 }
 
 textarea {
-  min-height: 88px;
+  min-height: 72px;
   resize: vertical;
 }
 
@@ -151,10 +152,11 @@ select:focus {
 }
 
 .action-button {
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: 40px;
+  padding: 0 14px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
   cursor: pointer;
   background:
     linear-gradient(135deg, rgba(107, 232, 255, 0.18), rgba(255, 89, 208, 0.14)),
@@ -235,13 +237,13 @@ select:focus {
 
 .column-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.82rem;
   letter-spacing: 0.04em;
 }
 
 .column-count {
   color: var(--text-sub);
-  font-size: 0.8rem;
+  font-size: 0.66rem;
 }
 
 .column-cards {
@@ -254,7 +256,7 @@ select:focus {
 .task-card {
   position: relative;
   overflow: hidden;
-  padding: 14px 40px 14px 14px;
+  padding: 10px 32px 10px 10px;
   border: 1px solid rgba(107, 232, 255, 0.22);
   border-radius: 16px;
   background:
@@ -288,6 +290,7 @@ select:focus {
 .card-text {
   position: relative;
   margin: 0;
+  font-size: 0.76rem;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -295,15 +298,15 @@ select:focus {
 
 .delete-button {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 26px;
-  height: 26px;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
   border: 0;
   border-radius: 50%;
   background: rgba(255, 118, 139, 0.12);
   color: var(--text-main);
-  font-size: 1rem;
+  font-size: 0.84rem;
   cursor: pointer;
 }
 
@@ -317,7 +320,7 @@ select:focus {
   border: 1px dashed rgba(145, 169, 191, 0.24);
   border-radius: 14px;
   color: var(--text-sub);
-  font-size: 0.88rem;
+  font-size: 0.72rem;
   text-align: center;
 }
 
