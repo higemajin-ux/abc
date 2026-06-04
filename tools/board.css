@@ -100,6 +100,13 @@ h1 {
   align-items: end;
 }
 
+.tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -117,7 +124,7 @@ h1 {
 
 textarea,
 select,
-.add-button {
+.action-button {
   border-radius: 14px;
   border: 1px solid rgba(107, 232, 255, 0.22);
   background: rgba(7, 11, 22, 0.9);
@@ -143,7 +150,7 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(107, 232, 255, 0.14);
 }
 
-.add-button {
+.action-button {
   min-height: 48px;
   padding: 0 16px;
   font-weight: 700;
@@ -155,10 +162,36 @@ select:focus {
   transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.add-button:hover {
+.action-button:hover {
   transform: translateY(-1px);
   border-color: rgba(190, 253, 99, 0.45);
   box-shadow: 0 0 24px rgba(107, 232, 255, 0.12);
+}
+
+.action-button-primary {
+  background:
+    linear-gradient(135deg, rgba(107, 232, 255, 0.18), rgba(255, 89, 208, 0.14)),
+    rgba(10, 15, 28, 0.95);
+}
+
+.message-strip {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(107, 232, 255, 0.24);
+  border-radius: 14px;
+  background: rgba(7, 11, 22, 0.82);
+  color: var(--text-sub);
+  font-size: 0.9rem;
+}
+
+.message-strip.is-success {
+  color: var(--accent-lime);
+  border-color: rgba(190, 253, 99, 0.35);
+}
+
+.message-strip.is-error {
+  color: var(--danger);
+  border-color: rgba(255, 118, 139, 0.36);
 }
 
 .board-shell {
@@ -293,8 +326,12 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
-  .add-button {
+  .action-button {
     width: 100%;
+  }
+
+  .tool-row {
+    flex-direction: column;
   }
 }
 

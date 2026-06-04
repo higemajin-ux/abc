@@ -10,23 +10,44 @@ const COLUMNS = [
   { id: "hold", title: "保留" },
 ];
 
+const INITIAL_CARDS = [
+  { text: "税理士CSV：入力フォーム作成", columnId: "next" },
+  { text: "税理士CSV：CSVダウンロード機能", columnId: "next" },
+  { text: "税理士CSV：OCRテキスト貼り付け欄", columnId: "idea" },
+  { text: "付箋ボード：JSONエクスポート追加", columnId: "urgent" },
+  { text: "派遣ギルド：敵・エリア追加", columnId: "hold" },
+  { text: "派遣ギルド：状態異常追加", columnId: "hold" },
+  { text: "派遣ギルド：6人PT化", columnId: "hold" },
+];
+
 const boardElement = document.getElementById("board-columns");
 const formElement = document.getElementById("card-form");
 const cardTextElement = document.getElementById("card-text");
 const cardColumnElement = document.getElementById("card-column");
 const saveIndicatorElement = document.getElementById("save-indicator");
+const messageStripElement = document.getElementById("message-strip");
+const seedButtonElement = document.getElementById("seed-button");
+const exportButtonElement = document.getElementById("export-button");
+const importButtonElement = document.getElementById("import-button");
+const importFileElement = document.getElementById("import-file");
 const cardTemplate = document.getElementById("card-template");
 
 let boardState = loadState();
 let draggedCardId = null;
 let saveStatusTimer = null;
+let messageTimer = null;
 
 initialize();
 
 function initialize() {
   populateColumnSelect();
   renderBoard();
+
   formElement.addEventListener("submit", handleCreateCard);
+  seedButtonElement.addEventListener("click", handleSeedCards);
+  exportButtonElement.addEventListener("click", handleExport);
+  importButtonElement.addEventListener("click", () => importFileElement.click());
+  importFileElement.addEventListener("change", handleImport);
 }
 
 function populateColumnSelect() {
@@ -47,28 +68,67 @@ function createEmptyState() {
   }, {});
 }
 
+function createSeedState() {
+  const seeded = createEmptyState();
+
+  INITIAL_CARDS.forEach((card) => {
+    if (!seeded[card.columnId]) {
+      return;
+    }
+
+    seeded[card.columnId].push({
+      id: createCardId(),
+      text: card.text,
+    });
+  });
+
+  return seeded;
+}
+
+function normalizeState(source) {
+  const normalized = createEmptyState();
+
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    throw new Error("Board data must be an object.");
+  }
+
+  COLUMNS.forEach((column) => {
+    const cards = Array.isArray(source[column.id]) ? source[column.id] : [];
+
+    normalized[column.id] = cards.map((card) => {
+      if (!card || typeof card !== "object") {
+        throw new Error(`Invalid card in column "${column.id}".`);
+      }
+
+      const text = typeof card.text === "string" ? card.text.trim() : "";
+
+      if (!text) {
+        throw new Error(`Card text is missing in column "${column.id}".`);
+      }
+
+      return {
+        id: typeof card.id === "string" && card.id ? card.id : createCardId(),
+        text,
+      };
+    });
+  });
+
+  return normalized;
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
 
     if (!raw) {
-      return createEmptyState();
+      return createSeedState();
     }
 
-    const parsed = JSON.parse(raw);
-    const normalized = createEmptyState();
-
-    COLUMNS.forEach((column) => {
-      const cards = Array.isArray(parsed[column.id]) ? parsed[column.id] : [];
-      normalized[column.id] = cards
-        .filter((card) => card && typeof card.id === "string" && typeof card.text === "string")
-        .map((card) => ({ id: card.id, text: card.text }));
-    });
-
-    return normalized;
+    return normalizeState(JSON.parse(raw));
   } catch (error) {
     setSaveStatus("Storage load error", "error");
-    return createEmptyState();
+    showMessage("保存データの読込に失敗したため、初期カードを表示しました。", "error");
+    return createSeedState();
   }
 }
 
@@ -79,6 +139,7 @@ function saveState() {
     setSaveStatus("Saved", "saved");
   } catch (error) {
     setSaveStatus("Save failed", "error");
+    showMessage("localStorage への保存に失敗しました。", "error");
   }
 }
 
@@ -106,6 +167,28 @@ function setSaveStatus(message, status) {
   }
 }
 
+function showMessage(message, type = "info") {
+  messageStripElement.hidden = false;
+  messageStripElement.textContent = message;
+  messageStripElement.classList.remove("is-error", "is-success");
+
+  if (type === "error") {
+    messageStripElement.classList.add("is-error");
+  }
+
+  if (type === "success") {
+    messageStripElement.classList.add("is-success");
+  }
+
+  if (messageTimer) {
+    window.clearTimeout(messageTimer);
+  }
+
+  messageTimer = window.setTimeout(() => {
+    messageStripElement.hidden = true;
+  }, 3000);
+}
+
 function handleCreateCard(event) {
   event.preventDefault();
 
@@ -125,6 +208,67 @@ function handleCreateCard(event) {
   saveState();
   renderBoard();
   cardTextElement.focus();
+}
+
+function handleSeedCards() {
+  const seeded = createSeedState();
+
+  COLUMNS.forEach((column) => {
+    boardState[column.id] = [...seeded[column.id], ...boardState[column.id]];
+  });
+
+  saveState();
+  renderBoard();
+  showMessage("初期カードを現在のボードへ追加しました。", "success");
+}
+
+function handleExport() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    columns: COLUMNS,
+    board: boardState,
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+
+  link.href = url;
+  link.download = `command-board-${stamp}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+
+  showMessage("現在のボードを JSON として書き出しました。", "success");
+}
+
+async function handleImport(event) {
+  const [file] = event.target.files;
+  event.target.value = "";
+
+  if (!file) {
+    return;
+  }
+
+  if (!window.confirm("現在のボードを上書きしますか？")) {
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const nextState = normalizeState(parsed.board ?? parsed);
+
+    boardState = nextState;
+    saveState();
+    renderBoard();
+    showMessage("JSON からボードを読み込みました。", "success");
+  } catch (error) {
+    setSaveStatus("Import error", "error");
+    showMessage("JSON形式が不正です。読込できませんでした。", "error");
+  }
 }
 
 function createCardId() {
@@ -206,10 +350,6 @@ function renderBoard() {
       columnElement.classList.remove("is-drop-target");
       moveCard(draggedCardId, column.id);
       draggedCardId = null;
-    });
-
-    cardsElement.addEventListener("dragend", () => {
-      columnElement.classList.remove("is-drop-target");
     });
 
     if (boardState[column.id].length === 0) {

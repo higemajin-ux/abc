@@ -16,7 +16,7 @@
       <div class="save-indicator" id="save-indicator" aria-live="polite">Saved</div>
     </header>
 
-    <section class="composer-panel" aria-label="カード追加">
+    <section class="composer-panel" aria-label="カード追加と管理">
       <form id="card-form" class="composer-form">
         <label class="field field-grow">
           <span>新しいカード</span>
@@ -35,8 +35,17 @@
           <select id="card-column" name="cardColumn"></select>
         </label>
 
-        <button type="submit" class="add-button">ADD CARD</button>
+        <button type="submit" class="action-button action-button-primary">ADD CARD</button>
       </form>
+
+      <div class="tool-row" aria-label="ボード操作">
+        <button type="button" class="action-button" id="seed-button">初期カードを追加</button>
+        <button type="button" class="action-button" id="export-button">Export</button>
+        <button type="button" class="action-button" id="import-button">Import</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
+
+      <p class="message-strip" id="message-strip" aria-live="polite" hidden></p>
     </section>
 
     <main class="board-shell">
