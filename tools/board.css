@@ -203,7 +203,7 @@ select:focus {
 
 .board-columns {
   display: grid;
-  grid-template-columns: repeat(7, minmax(var(--column-width), var(--column-width)));
+  grid-template-columns: repeat(6, minmax(var(--column-width), var(--column-width)));
   gap: 10px;
   align-items: start;
   min-width: max-content;

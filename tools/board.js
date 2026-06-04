@@ -5,10 +5,13 @@ const COLUMNS = [
   { id: "urgent", title: "至急" },
   { id: "next", title: "次やる" },
   { id: "doing", title: "作業中" },
-  { id: "review", title: "確認待ち" },
   { id: "done", title: "完了" },
   { id: "hold", title: "保留" },
 ];
+
+const LEGACY_COLUMN_MIGRATIONS = {
+  review: "next",
+};
 
 const INITIAL_CARDS = [
   { text: "税理士CSV：入力フォーム作成", columnId: "next" },
@@ -111,6 +114,33 @@ function normalizeState(source) {
         text,
       };
     });
+  });
+
+  Object.entries(LEGACY_COLUMN_MIGRATIONS).forEach(([legacyColumnId, targetColumnId]) => {
+    const legacyCards = Array.isArray(source[legacyColumnId]) ? source[legacyColumnId] : [];
+
+    if (!legacyCards.length || !normalized[targetColumnId]) {
+      return;
+    }
+
+    const migratedCards = legacyCards.map((card) => {
+      if (!card || typeof card !== "object") {
+        throw new Error(`Invalid card in column "${legacyColumnId}".`);
+      }
+
+      const text = typeof card.text === "string" ? card.text.trim() : "";
+
+      if (!text) {
+        throw new Error(`Card text is missing in column "${legacyColumnId}".`);
+      }
+
+      return {
+        id: typeof card.id === "string" && card.id ? card.id : createCardId(),
+        text,
+      };
+    });
+
+    normalized[targetColumnId] = [...migratedCards, ...normalized[targetColumnId]];
   });
 
   return normalized;
