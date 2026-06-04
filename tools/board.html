@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COMMAND BOARD</title>
+  <link rel="stylesheet" href="./board.css">
+</head>
+<body>
+  <div class="board-app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Personal Development Console</p>
+        <h1>COMMAND BOARD</h1>
+      </div>
+      <div class="save-indicator" id="save-indicator" aria-live="polite">Saved</div>
+    </header>
+
+    <section class="composer-panel" aria-label="カード追加">
+      <form id="card-form" class="composer-form">
+        <label class="field field-grow">
+          <span>新しいカード</span>
+          <textarea
+            id="card-text"
+            name="cardText"
+            rows="3"
+            maxlength="200"
+            placeholder="やること、メモ、確認したいことを書いてください"
+            required
+          ></textarea>
+        </label>
+
+        <label class="field">
+          <span>追加先</span>
+          <select id="card-column" name="cardColumn"></select>
+        </label>
+
+        <button type="submit" class="add-button">ADD CARD</button>
+      </form>
+    </section>
+
+    <main class="board-shell">
+      <section id="board-columns" class="board-columns" aria-label="タスクボード"></section>
+    </main>
+  </div>
+
+  <template id="card-template">
+    <article class="task-card" draggable="true">
+      <div class="card-glow"></div>
+      <p class="card-text"></p>
+      <button type="button" class="delete-button" aria-label="カードを削除">×</button>
+    </article>
+  </template>
+
+  <script src="./board.js"></script>
+</body>
+</html>

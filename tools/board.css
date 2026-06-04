@@ -1,0 +1,314 @@
+:root {
+  --bg-main: #060813;
+  --bg-panel: rgba(14, 20, 40, 0.88);
+  --bg-panel-strong: rgba(10, 16, 32, 0.96);
+  --line-soft: rgba(110, 221, 255, 0.18);
+  --line-strong: rgba(110, 221, 255, 0.45);
+  --text-main: #ecf7ff;
+  --text-sub: #91a9bf;
+  --accent-cyan: #6be8ff;
+  --accent-magenta: #ff59d0;
+  --accent-lime: #befd63;
+  --danger: #ff768b;
+  --shadow-deep: 0 20px 60px rgba(0, 0, 0, 0.45);
+  --column-width: 280px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at top left, rgba(255, 89, 208, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(107, 232, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, #0a1024 0%, #05070e 52%, #04050a 100%);
+}
+
+body {
+  min-height: 100vh;
+}
+
+.board-app {
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent-cyan);
+  letter-spacing: 0.16em;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.save-indicator {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: rgba(7, 12, 24, 0.8);
+  box-shadow: inset 0 0 24px rgba(107, 232, 255, 0.05);
+  color: var(--text-sub);
+  font-size: 0.85rem;
+}
+
+.save-indicator.is-saving {
+  color: var(--accent-cyan);
+  border-color: rgba(107, 232, 255, 0.38);
+}
+
+.save-indicator.is-error {
+  color: var(--danger);
+  border-color: rgba(255, 118, 139, 0.45);
+}
+
+.composer-panel {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(10, 18, 34, 0.96), rgba(8, 12, 24, 0.88));
+  box-shadow: var(--shadow-deep);
+}
+
+.composer-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 200px 140px;
+  gap: 14px;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field span {
+  color: var(--text-sub);
+  font-size: 0.84rem;
+}
+
+.field-grow {
+  min-width: 0;
+}
+
+textarea,
+select,
+.add-button {
+  border-radius: 14px;
+  border: 1px solid rgba(107, 232, 255, 0.22);
+  background: rgba(7, 11, 22, 0.9);
+  color: var(--text-main);
+  font: inherit;
+}
+
+textarea,
+select {
+  width: 100%;
+  padding: 12px 14px;
+  outline: none;
+}
+
+textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+textarea:focus,
+select:focus {
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 3px rgba(107, 232, 255, 0.14);
+}
+
+.add-button {
+  min-height: 48px;
+  padding: 0 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  background:
+    linear-gradient(135deg, rgba(107, 232, 255, 0.18), rgba(255, 89, 208, 0.14)),
+    rgba(10, 15, 28, 0.95);
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.add-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(190, 253, 99, 0.45);
+  box-shadow: 0 0 24px rgba(107, 232, 255, 0.12);
+}
+
+.board-shell {
+  overflow-x: auto;
+  padding-bottom: 14px;
+}
+
+.board-columns {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(var(--column-width), var(--column-width)));
+  gap: 16px;
+  align-items: start;
+  min-width: max-content;
+}
+
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 420px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(14, 20, 40, 0.96), rgba(8, 12, 24, 0.92)),
+    var(--bg-panel);
+  box-shadow: var(--shadow-deep);
+}
+
+.board-column.is-drop-target {
+  border-color: rgba(190, 253, 99, 0.54);
+  box-shadow: 0 0 0 1px rgba(190, 253, 99, 0.32), var(--shadow-deep);
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.column-title {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.column-count {
+  color: var(--text-sub);
+  font-size: 0.8rem;
+}
+
+.column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 300px;
+}
+
+.task-card {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 40px 14px 14px;
+  border: 1px solid rgba(107, 232, 255, 0.22);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(20, 31, 54, 0.96), rgba(12, 18, 34, 0.92)),
+    var(--bg-panel-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(107, 232, 255, 0.03),
+    0 10px 24px rgba(0, 0, 0, 0.24);
+  cursor: grab;
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card.is-dragging {
+  opacity: 0.45;
+}
+
+.card-glow {
+  position: absolute;
+  inset: -25% auto auto -10%;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107, 232, 255, 0.2), transparent 62%);
+  pointer-events: none;
+}
+
+.card-text {
+  position: relative;
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.delete-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 118, 139, 0.12);
+  color: var(--text-main);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.delete-button:hover {
+  background: rgba(255, 118, 139, 0.24);
+}
+
+.empty-note {
+  margin: 4px 0 0;
+  padding: 12px;
+  border: 1px dashed rgba(145, 169, 191, 0.24);
+  border-radius: 14px;
+  color: var(--text-sub);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .composer-form {
+    grid-template-columns: 1fr;
+  }
+
+  .add-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .board-app {
+    padding: 16px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .save-indicator {
+    align-self: flex-start;
+  }
+}
