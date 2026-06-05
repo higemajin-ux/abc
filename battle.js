@@ -1586,7 +1586,7 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     return;
   }
 
-  if (enemy.special === "leapStrikeLite" && Math.random() < 0.25) {
+  if (enemy.special === "leapStrikeLite" && Math.random() < 0.5) {
     const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * 1.25));
     const cover = maybeCoverTarget(party, target, predictedDamage);
     target = cover.target;
