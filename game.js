@@ -2428,7 +2428,7 @@ function areaOptions(party, selected) {
     const a = AREAS[id];
     const unlocked = isAreaUnlocked(id);
     const actualDurationMs = missionDurationMs(a, party);
-    const label = unlocked ? `${a.name}（${formatMissionDurationLabel(actualDurationMs)}）` : `${a.name}（${getUnlockHint(id)}）`;
+    const label = unlocked ? `${a.name}（${formatMissionDurationLabel(actualDurationMs)}）` : a.name;
     return `<option value="${id}" ${id === selected ? "selected" : ""} ${unlocked ? "" : "disabled"}>${label}</option>`;
   }).join("");
 }

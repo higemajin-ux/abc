@@ -1196,6 +1196,10 @@ h1 {
   padding: 9px 10px;
 }
 
+.area-select option:disabled {
+  color: #8d8376;
+}
+
 .area-detail-btn {
   width: 100%;
   margin-top: 8px;
