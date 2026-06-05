@@ -219,7 +219,7 @@ const EQUIPMENT_DROPS = [
   { id: "crackedRing", name: "ひび割れた指輪", slot: "accessory", rarity: "uncommon", dex: 1, sellGold: 9 },
   { id: "silverBuckle", name: "銀留めの帯具", slot: "accessory", rarity: "rare", def: 1, luc: 1, sellGold: 28 },
   { id: "emberPendant", name: "燠火の首飾り", slot: "accessory", rarity: "epic", atk: 2, luc: 1, sellGold: 70, flavor: "火は消えている。それでも、胸元だけが夜に温かい。" },
-  { id: "saintFragment", name: "聖片の護符", slot: "accessory", rarity: "legendary", maxHp: 4, luc: 2, sellGold: 180, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"], flavor: "聖者の名は欠けて読めない。祈りの跡だけが指に残る。" },
+  { id: "saintFragment", name: "聖片の護符", slot: "accessory", rarity: "legendary", maxHp: 4, luc: 2, sellGold: 180, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"], flavor: "聖者の名は欠けて読めない。祈りの跡だけが指に残る。" },
   { id: "ashGrimoire", name: "灰の魔導書", slot: "accessory", rarity: "artifact", sellGold: 260, flavor: "焼け落ちた塔の地下で見つかった。頁の灰は、今も指に残る。" },
   { id: "namelessSignet", name: "名も無き聖印", slot: "accessory", rarity: "artifact", sellGold: 280, flavor: "祈りの名は削られている。それでも、誰かはこれを握っていた。" },
   { id: "blackKingRing", name: "黒王の指輪", slot: "accessory", rarity: "artifact", sellGold: 320, flavor: "王が消えた後も、指輪だけは玉座に残っていた。" },
@@ -227,7 +227,7 @@ const EQUIPMENT_DROPS = [
 
 { id: "mercenarySword", name: "傭兵の剣", slot: "weapon", rarity: "uncommon", atk: 4, dex: 1, sellGold: 24 },
 
-{ id: "smolderingDagger", name: "燻る短剣", slot: "weapon", rarity: "uncommon", atk: 3, luc: 1, sellGold: 25, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"] },
+{ id: "smolderingDagger", name: "燻る短剣", slot: "weapon", rarity: "uncommon", atk: 3, luc: 1, sellGold: 25, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"] },
 
 { id: "blackIronSword", name: "黒鉄の剣", slot: "weapon", rarity: "rare", atk: 6, def: 1, sellGold: 55 },
 
@@ -235,7 +235,7 @@ const EQUIPMENT_DROPS = [
 
 { id: "emberRemnantBlade", name: "名残火の刃", slot: "weapon", rarity: "epic", atk: 8, maxHp: -3, sellGold: 120, flavor: "刃の奥に、まだ赤いものが眠っている。長く握ると脈が乱れる。" },
 
-{ id: "gravekeeperGreatsword", name: "墓守の大剣", slot: "weapon", rarity: "legendary", atk: 10, def: 2, dex: -1, sellGold: 220, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"], flavor: "墓標の列より重い。抜くたび、土の匂いが濃くなる。" },
+{ id: "gravekeeperGreatsword", name: "墓守の大剣", slot: "weapon", rarity: "legendary", atk: 10, def: 2, dex: -1, sellGold: 220, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"], flavor: "墓標の列より重い。抜くたび、土の匂いが濃くなる。" },
 
 { id: "patchedCloak", name: "継ぎ布の外套", slot: "armor", rarity: "common", def: 1, maxHp: 2, sellGold: 10 },
 
@@ -243,17 +243,17 @@ const EQUIPMENT_DROPS = [
 
 { id: "oldBreastplate", name: "古い胸当て", slot: "armor", rarity: "rare", def: 5, maxHp: 4, dex: -1, sellGold: 65 },
 
-{ id: "sootRobe", name: "煤けた法衣", slot: "armor", rarity: "rare", def: 3, luc: 3, sellGold: 60, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"] },
+{ id: "sootRobe", name: "煤けた法衣", slot: "armor", rarity: "rare", def: 3, luc: 3, sellGold: 60, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"] },
 
-{ id: "fallenKingMail", name: "亡国の鎖帷子", slot: "armor", rarity: "epic", def: 7, maxHp: 6, sellGold: 130, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"], flavor: "内側に古い血の輪が残る。旗印は、誰も覚えていない。" },
+{ id: "fallenKingMail", name: "亡国の鎖帷子", slot: "armor", rarity: "epic", def: 7, maxHp: 6, sellGold: 130, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"], flavor: "内側に古い血の輪が残る。旗印は、誰も覚えていない。" },
 
-{ id: "ashKingCloak", name: "灰王の外套", slot: "armor", rarity: "legendary", def: 6, maxHp: 10, luc: 2, sellGold: 240, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"], flavor: "灰は払っても戻ってくる。肩に掛けると、遠い戴冠の声がする。" },
+{ id: "ashKingCloak", name: "灰王の外套", slot: "armor", rarity: "legendary", def: 6, maxHp: 10, luc: 2, sellGold: 240, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"], flavor: "灰は払っても戻ってくる。肩に掛けると、遠い戴冠の声がする。" },
 
-{ id: "dryHolyMark", name: "乾いた聖印", slot: "accessory", rarity: "common", luc: 1, sellGold: 10, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"] },
+{ id: "dryHolyMark", name: "乾いた聖印", slot: "accessory", rarity: "common", luc: 1, sellGold: 10, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"] },
 
-{ id: "rustedEarring", name: "赤錆の耳飾り", slot: "accessory", rarity: "uncommon", dex: 1, luc: 1, sellGold: 20, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"] },
+{ id: "rustedEarring", name: "赤錆の耳飾り", slot: "accessory", rarity: "uncommon", dex: 1, luc: 1, sellGold: 20, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"] },
 
-{ id: "pilgrimShoes", name: "巡礼者の靴", slot: "accessory", rarity: "uncommon", dex: 2, sellGold: 24, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "bogLeech", "marshMaw"] },
+{ id: "pilgrimShoes", name: "巡礼者の靴", slot: "accessory", rarity: "uncommon", dex: 2, sellGold: 24, dropAreas: ["swamp"], dropEnemies: ["mudSlime", "mudFrog", "reedLizard", "waterHand", "mudToad"] },
 
 { id: "thiefGloves", name: "盗賊の手袋", slot: "accessory", rarity: "rare", dex: 3, luc: 1, sellGold: 60 },
   { id: "blackPage", name: "黒い頁", slot: "relic", rarity: "epic", luc: 2, sellGold: 140, flavor: "文字は光を吸って読めない。閉じても、頁をめくる音がする。" },
@@ -569,9 +569,9 @@ const AREAS = {
     durationMs: 5000,
     difficulty: 3,
     baseAtk: 11,
-    monsters: ["mudSlime", "bogLeech"],
+    monsters: ["mudSlime", "mudFrog", "reedLizard", "waterHand"],
     normalEncounterGroupWeights: { 1: 55, 2: 30, 3: 15 },
-    boss: "marshMaw",
+    boss: "mudToad",
     unlockAfter: "beastTerritory",
     flavor: ["腐った桟橋が水面に沈みかけ、隊列は一歩ずつ進んだ。", "泥の泡が弾けるたび、古い杭が小さく揺れた。"],
   },
@@ -582,7 +582,7 @@ const AREAS = {
     recommendedLevel: 7,
     difficulty: 3,
     baseAtk: 11,
-    monsters: ["mudSlime"],
+    monsters: ["mudSlime", "mudFrog"],
     normalEncounterGroupWeights: { 1: 80, 2: 20 },
     unlockAfter: "beastTerritory",
     description: "沈みかけた古い桟橋が残る湿地の入口。足元の水は浅いが、視界は悪い。",
@@ -595,7 +595,7 @@ const AREAS = {
     recommendedLevel: 8,
     difficulty: 3,
     baseAtk: 11,
-    monsters: ["mudSlime", "bogLeech"],
+    monsters: ["mudSlime", "mudFrog", "reedLizard"],
     normalEncounterGroupWeights: { 1: 65, 2: 25, 3: 10 },
     unlockAfter: "sunkenPier",
     description: "背の高い葦が水路を覆っている。小隊ごとに、通った道の記録が少しずつ食い違う。",
@@ -608,9 +608,9 @@ const AREAS = {
     recommendedLevel: 9,
     difficulty: 3,
     baseAtk: 11,
-    monsters: ["mudSlime", "bogLeech"],
+    monsters: ["mudSlime", "mudFrog", "reedLizard", "waterHand"],
     normalEncounterGroupWeights: { 1: 55, 2: 30, 3: 15 },
-    boss: "marshMaw",
+    boss: "mudToad",
     unlockAfter: "reedWaterway",
     description: "黒く淀んだ水が広がる沼の奥。水面の下に、何かが沈んでいる。",
     flavor: ["黒く淀んだ水面が広がり、奥ほど足元が読めない。", "泡の途切れた場所だけが、不自然に静かだった。"],
@@ -1068,7 +1068,11 @@ const MONSTERS = {
   wolf: { id: "wolf", name: "ウルフ", hp: 30, atk: 9, xp: 15, gold: 13, drops: ["patchedCloak", "travelerCloak", "travelerShoes"] },
   mossMage: { id: "mossMage", name: "モスメイジ", hp: 26, atk: 11, xp: 18, gold: 16, rare: true, special: "curseTouch", traitsText: "低確率で呪いを付与する。", drops: ["oldCharm", "emberPendant", "travelerCloak", "travelerShoes"] },
   forestWarden: { id: "forestWarden", name: "森の番獣", hp: 62, atk: 14, xp: 46, gold: 52, rare: true, boss: true, drops: ["blackLeatherArmor"] },
-  mudSlime: { id: "mudSlime", name: "沼泥スライム", hp: 36, atk: 12, xp: 24, gold: 20 },
+  mudSlime: { id: "mudSlime", name: "マッドスライム", hp: 34, atk: 11, xp: 22, gold: 18, drops: ["dryHolyMark", "rustedEarring"] },
+  mudFrog: { id: "mudFrog", name: "マッドフロッグ", hp: 32, atk: 12, xp: 24, gold: 20, drops: ["dryHolyMark", "pilgrimShoes"] },
+  reedLizard: { id: "reedLizard", name: "リードリザード", hp: 40, atk: 14, xp: 30, gold: 26, drops: ["rustedEarring", "smolderingDagger", "sootRobe"] },
+  waterHand: { id: "waterHand", name: "水底の手", hp: 48, atk: 16, xp: 38, gold: 34, rare: true, drops: ["pilgrimShoes", "saintFragment", "gravekeeperGreatsword"] },
+  mudToad: { id: "mudToad", name: "マッドトード", hp: 82, atk: 18, xp: 66, gold: 78, rare: true, boss: true, drops: ["saintFragment", "fallenKingMail", "ashKingCloak"] },
   bogLeech: { id: "bogLeech", name: "沼大蛭", hp: 42, atk: 13, xp: 28, gold: 24 },
   marshMaw: { id: "marshMaw", name: "沼の大口", hp: 78, atk: 17, xp: 62, gold: 70, rare: true, boss: true },
   skeleton: { id: "skeleton", name: "スケルトン", hp: 38, atk: 12, xp: 24, gold: 20, drops: ["rustyAxe"] },
