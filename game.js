@@ -686,23 +686,9 @@ function gainEquipmentResearch(itemOrId, amount = 1, target = state) {
   return nextValue;
 }
 
-function equipmentResearchExtractionRate(itemOrId, target = state) {
-  const progress = equipmentResearchProgress(itemOrId, target);
-  return Math.min(100, Math.max(0, Math.round(30 + progress * 0.7)));
-}
-
-function shouldGrantBonusDismantleFragments(itemOrId, target = state, randomValue = Math.random()) {
-  const rate = equipmentResearchExtractionRate(itemOrId, target);
-  if (rate >= 100) return true;
-  if (rate <= 0) return false;
-  const roll = Math.max(0, Math.min(0.999999999, Number(randomValue)));
-  return roll * 100 < rate;
-}
-
 function equipmentResearchStorageHtml(item) {
   const progress = equipmentResearchProgress(item);
-  const extractionRate = equipmentResearchExtractionRate(item);
-  return `<div class="records-effect">研究進捗：${progress}%</div><div class="records-effect">追加抽出率：${extractionRate}%</div>`;
+  return `<div class="records-effect">研究進捗：${progress}%</div>`;
 }
 
 function setStorageResultMessage(message = "", detailMessage = "") {
@@ -3195,14 +3181,7 @@ function dismantleStorageEquipmentByUid(uid, target = state) {
   if (!fragments.length) {
     return { ok: false, reason: "no_fragments" };
   }
-  const bonusGranted = shouldGrantBonusDismantleFragments(entry.item, target);
-  const awardedFragments = bonusGranted
-    ? mergeOptionFragmentPreviews([
-        ...fragments,
-        ...fragments.map((fragment) => ({ ...fragment })),
-      ])
-    : fragments;
-  addOptionFragmentsFromPreview(awardedFragments, target);
+  addOptionFragmentsFromPreview(fragments, target);
   target.storage.splice(entry.storageIndex, 1);
   if (target === state) {
     if (selectedStorageFusionTargetUid === String(uid)) selectedStorageFusionTargetUid = null;
@@ -3212,18 +3191,17 @@ function dismantleStorageEquipmentByUid(uid, target = state) {
   return {
     ok: true,
     itemName: equipmentDisplayName(entry.item),
-    fragments: awardedFragments,
-    bonusGranted,
+    fragments,
   };
 }
 
 function dismantleConfirmMessage(uid) {
   const entry = storageStateEntryByUid(uid);
-  if (!entry?.item) return "この装備を分解しますか？\n装備は失われ、OPかけらを得ます。\n研究進捗により追加抽出率が変動します";
+  if (!entry?.item) return "この装備を分解しますか？\n装備は失われ、OPかけらを得ます。";
   const preview = dismantlePreviewForStorageEquipmentByUid(uid);
   const lines = preview.map(optionFragmentPreviewLine).filter(Boolean);
   const previewText = lines.length ? `\n最低保証：\n${lines.join("\n")}` : "";
-  return `${equipmentDisplayName(entry.item)}を分解しますか？\n装備は失われ、OPかけらを得ます。\n研究進捗により追加抽出率が変動します${previewText}`;
+  return `${equipmentDisplayName(entry.item)}を分解しますか？\n装備は失われ、OPかけらを得ます。${previewText}`;
 }
 
 function handleStorageItemDismantle(uid) {
@@ -3263,7 +3241,7 @@ function dismantleSelectedStorageItems() {
 
   const preview = mergeOptionFragmentPreviews(entries.flatMap(({ uid }) => dismantlePreviewForStorageEquipmentByUid(uid)));
   const previewText = preview.map(optionFragmentPreviewLine).filter(Boolean).join("\n");
-  const confirmMessage = `${entries.length}件を分解しますか？\n装備は失われ、OPかけらを得ます。\n研究進捗により追加抽出率が変動します${previewText ? `\n\n最低保証：\n${previewText}` : ""}`;
+  const confirmMessage = `${entries.length}件を分解しますか？\n装備は失われ、OPかけらを得ます。${previewText ? `\n\n最低保証：\n${previewText}` : ""}`;
   openStorageDismantleConfirm({
     mode: "multi",
     uids: entries.map(({ uid }) => String(uid)),
@@ -3668,7 +3646,7 @@ function bulkDismantleOptionCategoryConfirmMessage(category) {
     (Array.isArray(category.uids) ? category.uids : []).flatMap((uid) => dismantlePreviewForStorageEquipmentByUid(uid))
   );
   const previewText = preview.map(optionFragmentPreviewLine).filter(Boolean).join("\n");
-  return `${bulkDismantleOptionCategoryLabel(category.key)}装備 ${category.count}件を分解しますか？\n\n装備は失われ、OPかけらを得ます。\n研究進捗により追加抽出率が変動します。${previewText ? `\n\n最低保証：\n${previewText}` : ""}`;
+  return `${bulkDismantleOptionCategoryLabel(category.key)}装備 ${category.count}件を分解しますか？\n\n装備は失われ、OPかけらを得ます。${previewText ? `\n\n最低保証：\n${previewText}` : ""}`;
 }
 
 function openStorageBulkDismantleCategoryModal(visibleEntries) {

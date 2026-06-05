@@ -1453,9 +1453,12 @@ function rarityClassName(rarity) {
 function equipmentSellGoldValue(item) {
   const baseSellGold = Math.max(0, Number(item?.sellGold) || 0);
   const plus = Math.max(0, Number(item?.plus) || 0);
-  if (plus <= 0) return baseSellGold;
-  const plusBonus = Math.max(plus, Math.floor(baseSellGold * 0.1 * plus));
-  return baseSellGold + plusBonus;
+  const plusBonus = plus <= 0 ? 0 : Math.max(plus, Math.floor(baseSellGold * 0.1 * plus));
+  const subtotal = baseSellGold + plusBonus;
+  const researchProgress = typeof equipmentResearchProgress === "function" ? equipmentResearchProgress(item) : 0;
+  const researchBonusRate = Math.max(0, Math.min(10, Math.floor(researchProgress / 10)));
+  const researchBonus = Math.floor(subtotal * (researchBonusRate / 100));
+  return subtotal + researchBonus;
 }
 
 function shouldAutoSellDrop(item) {
