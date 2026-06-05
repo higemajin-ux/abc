@@ -950,8 +950,28 @@ function ensureValidSelectedArea(party) {
   }
 }
 
+const LEGACY_AREA_STAGE_MAP = {
+  swamp: ["sunkenPier", "reedWaterway", "blackwaterPool"],
+  ruins: ["outerGarden", "crackedCorridor", "sealedBelfry"],
+  canyon: ["windCutPass", "cliffPath", "redMoonWatch"],
+  glacier: ["frostMarker", "icefield", "fangDrift"],
+};
+
+function syncLegacyAreaClears(target = state) {
+  if (!target.areaClears || typeof target.areaClears !== "object") target.areaClears = {};
+  Object.entries(LEGACY_AREA_STAGE_MAP).forEach(([legacyId, stageIds]) => {
+    const legacyClears = Math.max(0, Number(target.areaClears?.[legacyId]) || 0);
+    if (!legacyClears) return;
+    stageIds.forEach((stageId) => {
+      target.areaClears[stageId] = Math.max(legacyClears, Math.max(0, Number(target.areaClears?.[stageId]) || 0));
+    });
+  });
+  return target.areaClears;
+}
+
 function recordAreaClear(areaId) {
   state.areaClears[areaId] = (state.areaClears[areaId] || 0) + 1;
+  syncLegacyAreaClears();
 }
 
 function shouldBossAppear(area) {
@@ -5142,6 +5162,10 @@ function migrate(data) {
     ensurePartyShape(p);
     if (p.selectedArea === "plain") p.selectedArea = "plainEntrance";
     if (p.selectedArea === "forest") p.selectedArea = "howlingRoad";
+    if (p.selectedArea === "swamp") p.selectedArea = "sunkenPier";
+    if (p.selectedArea === "ruins") p.selectedArea = "outerGarden";
+    if (p.selectedArea === "canyon") p.selectedArea = "windCutPass";
+    if (p.selectedArea === "glacier") p.selectedArea = "frostMarker";
     recordEquippedEquipment(p, data);
     if (p.adventureLog?.length && !p.dispatches.length) {
       p.dispatches.push({
@@ -5171,6 +5195,7 @@ function migrate(data) {
   }
 
   if (!data.areaClears) data.areaClears = {};
+  syncLegacyAreaClears(data);
   return data;
 }
 
