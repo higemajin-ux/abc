@@ -1586,6 +1586,58 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     return;
   }
 
+  if (enemy.special === "leapStrikeLite" && Math.random() < 0.25) {
+    const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * 1.25));
+    const cover = maybeCoverTarget(party, target, predictedDamage);
+    target = cover.target;
+
+    let damage = predictedDamage;
+    if (target.ironWall) {
+      damage = Math.max(1, Math.floor(damage * 0.25));
+    } else if (target.guard) {
+      damage = Math.max(1, Math.floor(damage * 0.5));
+    }
+    if (target.desperateVulnerable) {
+      damage = Math.max(1, Math.floor(damage * 1.5));
+      target.desperateVulnerable = false;
+    }
+    if (target.magicBarrier) {
+      damage = Math.max(1, Math.floor(damage * 0.5));
+      target.magicBarrier = false;
+    }
+    const beforeHp = target.hp;
+    const canUsePriestBlessing =
+      beforeHp > 0 &&
+      target.job === "priest" &&
+      isSkillEnabled(target, "divineGrace") &&
+      !target.divineGraceUsed &&
+      target.hp > 0;
+    applyDamageToMember(target, damage);
+    events.push({ kind: "enemy-action", text: `${enemy.name}は泥を跳ねて飛びかかった。` });
+    if (cover.coverer) {
+      if (Math.random() < 0.15) {
+        events.push({ kind: "enemy-action", text: `${cover.coverer.name}「下がって！」` });
+      }
+      events.push({ kind: "enemy-action", text: `${cover.coverer.name}が${cover.covered.name}をかばった。` });
+    }
+    if (target.hp <= 0) {
+      events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
+      if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
+        reactToHpDrop(target, beforeHp, events, speechState);
+      } else {
+        pushHp(events, target, "enemy-action down");
+        confirmMemberDown(target, events, speechState);
+      }
+    } else {
+      events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
+      pushHp(events, target);
+      reactToHpDrop(target, beforeHp, events, speechState);
+    }
+    tickEnemyDots(enemy, events);
+    tickEnemyTurnStatuses(enemy);
+    return;
+  }
+
   if (enemy.special === "fireboltLite" && Math.random() < 0.5) {
     const predictedDamage = Math.max(4, Math.floor(damageFor(enemy.atk, target.def) * 1.2));
     const cover = maybeCoverTarget(party, target, predictedDamage);
