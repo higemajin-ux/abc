@@ -1072,7 +1072,7 @@ const MONSTERS = {
   mudFrog: { id: "mudFrog", name: "マッドフロッグ", hp: 32, atk: 12, xp: 24, gold: 20, special: "leapStrikeLite", traitsText: "低く跳ね、足元から飛びかかる。", drops: ["dryHolyMark", "pilgrimShoes"] },
   reedLizard: { id: "reedLizard", name: "リードリザード", hp: 40, atk: 14, xp: 30, gold: 26, targeting: "backlineBias", traitsText: "葦の陰から素早く襲う。", drops: ["rustedEarring", "smolderingDagger", "sootRobe"] },
   waterHand: { id: "waterHand", name: "水底の手", hp: 48, atk: 16, xp: 38, gold: 34, rare: true, special: "dragSlowLite", traitsText: "まれに水底から現れ、獲物の足を引く。", drops: ["pilgrimShoes", "saintFragment", "gravekeeperGreatsword"] },
-  mudToad: { id: "mudToad", name: "マッドトード", hp: 82, atk: 18, xp: 66, gold: 78, rare: true, boss: true, special: "mudSplashLite", traitsText: "黒水の淀みに棲む大ガエル。沼しぶきを放ち、幼生を呼ぶ。", drops: ["saintFragment", "fallenKingMail", "ashKingCloak"] },
+  mudToad: { id: "mudToad", name: "マッドトード", hp: 82, atk: 18, xp: 66, gold: 78, rare: true, boss: true, special: "summonSwampLarva", traitsText: "黒水の淀みに棲む大ガエル。沼の幼生を呼ぶ。", drops: ["saintFragment", "fallenKingMail", "ashKingCloak"] },
   swampLarva: { id: "swampLarva", name: "沼の幼生", hp: 18, atk: 8, xp: 10, gold: 6, traitsText: "マッドトードに呼び寄せられる小さな幼生。", drops: ["dryHolyMark"] },
   bogLeech: { id: "bogLeech", name: "沼大蛭", hp: 42, atk: 13, xp: 28, gold: 24 },
   marshMaw: { id: "marshMaw", name: "沼の大口", hp: 78, atk: 17, xp: 62, gold: 70, rare: true, boss: true },
