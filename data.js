@@ -1071,7 +1071,7 @@ const MONSTERS = {
   mudSlime: { id: "mudSlime", name: "マッドスライム", hp: 34, atk: 11, xp: 22, gold: 18, traitsText: "沼地に潜む泥まじりのスライム。", drops: ["dryHolyMark", "rustedEarring"] },
   mudFrog: { id: "mudFrog", name: "マッドフロッグ", hp: 32, atk: 12, xp: 24, gold: 20, special: "leapStrikeLite", traitsText: "低く跳ね、足元から飛びかかる。", drops: ["dryHolyMark", "pilgrimShoes"] },
   reedLizard: { id: "reedLizard", name: "リードリザード", hp: 40, atk: 14, xp: 30, gold: 26, targeting: "backlineBias", traitsText: "葦の陰から素早く襲う。", drops: ["rustedEarring", "smolderingDagger", "sootRobe"] },
-  waterHand: { id: "waterHand", name: "水底の手", hp: 48, atk: 16, xp: 38, gold: 34, rare: true, traitsText: "まれに水底から現れる。", drops: ["pilgrimShoes", "saintFragment", "gravekeeperGreatsword"] },
+  waterHand: { id: "waterHand", name: "水底の手", hp: 48, atk: 16, xp: 38, gold: 34, rare: true, special: "dragSlowLite", traitsText: "まれに水底から現れ、獲物の足を引く。", drops: ["pilgrimShoes", "saintFragment", "gravekeeperGreatsword"] },
   mudToad: { id: "mudToad", name: "マッドトード", hp: 82, atk: 18, xp: 66, gold: 78, rare: true, boss: true, traitsText: "黒水の淀みに棲む大ガエル。", drops: ["saintFragment", "fallenKingMail", "ashKingCloak"] },
   bogLeech: { id: "bogLeech", name: "沼大蛭", hp: 42, atk: 13, xp: 28, gold: 24 },
   marshMaw: { id: "marshMaw", name: "沼の大口", hp: 78, atk: 17, xp: 62, gold: 70, rare: true, boss: true },
