@@ -1492,7 +1492,7 @@ function dropNameHtml(item) {
   return `<span class="${rarityClassName(item.rarity)}">${item.name}${setMark}</span>${dropOptionLabels(item)}`;
 }
 
-function performEnemyAction(enemy, party, events, speechState, round = 1) {
+function performEnemyAction(enemy, party, enemies, area, heroLevel, events, speechState, round = 1) {
   if (enemy.hp <= 0) {
     tickEnemyTurnStatuses(enemy);
     return;
@@ -1675,6 +1675,72 @@ function performEnemyAction(enemy, party, events, speechState, round = 1) {
     if (target.hp > 0 && !target.slowTurns && Math.random() < 0.7) {
       target.slowTurns = 2;
       events.push({ kind: "enemy-action", text: `${target.name}は足を取られた。` });
+    }
+    if (target.hp <= 0) {
+      events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
+      if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
+        reactToHpDrop(target, beforeHp, events, speechState);
+      } else {
+        pushHp(events, target, "enemy-action down");
+        confirmMemberDown(target, events, speechState);
+      }
+    } else {
+      events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
+      pushHp(events, target);
+      reactToHpDrop(target, beforeHp, events, speechState);
+    }
+    tickEnemyDots(enemy, events);
+    tickEnemyTurnStatuses(enemy);
+    return;
+  }
+
+  if (enemy.special === "mudSplashLite" && Math.random() < 0.5) {
+    if (livingEnemies(enemies).length < 3 && Math.random() < 0.4) {
+      const larvaMonster = MONSTERS?.swampLarva;
+      if (larvaMonster) {
+        const larva = createEnemy(larvaMonster, area, heroLevel);
+        enemies.push(larva);
+        events.push({ kind: "enemy-action", text: `${enemy.name}が低く鳴いた。` });
+        events.push({ kind: "enemy-action", text: `${larva.name}が泥の中から這い出した。` });
+        pushInitialHp(events, larva, "enemy-roster");
+        tickEnemyDots(enemy, events);
+        tickEnemyTurnStatuses(enemy);
+        return;
+      }
+    }
+
+    const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * 1.2));
+    const cover = maybeCoverTarget(party, target, predictedDamage);
+    target = cover.target;
+
+    let damage = predictedDamage;
+    if (target.ironWall) {
+      damage = Math.max(1, Math.floor(damage * 0.25));
+    } else if (target.guard) {
+      damage = Math.max(1, Math.floor(damage * 0.5));
+    }
+    if (target.desperateVulnerable) {
+      damage = Math.max(1, Math.floor(damage * 1.5));
+      target.desperateVulnerable = false;
+    }
+    if (target.magicBarrier) {
+      damage = Math.max(1, Math.floor(damage * 0.5));
+      target.magicBarrier = false;
+    }
+    const beforeHp = target.hp;
+    const canUsePriestBlessing =
+      beforeHp > 0 &&
+      target.job === "priest" &&
+      isSkillEnabled(target, "divineGrace") &&
+      !target.divineGraceUsed &&
+      target.hp > 0;
+    applyDamageToMember(target, damage);
+    events.push({ kind: "enemy-action", text: `${enemy.name}の沼しぶき。` });
+    if (cover.coverer) {
+      if (Math.random() < 0.15) {
+        events.push({ kind: "enemy-action", text: `${cover.coverer.name}「下がって！」` });
+      }
+      events.push({ kind: "enemy-action", text: `${cover.coverer.name}が${cover.covered.name}をかばった。` });
     }
     if (target.hp <= 0) {
       events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
@@ -1880,7 +1946,7 @@ function runEncounter(members, monster, area, speechState = {}, partyName = "隊
         if (actor.unit.hp <= 0) confirmMemberDown(actor.unit, events, speechState);
         if (!livingEnemies(enemies).length) break;
       } else {
-        performEnemyAction(actor.unit, party, events, speechState, round);
+        performEnemyAction(actor.unit, party, enemies, area, highestLevel, events, speechState, round);
         enemyActed = true;
         if (!livingMembers(party).length) break;
       }
