@@ -1080,7 +1080,7 @@ const MONSTERS = {
   rubbleBat: { id: "rubbleBat", name: "ラブルバット", hp: 30, atk: 12, xp: 22, gold: 18, traitsText: "崩れた石壁の隙間に潜む小さなコウモリ。", drops: ["oldCharm", "crackedRing"] },
   stoneGuard: { id: "stoneGuard", name: "ストーンガード", hp: 54, atk: 14, xp: 32, gold: 28, traitsText: "欠けた石面を持つ、古い守衛像。", drops: ["crackedRing", "blackLeatherArmor"] },
   ivySkeleton: { id: "ivySkeleton", name: "アイビースケルトン", hp: 40, atk: 13, xp: 26, gold: 22, traitsText: "蔦に絡まれたまま動く骸骨。", drops: ["rustyAxe", "oldCharm"] },
-  bellWisp: { id: "bellWisp", name: "ベルウィスプ", hp: 28, atk: 15, xp: 28, gold: 24, traitsText: "鐘の残響に寄り添う小さな霊。", drops: ["crackedRing", "silverBuckle"] },
+  bellWisp: { id: "bellWisp", name: "ベルウィスプ", hp: 28, atk: 15, xp: 28, gold: 24, special: "curseWhisper", traitsText: "鐘の残響に寄り添う小さな霊。低く呪いをささやく。", drops: ["crackedRing", "silverBuckle"] },
   ruinKnight: { id: "ruinKnight", name: "遺跡の黒騎士", hp: 86, atk: 18, xp: 70, gold: 80, rare: true, boss: true, drops: ["blackIronSword", "oldBreastplate"] },
   sealedBeast: { id: "sealedBeast", name: "封室の獣", hp: 92, atk: 19, xp: 74, gold: 86, rare: true, boss: true, traitsText: "封じられた部屋の奥で目を覚ました獣。", drops: ["blackIronSword", "oldBreastplate"] },
   rockHawk: { id: "rockHawk", name: "岩羽のハーピー", hp: 52, atk: 17, xp: 38, gold: 34 },

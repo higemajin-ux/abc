@@ -484,11 +484,8 @@ function magicBarrierTarget(party) {
 }
 
 function recoverHp(target, amount) {
-  const adjustedAmount = target?.[STATUS_EFFECTS.curse.turnKey] > 0
-    ? Math.floor(amount * 0.7)
-    : amount;
   const before = target.hp;
-  target.hp = clamp(target.hp + adjustedAmount, 0, target.maxHp);
+  target.hp = clamp(target.hp + amount, 0, target.maxHp);
   return target.hp - before;
 }
 
@@ -506,9 +503,12 @@ function grantTempHp(target, amount) {
 }
 
 function applyDamageToMember(target, damage) {
-  const absorbed = Math.min(target.tempHp || 0, damage);
+  const adjustedDamage = target?.[STATUS_EFFECTS.curse.turnKey] > 0
+    ? Math.max(1, Math.floor(damage * 1.2))
+    : damage;
+  const absorbed = Math.min(target.tempHp || 0, adjustedDamage);
   if (absorbed > 0) target.tempHp -= absorbed;
-  const hpDamage = damage - absorbed;
+  const hpDamage = adjustedDamage - absorbed;
   target.hp = clamp(target.hp - hpDamage, 0, target.maxHp);
 }
 
@@ -1526,6 +1526,22 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
       target = pick(curseTargets);
       target[STATUS_EFFECTS.curse.turnKey] = 3;
       events.push({ kind: "enemy-action", text: `${enemy.name}は低く祈った。` });
+      events.push({ kind: "enemy-action", text: `${target.name}を覆う呪いが濃くなった。` });
+      pushHp(events, target);
+      tickEnemyDots(enemy, events);
+      tickEnemyTurnStatuses(enemy);
+      return;
+    }
+  }
+
+  if (enemy.special === "curseWhisper" && Math.random() < 0.5) {
+    const curseTargets = livingMembers(party).filter(
+      (member) => (member[STATUS_EFFECTS.curse.turnKey] || 0) <= 0
+    );
+    if (curseTargets.length) {
+      target = pick(curseTargets);
+      target[STATUS_EFFECTS.curse.turnKey] = 3;
+      events.push({ kind: "enemy-action", text: `${enemy.name}がかすかに震えた。` });
       events.push({ kind: "enemy-action", text: `${target.name}を覆う呪いが濃くなった。` });
       pushHp(events, target);
       tickEnemyDots(enemy, events);
