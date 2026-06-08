@@ -1078,7 +1078,7 @@ const MONSTERS = {
   marshMaw: { id: "marshMaw", name: "沼の大口", hp: 78, atk: 17, xp: 62, gold: 70, rare: true, boss: true },
   skeleton: { id: "skeleton", name: "スケルトン", hp: 38, atk: 12, xp: 24, gold: 20, drops: ["rustyAxe"] },
   rubbleBat: { id: "rubbleBat", name: "ラブルバット", hp: 30, atk: 12, xp: 22, gold: 18, traitsText: "崩れた石壁の隙間に潜む小さなコウモリ。", drops: ["oldCharm", "crackedRing"] },
-  stoneGuard: { id: "stoneGuard", name: "ストーンガード", hp: 54, atk: 14, xp: 32, gold: 28, traitsText: "欠けた石面を持つ、古い守衛像。", drops: ["crackedRing", "blackLeatherArmor"] },
+  stoneGuard: { id: "stoneGuard", name: "ストーンガード", hp: 54, atk: 14, xp: 32, gold: 28, special: "stoneBlowLite", traitsText: "欠けた石面を持つ、古い守衛像。重い一撃を放つ。", drops: ["crackedRing", "blackLeatherArmor"] },
   ivySkeleton: { id: "ivySkeleton", name: "アイビースケルトン", hp: 40, atk: 13, xp: 26, gold: 22, traitsText: "蔦に絡まれたまま動く骸骨。", drops: ["rustyAxe", "oldCharm"] },
   bellWisp: { id: "bellWisp", name: "ベルウィスプ", hp: 28, atk: 15, xp: 28, gold: 24, special: "curseWhisper", traitsText: "鐘の残響に寄り添う小さな霊。低く呪いをささやく。", drops: ["crackedRing", "silverBuckle"] },
   ruinKnight: { id: "ruinKnight", name: "遺跡の黒騎士", hp: 86, atk: 18, xp: 70, gold: 80, rare: true, boss: true, drops: ["blackIronSword", "oldBreastplate"] },
