@@ -1879,7 +1879,8 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
     return;
   }
 
-  if (enemy.boss && enemy.id !== "mudToad" && !enemy.heavyAttackReady && round % 3 === 2) {
+  // Boss flavor is now handled by each enemy's special action instead of the old shared charge-up attack.
+  if (false && enemy.boss && enemy.id !== "mudToad" && !enemy.heavyAttackReady && round % 3 === 2) {
     enemy.heavyAttackReady = true;
     events.push({ kind: "enemy-action", text: `${enemy.name}が剣を構えた。` });
     events.push({ kind: "enemy-action", text: "次の攻撃は危険だ。" });
