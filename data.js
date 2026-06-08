@@ -1064,7 +1064,7 @@ const MONSTERS = {
   axeGoblin: { id: "axeGoblin", name: "アックスゴブリン", hp: 30, atk: 9, xp: 14, gold: 12, special: "heavySwingLite", traitsText: "低確率で重い一撃を放つ。", drops: ["chippedSword", "travelerHat"] },
   goblinArcher: { id: "goblinArcher", name: "ゴブリンアーチャー", hp: 22, atk: 8, xp: 12, gold: 11, targeting: "backlineBias", traitsText: "後衛を狙いやすい。", drops: ["oldCharm", "travelerHat"] },
   goblinMage: { id: "goblinMage", name: "メイジゴブリン", hp: 20, atk: 9, xp: 13, gold: 12, special: "fireboltLite", traitsText: "低確率で火球を使う。", drops: ["oldCharm", "emberPendant"] },
-  goblinChief: { id: "goblinChief", name: "ゴブリンチーフ", hp: 46, atk: 10, xp: 28, gold: 34, rare: true, boss: true, drops: ["silverBuckle", "emberPendant"] },
+  goblinChief: { id: "goblinChief", name: "ゴブリンチーフ", hp: 46, atk: 10, xp: 28, gold: 34, rare: true, boss: true, special: "strongSlashLite", traitsText: "ゴブリンを束ねる頭目。強斬りを放つ。", drops: ["silverBuckle", "emberPendant"] },
   wolf: { id: "wolf", name: "ウルフ", hp: 30, atk: 9, xp: 15, gold: 13, drops: ["patchedCloak", "travelerCloak", "travelerShoes"] },
   mossMage: { id: "mossMage", name: "モスメイジ", hp: 26, atk: 11, xp: 18, gold: 16, rare: true, special: "curseTouch", traitsText: "低確率で呪いを付与する。", drops: ["oldCharm", "emberPendant", "travelerCloak", "travelerShoes"] },
   forestWarden: { id: "forestWarden", name: "フォレストファング", hp: 62, atk: 14, xp: 46, gold: 52, rare: true, boss: true, drops: ["blackLeatherArmor"] },
