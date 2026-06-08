@@ -1082,7 +1082,7 @@ const MONSTERS = {
   ivySkeleton: { id: "ivySkeleton", name: "アイビースケルトン", hp: 40, atk: 13, xp: 26, gold: 22, traitsText: "蔦に絡まれたまま動く骸骨。", drops: ["rustyAxe", "oldCharm"] },
   bellWisp: { id: "bellWisp", name: "ベルウィスプ", hp: 28, atk: 15, xp: 28, gold: 24, special: "curseWhisper", traitsText: "鐘の残響に寄り添う小さな霊。低く呪いをささやく。", drops: ["crackedRing", "silverBuckle"] },
   ruinKnight: { id: "ruinKnight", name: "遺跡の黒騎士", hp: 86, atk: 18, xp: 70, gold: 80, rare: true, boss: true, drops: ["blackIronSword", "oldBreastplate"] },
-  sealedBeast: { id: "sealedBeast", name: "封室の守護者", hp: 92, atk: 19, xp: 74, gold: 86, rare: true, boss: true, special: "stoneEcho", traitsText: "封じられた部屋の奥で目を覚ました獣。石を震わせる咆哮を放つ。", drops: ["blackIronSword", "oldBreastplate"] },
+  sealedBeast: { id: "sealedBeast", name: "封室の守護者", hp: 92, atk: 19, xp: 74, gold: 86, rare: true, boss: true, special: "stoneEcho", traitsText: "封じられた部屋の奥で目を覚ました守護者。石を震わせる咆哮を放つ。", drops: ["blackIronSword", "oldBreastplate"] },
   rockHawk: { id: "rockHawk", name: "岩羽のハーピー", hp: 52, atk: 17, xp: 38, gold: 34 },
   canyonBandit: { id: "canyonBandit", name: "谷底の盗賊団", hp: 60, atk: 18, xp: 45, gold: 42, drops: ["mercenarySword"] },
   redGorgeWing: { id: "redGorgeWing", name: "赤峡の断頭翼", hp: 112, atk: 24, xp: 96, gold: 110, rare: true, boss: true, drops: ["thiefGloves"] },
