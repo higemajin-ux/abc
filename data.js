@@ -1067,7 +1067,7 @@ const MONSTERS = {
   goblinChief: { id: "goblinChief", name: "ゴブリンチーフ", hp: 46, atk: 10, xp: 28, gold: 34, rare: true, boss: true, special: "strongSlashLite", traitsText: "ゴブリンを束ねる頭目。強斬りを放つ。", drops: ["silverBuckle", "emberPendant"] },
   wolf: { id: "wolf", name: "ウルフ", hp: 30, atk: 9, xp: 15, gold: 13, drops: ["patchedCloak", "travelerCloak", "travelerShoes"] },
   mossMage: { id: "mossMage", name: "モスメイジ", hp: 26, atk: 11, xp: 18, gold: 16, rare: true, special: "curseTouch", traitsText: "低確率で呪いを付与する。", drops: ["oldCharm", "emberPendant", "travelerCloak", "travelerShoes"] },
-  forestWarden: { id: "forestWarden", name: "フォレストファング", hp: 62, atk: 14, xp: 46, gold: 52, rare: true, boss: true, drops: ["blackLeatherArmor"] },
+  forestWarden: { id: "forestWarden", name: "フォレストファング", hp: 62, atk: 14, xp: 46, gold: 52, rare: true, boss: true, special: "biteCrushLite", traitsText: "森の奥に棲む大牙。噛み砕きで獲物を追い詰める。", drops: ["blackLeatherArmor"] },
   mudSlime: { id: "mudSlime", name: "マッドスライム", hp: 34, atk: 11, xp: 22, gold: 18, traitsText: "沼地に潜む泥まじりのスライム。", drops: ["dryHolyMark", "rustedEarring"] },
   mudFrog: { id: "mudFrog", name: "マッドフロッグ", hp: 32, atk: 12, xp: 24, gold: 20, special: "leapStrikeLite", traitsText: "低く跳ね、足元から飛びかかる。", drops: ["dryHolyMark", "pilgrimShoes"] },
   reedLizard: { id: "reedLizard", name: "リードリザード", hp: 40, atk: 14, xp: 30, gold: 26, targeting: "backlineBias", traitsText: "葦の陰から素早く襲う。", drops: ["rustedEarring", "smolderingDagger", "sootRobe"] },
