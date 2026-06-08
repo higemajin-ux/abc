@@ -25,6 +25,10 @@ const STATUS_EFFECTS = {
     turnKey: "slowTurns",
     label: "鈍化",
   },
+  atkDown: {
+    turnKey: "atkDownTurns",
+    label: "攻↓",
+  },
 };
 
 function clamp(value, min, max) {
@@ -283,6 +287,11 @@ function damageFor(attackerAtk, defenderDef = 0) {
   return Math.max(1, attackerAtk - defenderDef);
 }
 
+function applyOutgoingDamagePenalty(actor, damage) {
+  if ((actor?.[STATUS_EFFECTS.atkDown.turnKey] || 0) <= 0) return damage;
+  return Math.max(1, Math.floor(damage * 0.8));
+}
+
 function effectiveDex(unit) {
   const baseDex = unit.baseDex || unit.dex || 0;
   return unit.slowTurns > 0 ? Math.max(1, Math.floor(baseDex * 0.5)) : baseDex;
@@ -335,6 +344,7 @@ function statusLabels(unit) {
   if (unit[STATUS_EFFECTS.paralyze.turnKey] > 0) labels.push(`${STATUS_EFFECTS.paralyze.label}${unit[STATUS_EFFECTS.paralyze.turnKey]}`);
   if (unit[STATUS_EFFECTS.blind.turnKey] > 0) labels.push(`${STATUS_EFFECTS.blind.label}${unit[STATUS_EFFECTS.blind.turnKey]}`);
   if (unit[STATUS_EFFECTS.slow.turnKey] > 0) labels.push(`スロー${unit[STATUS_EFFECTS.slow.turnKey]}`);
+  if (unit[STATUS_EFFECTS.atkDown.turnKey] > 0) labels.push(`${STATUS_EFFECTS.atkDown.label}${unit[STATUS_EFFECTS.atkDown.turnKey]}`);
   return labels;
 }
 
@@ -526,7 +536,8 @@ function hasBadStatus(member) {
     member[STATUS_EFFECTS.paralyze.turnKey] > 0 ||
     member[STATUS_EFFECTS.burn.turnKey] > 0 ||
     member[STATUS_EFFECTS.blind.turnKey] > 0 ||
-    member[STATUS_EFFECTS.slow.turnKey] > 0
+    member[STATUS_EFFECTS.slow.turnKey] > 0 ||
+    member[STATUS_EFFECTS.atkDown.turnKey] > 0
   );
 }
 
@@ -538,6 +549,7 @@ function clearBadStatus(member) {
   member[STATUS_EFFECTS.burn.turnKey] = 0;
   member[STATUS_EFFECTS.blind.turnKey] = 0;
   member[STATUS_EFFECTS.slow.turnKey] = 0;
+  member[STATUS_EFFECTS.atkDown.turnKey] = 0;
 }
 
 function consumeReviveEquipment(member) {
@@ -713,7 +725,7 @@ function performPriestAction(actor, party, enemy, events) {
 
   const baseDamage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 0.75));
   const hit = rollPhysicalHit(baseDamage, actor);
-  const { damage } = hit;
+  const damage = applyOutgoingDamagePenalty(actor, hit.damage);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}が杖で牽制。` });
   events.push({ kind: "", text: `${damageResultText(enemy, damage, hit.critical)}。` });
@@ -761,12 +773,19 @@ function tickParalyze(member) {
 
 function tickMemberTurnStatuses(member, events = null) {
   if (member.hp <= 0) return;
-  if (!member?.[STATUS_EFFECTS.curse.turnKey]) return;
-  member[STATUS_EFFECTS.curse.turnKey] -= 1;
-  if (member[STATUS_EFFECTS.curse.turnKey] <= 0) {
-    member[STATUS_EFFECTS.curse.turnKey] = 0;
-    if (events) {
-      events.push({ kind: "heal", text: `${member.name}を覆う呪いが薄れた。` });
+  if (member?.[STATUS_EFFECTS.curse.turnKey] > 0) {
+    member[STATUS_EFFECTS.curse.turnKey] -= 1;
+    if (member[STATUS_EFFECTS.curse.turnKey] <= 0) {
+      member[STATUS_EFFECTS.curse.turnKey] = 0;
+      if (events) {
+        events.push({ kind: "heal", text: `${member.name}を覆う呪いが薄れた。` });
+      }
+    }
+  }
+  if (member?.[STATUS_EFFECTS.atkDown.turnKey] > 0) {
+    member[STATUS_EFFECTS.atkDown.turnKey] -= 1;
+    if (member[STATUS_EFFECTS.atkDown.turnKey] <= 0) {
+      member[STATUS_EFFECTS.atkDown.turnKey] = 0;
     }
   }
 }
@@ -858,7 +877,7 @@ function performMageAction(actor, enemy, events, enemies = null) {
     const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     const baseDamage = damageFor(Math.floor(actor.atk * 0.5) + Math.floor(actor.level / 2), Math.floor(enemy.def * 0.2));
-    const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
+    const damage = applyOutgoingDamagePenalty(actor, focused ? Math.floor(baseDamage * 1.5) : baseDamage);
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${actor.name}のアシッドミスト！` });
     events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
@@ -881,7 +900,7 @@ function performMageAction(actor, enemy, events, enemies = null) {
       return;
     }
     const baseDamage = damageFor(Math.floor(actor.atk * 1.8) + actor.level, Math.floor(enemy.def * 0.25));
-    const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
+    const damage = applyOutgoingDamagePenalty(actor, focused ? Math.floor(baseDamage * 1.5) : baseDamage);
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${enemy.name}に${damage}ダメージ。` });
     if (
@@ -910,7 +929,7 @@ function performMageAction(actor, enemy, events, enemies = null) {
       }
 
       const baseDamage = damageFor(Math.floor(actor.atk * 0.8) + actor.level, Math.floor(target.def * 0.3));
-      const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
+      const damage = applyOutgoingDamagePenalty(actor, focused ? Math.floor(baseDamage * 1.5) : baseDamage);
       target.hp = clamp(target.hp - damage, 0, target.maxHp);
       events.push({ kind: "spell", text: `${target.name}に${damage}ダメージ。` });
 
@@ -929,7 +948,7 @@ function performMageAction(actor, enemy, events, enemies = null) {
     const focused = isSkillEnabled(actor, "magicFocus") && Math.random() < 0.3;
     if (focused) events.push({ kind: "spell", text: `${actor.name}は魔力を集中した。` });
     const baseDamage = damageFor(actor.atk + 8 + actor.level, Math.floor(enemy.def * 0.35));
-    const damage = focused ? Math.floor(baseDamage * 1.5) : baseDamage;
+    const damage = applyOutgoingDamagePenalty(actor, focused ? Math.floor(baseDamage * 1.5) : baseDamage);
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "spell", text: `${actor.name}の火球。${enemy.name}に${damage}ダメージ。` });
     if (enemy.hp > 0 && Math.random() < 0.3) {
@@ -941,7 +960,7 @@ function performMageAction(actor, enemy, events, enemies = null) {
     return;
   }
 
-  const damage = damageFor(actor.atk, enemy.def);
+  const damage = applyOutgoingDamagePenalty(actor, damageFor(actor.atk, enemy.def));
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃！ ${enemy.name}に${damage}ダメージ！` });
   pushHp(events, enemy, enemy.hp <= 0 ? "down" : "");
@@ -984,7 +1003,7 @@ function performScoutAction(actor, party, enemy, events, enemies = null) {
   const focused = actor.focusTurns > 0;
   const baseDamage = damageFor(actor.atk, enemy.def);
   const hit = rollPhysicalHit(baseDamage, actor, focused);
-  const { damage } = hit;
+  const damage = applyOutgoingDamagePenalty(actor, hit.damage);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃。` });
   events.push({ kind: "", text: `${damageResultText(enemy, damage, hit.critical)}。` });
@@ -1128,7 +1147,7 @@ function performWarriorAction(actor, party, enemy, events, enemies = null) {
     actor.desperateVulnerable = true;
     const baseDamage = Math.max(1, Math.floor(damageFor(actor.atk, enemy.def) * 1.8));
     const hit = rollPhysicalHit(baseDamage, actor);
-    const { damage } = hit;
+    const damage = applyOutgoingDamagePenalty(actor, hit.damage);
     enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
     events.push({ kind: "guard", text: `${actor.name}は捨て身に出た。` });
     if (Math.random() < 0.15) {
@@ -1141,7 +1160,7 @@ function performWarriorAction(actor, party, enemy, events, enemies = null) {
   }
 
   const hit = rollPhysicalHit(damageFor(actor.atk, enemy.def), actor);
-  const { damage } = hit;
+  const damage = applyOutgoingDamagePenalty(actor, hit.damage);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   events.push({ kind: "", text: `${actor.name}の攻撃。` });
   events.push({ kind: "", text: `${damageResultText(enemy, damage, hit.critical)}。` });
@@ -1207,7 +1226,7 @@ function maybeCounterAttack(actor, enemy, events) {
   const damageRate = 0.5 + Math.random() * 0.3;
   const baseDamage = Math.max(1, Math.floor(actor.atk * damageRate));
   const hit = rollPhysicalHit(baseDamage, actor);
-  const { damage } = hit;
+  const damage = applyOutgoingDamagePenalty(actor, hit.damage);
   enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
   if (Math.random() < 0.15) {
     events.push({ kind: "voice", text: `${actor.name}「こちらも返す」` });
@@ -1655,6 +1674,20 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
   }
 
   if (enemy.special === "biteCrushLite" && Math.random() < 0.5) {
+    const intimidateTargets = livingMembers(party).filter(
+      (member) => (member[STATUS_EFFECTS.atkDown.turnKey] || 0) <= 0
+    );
+    if (intimidateTargets.length && Math.random() >= 0.7) {
+      target = pick(intimidateTargets);
+      target[STATUS_EFFECTS.atkDown.turnKey] = 2;
+      events.push({ kind: "enemy-action", text: `${enemy.name}の威嚇。` });
+      events.push({ kind: "enemy-action", text: `${target.name}はたじろぎ、攻め手が鈍った。` });
+      pushHp(events, target);
+      tickEnemyDots(enemy, events);
+      tickEnemyTurnStatuses(enemy);
+      return;
+    }
+
     const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * 1.3));
     const cover = maybeCoverTarget(party, target, predictedDamage);
     target = cover.target;
