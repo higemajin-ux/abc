@@ -1706,6 +1706,53 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
     return;
   }
 
+  if (enemy.special === "stoneEcho" && Math.random() < 0.5) {
+    const targets = livingMembers(party);
+    if (targets.length) {
+      events.push({ kind: "enemy-action", text: `${enemy.name}の石響き。` });
+      for (const member of targets) {
+        let damage = Math.max(1, Math.floor(damageFor(enemy.atk, member.def) * 0.5));
+        if (member.ironWall) {
+          damage = Math.max(1, Math.floor(damage * 0.25));
+        } else if (member.guard) {
+          damage = Math.max(1, Math.floor(damage * 0.5));
+        }
+        if (member.desperateVulnerable) {
+          damage = Math.max(1, Math.floor(damage * 1.5));
+          member.desperateVulnerable = false;
+        }
+        if (member.magicBarrier) {
+          damage = Math.max(1, Math.floor(damage * 0.5));
+          member.magicBarrier = false;
+        }
+        const beforeHp = member.hp;
+        const canUsePriestBlessing =
+          beforeHp > 0 &&
+          member.job === "priest" &&
+          isSkillEnabled(member, "divineGrace") &&
+          !member.divineGraceUsed &&
+          member.hp > 0;
+        applyDamageToMember(member, damage);
+        if (member.hp <= 0) {
+          events.push({ kind: "enemy-action", text: `${damageResultText(member, damage)}。` });
+          if (trySurviveFatalDamage(member, events, party, canUsePriestBlessing)) {
+            reactToHpDrop(member, beforeHp, events, speechState);
+          } else {
+            pushHp(events, member, "enemy-action down");
+            confirmMemberDown(member, events, speechState);
+          }
+        } else {
+          events.push({ kind: "enemy-action", text: `${damageResultText(member, damage)}。` });
+          pushHp(events, member);
+          reactToHpDrop(member, beforeHp, events, speechState);
+        }
+      }
+      tickEnemyDots(enemy, events);
+      tickEnemyTurnStatuses(enemy);
+      return;
+    }
+  }
+
   if (enemy.special === "dragSlowLite" && Math.random() < 0.5) {
     const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * 1.1));
     const cover = maybeCoverTarget(party, target, predictedDamage);
