@@ -2138,6 +2138,7 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
       events.push({ kind: "enemy-action", text: `${enemy.name}が翼を広げた。` });
       events.push({ kind: "enemy-action", text: `赤い風が隊列を撫でた。` });
       for (const member of targets) {
+        const hadSlow = member.slowTurns > 0;
         let damage = Math.max(1, Math.floor(damageFor(enemy.atk, member.def) * 0.5));
         if (member.ironWall) {
           damage = Math.max(1, Math.floor(damage * 0.25));
@@ -2160,22 +2161,42 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
           !member.divineGraceUsed &&
           member.hp > 0;
         applyDamageToMember(member, damage);
+        let appliedSlow = false;
+        let damageEventIndex = -1;
         if (member.hp <= 0) {
+          damageEventIndex = events.length;
           events.push({ kind: "enemy-action", text: `${damageResultText(member, damage)}。` });
           if (trySurviveFatalDamage(member, events, party, canUsePriestBlessing)) {
+            if (!hadSlow && !member.slowTurns && Math.random() < 0.25) {
+              member.slowTurns = 2;
+              appliedSlow = true;
+            }
+            if (appliedSlow) {
+              events[damageEventIndex].text = `${damageResultText(member, damage)}。${member.name}は足を取られた。`;
+            }
             reactToHpDrop(member, beforeHp, events, speechState);
           } else {
             pushHp(events, member, "enemy-action down");
             confirmMemberDown(member, events, speechState);
           }
         } else {
-          events.push({ kind: "enemy-action", text: `${damageResultText(member, damage)}。` });
-          pushHp(events, member);
+          if (!hadSlow && !member.slowTurns && Math.random() < 0.25) {
+            member.slowTurns = 2;
+            appliedSlow = true;
+          }
+          damageEventIndex = events.length;
+          events.push({
+            kind: "enemy-action",
+            text: appliedSlow
+              ? `${damageResultText(member, damage)}。${member.name}は足を取られた。`
+              : `${damageResultText(member, damage)}。`,
+          });
+          if (appliedSlow) {
+            events.push({ kind: "", text: `${member.name}（${member.hp}/${member.maxHp}）（鈍足）` });
+          } else {
+            pushHp(events, member);
+          }
           reactToHpDrop(member, beforeHp, events, speechState);
-        }
-        if (member.hp > 0 && !member.slowTurns && Math.random() < 0.25) {
-          member.slowTurns = 2;
-          events.push({ kind: "enemy-action", text: `${member.name}は足を取られた。` });
         }
       }
       tickEnemyDots(enemy, events);
