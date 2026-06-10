@@ -1790,11 +1790,11 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
         }
         break;
       }
+      events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
+      pushHp(events, target);
     }
 
     if (!knockedOut && target.hp > 0) {
-      events.push({ kind: "enemy-action", text: `${target.name}は続けざまに傷を負った。` });
-      pushHp(events, target);
       reactToHpDrop(target, beforeHp, events, speechState);
     }
     tickEnemyDots(enemy, events);
