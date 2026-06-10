@@ -2192,7 +2192,15 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
               : `${damageResultText(member, damage)}。`,
           });
           if (appliedSlow) {
-            events.push({ kind: "enemy-action", text: `${member.name}（${member.hp}/${member.maxHp}）【鈍足${member.slowTurns}】` });
+            const tempText = member.tempHp > 0 ? `<span class="temp-hp">+${member.tempHp}</span>` : "";
+            events.push({
+              kind: "enemy-action",
+              text:
+                `<span class="hp-text ${hpClass(member)}">` +
+                `<span class="hp-name">${member.name}</span>（<span class="hp-value">${member.hp}${tempText}/${member.maxHp}</span>）` +
+                `<span class="status-tags">【鈍足${member.slowTurns}】</span>` +
+                `</span>`,
+            });
           } else {
             pushHp(events, member);
           }
