@@ -1083,7 +1083,7 @@ const MONSTERS = {
   bellWisp: { id: "bellWisp", name: "ベルウィスプ", hp: 28, atk: 15, xp: 28, gold: 24, special: "curseWhisper", traitsText: "鐘の残響に寄り添う小さな霊。低く呪いをささやく。", drops: ["crackedRing", "silverBuckle"] },
   ruinKnight: { id: "ruinKnight", name: "遺跡の黒騎士", hp: 86, atk: 18, xp: 70, gold: 80, rare: true, boss: true, drops: ["blackIronSword", "oldBreastplate"] },
   sealedBeast: { id: "sealedBeast", name: "封室の守護者", hp: 92, atk: 19, xp: 74, gold: 86, rare: true, boss: true, special: "stoneEcho", traitsText: "封じられた部屋の奥で目を覚ました守護者。石を震わせる咆哮を放つ。", drops: ["blackIronSword", "oldBreastplate"] },
-  rockHawk: { id: "rockHawk", name: "岩羽のハーピー", hp: 52, atk: 17, xp: 38, gold: 34, traitsText: "峡谷の風に乗って襲う飛行敵。高所からの奇襲に注意。" },
+  rockHawk: { id: "rockHawk", name: "岩羽のハーピー", hp: 52, atk: 17, xp: 38, gold: 34, special: "sleepSongLite", traitsText: "峡谷の風に乗って襲う飛行敵。高所からの奇襲に注意。" },
   cliffLizard: { id: "cliffLizard", name: "崖這いトカゲ", hp: 56, atk: 17, xp: 41, gold: 36, targeting: "backlineBias", traitsText: "岩肌を這い、背後へ回り込むトカゲ。後衛を狙いやすい。", drops: ["mercenarySword"] },
   canyonBandit: { id: "canyonBandit", name: "谷底の盗賊団", hp: 60, atk: 18, xp: 45, gold: 42, traitsText: "谷道に潜む追い剥ぎ。隊列の隙を見て襲いかかる。", drops: ["mercenarySword"] },
   redGorgeWing: { id: "redGorgeWing", name: "赤峡の断頭翼", hp: 112, atk: 24, xp: 96, gold: 110, rare: true, boss: true, traitsText: "赤月の見張り場に現れる巨大な翼影。断崖を越えて獲物を狙う。", drops: ["thiefGloves"] },

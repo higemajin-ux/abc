@@ -1618,6 +1618,23 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
     }
   }
 
+  if (enemy.special === "sleepSongLite" && Math.random() < 0.25) {
+    const sleepTargets = livingMembers(party).filter(
+      (member) => (member[STATUS_EFFECTS.sleep.turnKey] || 0) <= 0
+    );
+    if (sleepTargets.length) {
+      target = pick(sleepTargets);
+      if (applySleep(target, 2)) {
+        events.push({ kind: "enemy-action", text: `${enemy.name}が低く歌った。` });
+        events.push({ kind: "enemy-action", text: `${target.name}は眠りに落ちた。` });
+        pushHp(events, target);
+        tickEnemyDots(enemy, events);
+        tickEnemyTurnStatuses(enemy);
+        return;
+      }
+    }
+  }
+
   if (enemy.special === "heavySwingLite" && Math.random() < 0.25) {
     const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * 1.35));
     const cover = maybeCoverTarget(party, target, predictedDamage);
