@@ -2192,7 +2192,7 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
               : `${damageResultText(member, damage)}。`,
           });
           if (appliedSlow) {
-            events.push({ kind: "", text: `${member.name}（${member.hp}/${member.maxHp}）【鈍足${member.slowTurns}】` });
+            events.push({ kind: "enemy-action", text: `${member.name}（${member.hp}/${member.maxHp}）【鈍足${member.slowTurns}】` });
           } else {
             pushHp(events, member);
           }
