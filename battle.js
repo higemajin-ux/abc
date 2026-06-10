@@ -2132,6 +2132,58 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
     return;
   }
 
+  if (enemy.special === "redGaleLite" && Math.random() < 0.4) {
+    const targets = livingMembers(party);
+    if (targets.length) {
+      events.push({ kind: "enemy-action", text: `${enemy.name}が翼を広げた。` });
+      events.push({ kind: "enemy-action", text: `赤い風が隊列を撫でた。` });
+      for (const member of targets) {
+        let damage = Math.max(1, Math.floor(damageFor(enemy.atk, member.def) * 0.5));
+        if (member.ironWall) {
+          damage = Math.max(1, Math.floor(damage * 0.25));
+        } else if (member.guard) {
+          damage = Math.max(1, Math.floor(damage * 0.5));
+        }
+        if (member.desperateVulnerable) {
+          damage = Math.max(1, Math.floor(damage * 1.5));
+          member.desperateVulnerable = false;
+        }
+        if (member.magicBarrier) {
+          damage = Math.max(1, Math.floor(damage * 0.5));
+          member.magicBarrier = false;
+        }
+        const beforeHp = member.hp;
+        const canUsePriestBlessing =
+          beforeHp > 0 &&
+          member.job === "priest" &&
+          isSkillEnabled(member, "divineGrace") &&
+          !member.divineGraceUsed &&
+          member.hp > 0;
+        applyDamageToMember(member, damage);
+        if (member.hp <= 0) {
+          events.push({ kind: "enemy-action", text: `${damageResultText(member, damage)}。` });
+          if (trySurviveFatalDamage(member, events, party, canUsePriestBlessing)) {
+            reactToHpDrop(member, beforeHp, events, speechState);
+          } else {
+            pushHp(events, member, "enemy-action down");
+            confirmMemberDown(member, events, speechState);
+          }
+        } else {
+          events.push({ kind: "enemy-action", text: `${damageResultText(member, damage)}。` });
+          pushHp(events, member);
+          reactToHpDrop(member, beforeHp, events, speechState);
+        }
+        if (member.hp > 0 && !member.slowTurns && Math.random() < 0.25) {
+          member.slowTurns = 2;
+          events.push({ kind: "enemy-action", text: `${member.name}は足を取られた。` });
+        }
+      }
+      tickEnemyDots(enemy, events);
+      tickEnemyTurnStatuses(enemy);
+      return;
+    }
+  }
+
   if (enemy.special === "summonSwampLarva") {
     if (livingEnemies(enemies).length < 3 && Math.random() < 0.4) {
       const larvaMonster = MONSTERS?.swampLarva;
