@@ -1085,7 +1085,7 @@ const MONSTERS = {
   sealedBeast: { id: "sealedBeast", name: "封室の守護者", hp: 92, atk: 19, xp: 74, gold: 86, rare: true, boss: true, special: "stoneEcho", traitsText: "封じられた部屋の奥で目を覚ました守護者。石を震わせる咆哮を放つ。", drops: ["blackIronSword", "oldBreastplate"] },
   rockHawk: { id: "rockHawk", name: "岩羽のハーピー", hp: 52, atk: 17, xp: 38, gold: 34, special: "sleepSongLite", traitsText: "峡谷の風に乗って襲う飛行敵。高所からの奇襲に注意。" },
   cliffLizard: { id: "cliffLizard", name: "崖這いトカゲ", hp: 56, atk: 17, xp: 41, gold: 36, targeting: "backlineBias", traitsText: "岩肌を這い、背後へ回り込むトカゲ。後衛を狙いやすい。", drops: ["mercenarySword"] },
-  canyonBandit: { id: "canyonBandit", name: "谷底の盗賊団", hp: 60, atk: 18, xp: 45, gold: 42, traitsText: "谷道に潜む追い剥ぎ。隊列の隙を見て襲いかかる。", drops: ["mercenarySword"] },
+  canyonBandit: { id: "canyonBandit", name: "谷底の盗賊団", hp: 60, atk: 18, xp: 45, gold: 42, special: "doubleStrikeLite", traitsText: "谷道に潜む追い剥ぎ。低確率で連撃を仕掛ける。", drops: ["mercenarySword"] },
   redGorgeWing: { id: "redGorgeWing", name: "赤峡の断頭翼", hp: 112, atk: 24, xp: 96, gold: 110, rare: true, boss: true, traitsText: "赤月の見張り場に現れる巨大な翼影。断崖を越えて獲物を狙う。", drops: ["thiefGloves"] },
   iceWolf: { id: "iceWolf", name: "氷狼", hp: 66, atk: 20, xp: 52, gold: 48 },
   frostWisp: { id: "frostWisp", name: "霜の灯霊", hp: 58, atk: 22, xp: 58, gold: 52, rare: true, drops: ["oldCharm"] },

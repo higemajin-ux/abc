@@ -1739,6 +1739,69 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
     return;
   }
 
+  if (enemy.special === "doubleStrikeLite" && Math.random() < 0.25) {
+    const hitRate = 0.65;
+    const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * hitRate * 2));
+    const cover = maybeCoverTarget(party, target, predictedDamage);
+    target = cover.target;
+    const beforeHp = target.hp;
+    const canUsePriestBlessing =
+      beforeHp > 0 &&
+      target.job === "priest" &&
+      isSkillEnabled(target, "divineGrace") &&
+      !target.divineGraceUsed &&
+      target.hp > 0;
+    let knockedOut = false;
+
+    events.push({ kind: "enemy-action", text: `${enemy.name}の連撃。` });
+    if (cover.coverer) {
+      if (Math.random() < 0.15) {
+        events.push({ kind: "enemy-action", text: `${cover.coverer.name}「ここは通さない」` });
+      }
+      events.push({ kind: "enemy-action", text: `${cover.coverer.name}が${cover.covered.name}をかばった。` });
+    }
+
+    for (let strike = 0; strike < 2; strike += 1) {
+      if (target.hp <= 0) break;
+      let damage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * hitRate));
+      if (target.ironWall) {
+        damage = Math.max(1, Math.floor(damage * 0.25));
+      } else if (target.guard) {
+        damage = Math.max(1, Math.floor(damage * 0.5));
+      }
+      if (target.desperateVulnerable) {
+        damage = Math.max(1, Math.floor(damage * 1.5));
+        target.desperateVulnerable = false;
+      }
+      if (target.magicBarrier) {
+        damage = Math.max(1, Math.floor(damage * 0.5));
+        target.magicBarrier = false;
+      }
+
+      applyDamageToMember(target, damage);
+      if (target.hp <= 0) {
+        events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
+        if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
+          continue;
+        } else {
+          pushHp(events, target, "enemy-action down");
+          confirmMemberDown(target, events, speechState);
+          knockedOut = true;
+        }
+        break;
+      }
+    }
+
+    if (!knockedOut && target.hp > 0) {
+      events.push({ kind: "enemy-action", text: `${target.name}は続けざまに傷を負った。` });
+      pushHp(events, target);
+      reactToHpDrop(target, beforeHp, events, speechState);
+    }
+    tickEnemyDots(enemy, events);
+    tickEnemyTurnStatuses(enemy);
+    return;
+  }
+
   if (enemy.special === "biteCrushLite" && Math.random() < 0.5) {
     const intimidateTargets = livingMembers(party).filter(
       (member) => (member[STATUS_EFFECTS.atkDown.turnKey] || 0) <= 0
