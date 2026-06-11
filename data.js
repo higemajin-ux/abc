@@ -787,6 +787,37 @@ const AREAS = {
     boss: "flameTyrant",
     flavor: ["熱風がマントを鳴らし、灰が空を薄く覆う。", "溶岩の照り返しで、剣の縁が赤く光った。"],
   },
+  volcanoRim: {
+    id: "volcanoRim",
+    name: "火口外縁",
+    durationMs: 5000,
+    difficulty: 7,
+    baseAtk: 27,
+    monsters: ["emberImp"],
+    normalEncounterGroupWeights: { 1: 35, 2: 45, 3: 20 },
+    unlockAfter: "fangDrift",
+  },
+  lavaCave: {
+    id: "lavaCave",
+    name: "溶岩洞",
+    durationMs: 5000,
+    difficulty: 7,
+    baseAtk: 27,
+    monsters: ["emberImp", "lavaBeast"],
+    normalEncounterGroupWeights: { 1: 35, 2: 45, 3: 20 },
+    unlockAfter: "volcanoRim",
+  },
+  flameBed: {
+    id: "flameBed",
+    name: "炎王の火床",
+    durationMs: 5000,
+    difficulty: 7,
+    baseAtk: 27,
+    monsters: ["emberImp", "lavaBeast"],
+    normalEncounterGroupWeights: { 1: 35, 2: 45, 3: 20 },
+    unlockAfter: "lavaCave",
+    boss: "flameTyrant",
+  },
   abyss: {
     id: "abyss",
     name: "深淵",
@@ -1008,7 +1039,7 @@ const AREAS = {
   },
 };
 
-const AREA_ORDER = ["plainEntrance", "plainRoad", "goblinNest", "howlingRoad", "mossTrail", "beastTerritory", "sunkenPier", "reedWaterway", "blackwaterPool", "outerGarden", "crackedCorridor", "sealedBelfry", "windCutPass", "cliffPath", "redMoonWatch", "frostMarker", "icefield", "fangDrift", "volcano", "abyss", "forgottenCorridor", "starMarsh", "mourningSpire", "borderGate", "ashCapital", "silentRim", "lastCathedral", "mistRainRoad", "abandonedWatchtower", "witheredForestGate", "blackwaterMarsh", "forgottenChapel", "redMoonCanyon", "northernOldRoad", "sealedMineRuins", "silentCorridor", "lightlessCatacomb"];
+const AREA_ORDER = ["plainEntrance", "plainRoad", "goblinNest", "howlingRoad", "mossTrail", "beastTerritory", "sunkenPier", "reedWaterway", "blackwaterPool", "outerGarden", "crackedCorridor", "sealedBelfry", "windCutPass", "cliffPath", "redMoonWatch", "frostMarker", "icefield", "fangDrift", "volcanoRim", "lavaCave", "flameBed", "abyss", "forgottenCorridor", "starMarsh", "mourningSpire", "borderGate", "ashCapital", "silentRim", "lastCathedral", "mistRainRoad", "abandonedWatchtower", "witheredForestGate", "blackwaterMarsh", "forgottenChapel", "redMoonCanyon", "northernOldRoad", "sealedMineRuins", "silentCorridor", "lightlessCatacomb"];
 
 const WORLD_SITUATIONS = {
   plain: [["最近、始まりの草原付近の魔物が活発化している。", "近隣街道にて小規模な襲撃報告あり。"]],
