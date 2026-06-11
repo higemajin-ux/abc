@@ -11,8 +11,13 @@
 - 派遣先細分化：沼・遺跡・峡谷・氷原も各3小区画で実装済み
 - 草原3派遣先に `recommendedLevel` / `description` を追加済み
 - 月影の森3派遣先に `recommendedLevel` / `description` を追加済み
-- 旧 `swamp` / `ruins` / `canyon` / `glacier` は互換用に保持し、派遣先一覧からは除外
+- 旧 `swamp` / `ruins` / `canyon` / `glacier` / `volcano` は互換用に保持し、派遣先一覧からは除外
 - 旧セーブで旧IDを選択していた場合は新しい先頭小区画へ寄せる
+- 火山は3小区画化済み。進行順は `赤熱の火口（火口外縁）` → `赤熱の火口（溶岩洞）` → `赤熱の火口（炎王の火床）` → `深淵`
+- 火山の使用IDは `volcanoRim` / `lavaCave` / `flameBed`
+- `AREA_ORDER` では旧 `volcano` を外し、`fangDrift` → `volcanoRim` → `lavaCave` → `flameBed` → `abyss`
+- 火山の敵は既存の `emberImp` / `lavaBeast` / `flameTyrant` を使用し、新敵や新状態異常は追加していない
+- 開発中は旧セーブ移行を基本不要とし、必要時はセーブリセット前提で進める
 - 旧IDのクリア実績は新小区画側へ同期
 - `volcano` の解放条件は氷原最終小区画へ接続
 - 派遣先詳細モーダルを追加済み
