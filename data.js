@@ -789,7 +789,7 @@ const AREAS = {
   },
   volcanoRim: {
     id: "volcanoRim",
-    name: "火口外縁",
+    name: "赤熱の火口（火口外縁）",
     durationMs: 5000,
     difficulty: 7,
     baseAtk: 27,
@@ -799,7 +799,7 @@ const AREAS = {
   },
   lavaCave: {
     id: "lavaCave",
-    name: "溶岩洞",
+    name: "赤熱の火口（溶岩洞）",
     durationMs: 5000,
     difficulty: 7,
     baseAtk: 27,
@@ -809,7 +809,7 @@ const AREAS = {
   },
   flameBed: {
     id: "flameBed",
-    name: "炎王の火床",
+    name: "赤熱の火口（炎王の火床）",
     durationMs: 5000,
     difficulty: 7,
     baseAtk: 27,
