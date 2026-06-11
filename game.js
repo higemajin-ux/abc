@@ -955,6 +955,7 @@ const LEGACY_AREA_STAGE_MAP = {
   ruins: ["outerGarden", "crackedCorridor", "sealedBelfry"],
   canyon: ["windCutPass", "cliffPath", "redMoonWatch"],
   glacier: ["frostMarker", "icefield", "fangDrift"],
+  volcano: ["volcanoRim", "lavaCave", "flameBed"],
 };
 
 function syncLegacyAreaClears(target = state) {
@@ -5166,6 +5167,7 @@ function migrate(data) {
     if (p.selectedArea === "ruins") p.selectedArea = "outerGarden";
     if (p.selectedArea === "canyon") p.selectedArea = "windCutPass";
     if (p.selectedArea === "glacier") p.selectedArea = "frostMarker";
+    if (p.selectedArea === "volcano") p.selectedArea = "volcanoRim";
     recordEquippedEquipment(p, data);
     if (p.adventureLog?.length && !p.dispatches.length) {
       p.dispatches.push({
@@ -5388,5 +5390,4 @@ renderAll();
 updateDeveloperButton();
 ensureWorldSituationTick();
 if (state.parties.some((p) => p.mission)) ensureTick();
-
 
