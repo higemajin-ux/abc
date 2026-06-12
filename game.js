@@ -1216,7 +1216,7 @@ function buildScheduledJournal(party, area, rewards, startedAt, endsAt) {
     });
   });
 
-  area.flavor.forEach((text, index) => {
+  (area.flavor || []).forEach((text, index) => {
     entries.push({
       id: uid("entry"),
       timestamp: startedAt + Math.floor(span * (0.18 + index * 0.14)),
@@ -1336,7 +1336,7 @@ function buildScheduledJournalV2(party, area, rewards, startedAt, endsAt) {
   });
 
   if (!rewards.forcedReturn) {
-    area.flavor.forEach((text, index) => {
+    (area.flavor || []).forEach((text, index) => {
       entries.push({
         id: uid("entry"),
         timestamp: startedAt + Math.floor(span * (0.18 + index * 0.14)),
@@ -5390,4 +5390,3 @@ renderAll();
 updateDeveloperButton();
 ensureWorldSituationTick();
 if (state.parties.some((p) => p.mission)) ensureTick();
-

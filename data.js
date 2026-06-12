@@ -827,7 +827,7 @@ const AREAS = {
     monsters: ["abyssCrawler", "namelessShade"],
     normalEncounterGroupWeights: { 1: 35, 2: 45, 3: 20 },
     boss: "abyssEnvoy",
-    unlockAfter: "volcano",
+    unlockAfter: "flameBed",
     treasureRates: [0.3, 0.2, 0.1, 0.05],
     trapRates: [0.8, 0.55, 0.3, 0.15],
     flavor: ["道は下へ続くはずなのに、影だけが天井へ伸びていく。", "壊れた標識に、まだ出発していない隊の名が刻まれていた。"],
