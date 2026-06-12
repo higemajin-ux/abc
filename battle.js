@@ -2198,7 +2198,7 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
               text:
                 `<span class="hp-text ${hpClass(member)}">` +
                 `<span class="hp-name">${member.name}</span>（<span class="hp-value">${member.hp}${tempText}/${member.maxHp}</span>）` +
-                `<span class="status-tags">【鈍足${member.slowTurns}】</span>` +
+                `<span class="status-tags">【スロー${member.slowTurns}】</span>` +
                 `</span>`,
             });
           } else {
