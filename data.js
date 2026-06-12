@@ -1119,7 +1119,7 @@ const MONSTERS = {
   canyonBandit: { id: "canyonBandit", name: "谷底の盗賊団", hp: 60, atk: 18, xp: 45, gold: 42, special: "doubleStrikeLite", traitsText: "谷道に潜む追い剥ぎ。低確率で連撃を仕掛ける。", drops: ["mercenarySword"] },
   redGorgeWing: { id: "redGorgeWing", name: "赤峡の断頭翼", hp: 112, atk: 24, xp: 96, gold: 110, rare: true, boss: true, special: "redGaleLite", traitsText: "赤月の見張り場に現れる巨大な翼影。赤い風で隊列を乱す。", drops: ["thiefGloves"] },
   iceWolf: { id: "iceWolf", name: "フロストウルフ", hp: 66, atk: 20, xp: 52, gold: 48, targeting: "backlineBias", traitsText: "雪原で隊列の薄いところを狙う狼。" },
-  frostWisp: { id: "frostWisp", name: "フロストウィスプ", hp: 58, atk: 22, xp: 58, gold: 52, rare: true, traitsText: "冷たい光で道を惑わせる灯霊。", drops: ["oldCharm"] },
+  frostWisp: { id: "frostWisp", name: "フロストウィスプ", hp: 58, atk: 22, xp: 58, gold: 52, rare: true, special: "frostGlimmerLite", traitsText: "冷たい光で道を惑わせる灯霊。", drops: ["oldCharm"] },
   whiteFangGiant: { id: "whiteFangGiant", name: "白牙の巨影", hp: 138, atk: 28, xp: 126, gold: 145, rare: true, boss: true, special: "heavySwingLite", traitsText: "白い息を吐く巨体で、重い一撃を振るう。" },
   emberImp: { id: "emberImp", name: "火の小魔", hp: 44, atk: 15, xp: 34, gold: 32 },
   lavaBeast: { id: "lavaBeast", name: "溶岩獣", hp: 58, atk: 17, xp: 44, gold: 40 },

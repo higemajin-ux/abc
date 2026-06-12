@@ -2132,6 +2132,61 @@ function performEnemyAction(enemy, party, enemies, area, heroLevel, events, spee
     return;
   }
 
+  if (enemy.special === "frostGlimmerLite" && Math.random() < 0.6) {
+    const predictedDamage = Math.max(1, Math.floor(damageFor(enemy.atk, target.def) * 0.6));
+    const cover = maybeCoverTarget(party, target, predictedDamage);
+    target = cover.target;
+
+    let damage = predictedDamage;
+    if (target.ironWall) {
+      damage = Math.max(1, Math.floor(damage * 0.25));
+    } else if (target.guard) {
+      damage = Math.max(1, Math.floor(damage * 0.5));
+    }
+    if (target.desperateVulnerable) {
+      damage = Math.max(1, Math.floor(damage * 1.5));
+      target.desperateVulnerable = false;
+    }
+    if (target.magicBarrier) {
+      damage = Math.max(1, Math.floor(damage * 0.5));
+      target.magicBarrier = false;
+    }
+    const beforeHp = target.hp;
+    const canUsePriestBlessing =
+      beforeHp > 0 &&
+      target.job === "priest" &&
+      isSkillEnabled(target, "divineGrace") &&
+      !target.divineGraceUsed &&
+      target.hp > 0;
+    applyDamageToMember(target, damage);
+    events.push({ kind: "enemy-action", text: `${enemy.name}が冷たい光を揺らした。` });
+    if (cover.coverer) {
+      if (Math.random() < 0.15) {
+        events.push({ kind: "enemy-action", text: `${cover.coverer.name}「下がって！」` });
+      }
+      events.push({ kind: "enemy-action", text: `${cover.coverer.name}が${cover.covered.name}をかばった。` });
+    }
+    events.push({ kind: "enemy-action", text: `${damageResultText(target, damage)}。` });
+    if (target.hp > 0 && !target.slowTurns && Math.random() < 0.3) {
+      target.slowTurns = 2;
+      events.push({ kind: "enemy-action", text: `${target.name}は足を取られた。` });
+    }
+    if (target.hp <= 0) {
+      if (trySurviveFatalDamage(target, events, party, canUsePriestBlessing)) {
+        reactToHpDrop(target, beforeHp, events, speechState);
+      } else {
+        pushHp(events, target, "enemy-action down");
+        confirmMemberDown(target, events, speechState);
+      }
+    } else {
+      pushHp(events, target);
+      reactToHpDrop(target, beforeHp, events, speechState);
+    }
+    tickEnemyDots(enemy, events);
+    tickEnemyTurnStatuses(enemy);
+    return;
+  }
+
   if (enemy.special === "redGaleLite" && Math.random() < 0.4) {
     const targets = livingMembers(party);
     if (targets.length) {
